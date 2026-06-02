@@ -34,7 +34,7 @@ pub struct Update {
 #[derive(Default)]
 pub struct PartialFeed<'a> {
     pub title: Option<Cow<'a, str>>,
-    pub link: Option<&'a str>,
+    pub link: Option<Cow<'a, str>>,
     pub skips: Vec<Skip>,
     pub update: Option<Update>,
     pub last_update: Option<DateTime<FixedOffset>>,
@@ -42,7 +42,7 @@ pub struct PartialFeed<'a> {
 pub struct Feed<'a> {
     pub title: Cow<'a, str>,
     // The link is optional in atom.
-    pub link: Option<&'a str>,
+    pub link: Option<Cow<'a, str>>,
     pub skips: Vec<Skip>,
     pub update: Option<Update>,
     pub last_update: DateTime<FixedOffset>,
@@ -70,17 +70,17 @@ impl<'a> Feed<'a> {
 
 pub struct PartialEntry<'a> {
     pub title: Option<Cow<'a, str>>,
-    pub link: Option<&'a str>,
+    pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
     pub pub_date: Option<DateTime<FixedOffset>>,
-    pub enclosures: Vec<&'a str>,
+    pub enclosures: Vec<Cow<'a, str>>,
 }
 pub struct Entry<'a> {
     pub title: Cow<'a, str>,
-    pub link: Option<&'a str>,
+    pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
     pub pub_date: DateTime<FixedOffset>,
-    pub enclosures: Vec<&'a str>,
+    pub enclosures: Vec<Cow<'a, str>>,
 }
 
 pub struct ParsedFeed<'a> {
