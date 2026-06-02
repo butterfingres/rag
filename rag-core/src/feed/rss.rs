@@ -34,7 +34,11 @@ impl Parser for RssParser {
             entries: self.entries,
         })
     }
-    fn handle_event(self, ev: Event<'_>, reader: &mut Reader<&[u8]>) -> Result<Self, ParserError> {
+    unsafe fn handle_event(
+        self,
+        ev: Event<'_>,
+        reader: &mut Reader<&[u8]>,
+    ) -> Result<Self, ParserError> {
         match (self.step, ev) {
             (Step::OutsideChannel, Event::Start(tag)) if tag.name().0 == b"channel" => Ok(Self {
                 step: Step::InsideChannel,
@@ -44,6 +48,7 @@ impl Parser for RssParser {
                 step: Step::OutsideChannel,
                 ..self
             }),
+
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
                 Ok(Self { step, ..self })
