@@ -38,6 +38,18 @@ impl<'a> Reader<'a> {
         self.0.read_to_end(QName(tag.as_bytes()))
     }
 }
+impl<'a> Reader<'a> {
+    pub fn as_str(&self) -> &'a str {
+        unsafe { str::from_utf8_unchecked(&self.0.get_ref()) }
+    }
+}
+impl<'a> std::ops::Deref for Reader<'a> {
+    type Target = BytesReader<&'a [u8]>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 pub enum Event<'a> {
     Start(Start<'a>),

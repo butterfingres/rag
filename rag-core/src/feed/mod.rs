@@ -32,22 +32,22 @@ pub struct Update {
 }
 
 #[derive(Default)]
-pub struct PartialFeed {
-    pub title: Option<Box<str>>,
-    pub link: Option<Box<str>>,
+pub struct PartialFeed<'a> {
+    pub title: Option<Cow<'a, str>>,
+    pub link: Option<&'a str>,
     pub skips: Vec<Skip>,
     pub update: Option<Update>,
     pub last_update: Option<DateTime<FixedOffset>>,
 }
-pub struct Feed {
-    pub title: Box<str>,
+pub struct Feed<'a> {
+    pub title: Cow<'a, str>,
     // The link is optional in atom.
-    pub link: Option<Box<str>>,
+    pub link: Option<&'a str>,
     pub skips: Vec<Skip>,
     pub update: Option<Update>,
     pub last_update: DateTime<FixedOffset>,
 }
-impl Feed {
+impl<'a> Feed<'a> {
     pub fn from_partial(
         PartialFeed {
             title,
@@ -55,7 +55,7 @@ impl Feed {
             skips,
             update,
             last_update,
-        }: PartialFeed,
+        }: PartialFeed<'a>,
         before_send: DateTime<FixedOffset>,
     ) -> Option<Self> {
         Some(Self {
@@ -68,24 +68,24 @@ impl Feed {
     }
 }
 
-pub struct PartialEntry {
-    pub title: Option<Box<str>>,
-    pub link: Option<Box<str>>,
-    pub description: Option<Box<str>>,
+pub struct PartialEntry<'a> {
+    pub title: Option<Cow<'a, str>>,
+    pub link: Option<&'a str>,
+    pub description: Option<Cow<'a, str>>,
     pub pub_date: Option<DateTime<FixedOffset>>,
-    pub enclosures: Vec<Box<str>>,
+    pub enclosures: Vec<&'a str>,
 }
-pub struct Entry {
-    pub title: Box<str>,
-    pub link: Option<Box<str>>,
-    pub description: Option<Box<str>>,
+pub struct Entry<'a> {
+    pub title: Cow<'a, str>,
+    pub link: Option<&'a str>,
+    pub description: Option<Cow<'a, str>>,
     pub pub_date: DateTime<FixedOffset>,
-    pub enclosures: Vec<Box<str>>,
+    pub enclosures: Vec<&'a str>,
 }
 
-pub struct ParsedFeed {
-    pub feed: Feed,
-    pub entries: Vec<Entry>,
+pub struct ParsedFeed<'a> {
+    pub feed: Feed<'a>,
+    pub entries: Vec<Entry<'a>>,
 }
 
 #[derive(Debug)]
@@ -122,19 +122,19 @@ impl From<TryFromIntError> for ParserError {
     }
 }
 
-pub trait Parser
+pub trait Parser<'a>
 where
     Self: Sized,
 {
     fn from_start(_: Start) -> Result<Self, Start>;
-    fn output(self, _: DateTime<FixedOffset>) -> Option<ParsedFeed>;
-    fn handle_event(self, _: Event<'_>, _: &mut Reader) -> Result<Self, ParserError>;
+    fn output(self, _: DateTime<FixedOffset>) -> Option<ParsedFeed<'a>>;
+    fn handle_event(self, _: Event<'a>, _: &mut Reader<'a>) -> Result<Self, ParserError>;
 
     fn parse(
         mut self,
-        reader: &mut Reader,
+        reader: &mut Reader<'a>,
         before_send: DateTime<FixedOffset>,
-    ) -> Result<ParsedFeed, ParserError> {
+    ) -> Result<ParsedFeed<'a>, ParserError> {
         loop {
             match reader.read_event()? {
                 Event::Eof => break self.output(before_send).ok_or(ParserError::Invalid),

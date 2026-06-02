@@ -1,6 +1,6 @@
 use {
     crate::{
-        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed},
+        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
         utf8::{Event, Reader, Start},
     },
     chrono::{DateTime, FixedOffset},
@@ -13,12 +13,12 @@ enum Step {
     InsideChannel,
 }
 #[derive(Default)]
-pub struct RssParser {
+pub struct RssParser<'a> {
     step: Step,
-    feed: PartialFeed,
-    entries: Vec<Entry>,
+    feed: PartialFeed<'a>,
+    entries: Vec<Entry<'a>>,
 }
-impl Parser for RssParser {
+impl<'a> Parser<'a> for RssParser<'a> {
     fn from_start(tag: Start) -> Result<Self, Start> {
         if tag.local_name() == "rss" {
             Ok(Self::default())
@@ -26,13 +26,13 @@ impl Parser for RssParser {
             Err(tag)
         }
     }
-    fn output(self, before_send: DateTime<FixedOffset>) -> Option<ParsedFeed> {
+    fn output(self, before_send: DateTime<FixedOffset>) -> Option<ParsedFeed<'a>> {
         Some(ParsedFeed {
             feed: Feed::from_partial(self.feed, before_send)?,
             entries: self.entries,
         })
     }
-    fn handle_event(self, ev: Event<'_>, reader: &mut Reader) -> Result<Self, ParserError> {
+    fn handle_event(self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
         match (self.step, ev) {
             (Step::OutsideChannel, Event::Start(tag)) if tag.name() == "channel" => Ok(Self {
                 step: Step::InsideChannel,
@@ -40,6 +40,14 @@ impl Parser for RssParser {
             }),
             (Step::InsideChannel, Event::End(tag)) if tag.name() == "channel" => Ok(Self {
                 step: Step::OutsideChannel,
+                ..self
+            }),
+            (Step::InsideChannel, Event::Start(tag)) if tag.name() == "title" => Ok(Self {
+                step: Step::OutsideChannel,
+                feed: PartialFeed {
+                    title: Some(decode_text_to_end(reader, "title")?),
+                    ..self.feed
+                },
                 ..self
             }),
 
