@@ -1,9 +1,12 @@
 use {
     crate::{
-        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
+        feed::{
+            Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, Skip, decode_text_to_end,
+        },
         utf8::{Event, Reader, Start},
     },
-    chrono::{DateTime, FixedOffset},
+    chrono::{DateTime, FixedOffset, Weekday},
+    std::str::FromStr,
 };
 
 #[derive(Default)]
@@ -11,6 +14,7 @@ enum Step {
     #[default]
     OutsideChannel,
     InsideChannel,
+    InsideSkipDays,
 }
 #[derive(Default)]
 pub struct RssParser<'a> {
@@ -32,7 +36,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
             entries: self.entries,
         })
     }
-    fn handle_event(self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
+    fn handle_event(mut self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
         match (self.step, ev) {
             (Step::OutsideChannel, Event::Start(tag)) if tag.name() == "channel" => Ok(Self {
                 step: Step::InsideChannel,
@@ -42,20 +46,35 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 step: Step::OutsideChannel,
                 ..self
             }),
-            (Step::InsideChannel, Event::Start(tag)) if tag.name() == "title" => Ok(Self {
-                step: Step::InsideChannel,
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "title" => Ok(Self {
+                step,
                 feed: PartialFeed {
                     title: Some(decode_text_to_end(reader, "title")?),
                     ..self.feed
                 },
                 ..self
             }),
-            (Step::InsideChannel, Event::Start(tag)) if tag.name() == "link" => Ok(Self {
-                step: Step::InsideChannel,
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "link" => Ok(Self {
+                step,
                 feed: PartialFeed {
                     link: Some(decode_text_to_end(reader, "link")?),
                     ..self.feed
                 },
+                ..self
+            }),
+            (Step::InsideChannel, Event::Start(tag)) if tag.name() == "skipDays" => Ok(Self {
+                step: Step::InsideSkipDays,
+                ..self
+            }),
+            (step @ Step::InsideSkipDays, Event::Start(tag)) if tag.name() == "day" => {
+                let day = decode_text_to_end(reader, "day")?;
+                let day = Weekday::from_str(&day)?;
+                self.feed.skips.push(Skip::Weekday(day));
+
+                Ok(Self { step, ..self })
+            }
+            (Step::InsideSkipDays, Event::End(tag)) if tag.name() == "skipDays" => Ok(Self {
+                step: Step::InsideChannel,
                 ..self
             }),
 
@@ -79,13 +98,31 @@ mod tests {
   <channel>
     <title>hello world</title>
     <link>https://example.com</link>
+    <skipDays>
+      <day>Monday</day>
+      <day>Tuesday</day>
+      <day>Wednesday</day>
+      <day>Thursday</day>
+      <day>Friday</day>
+      <day>Saturday</day>
+      <day>Sunday</day>
+    </skipDays>
   </channel>
 </rss>",
             ParsedFeed {
                 feed: Feed {
                     title: Cow::Borrowed("hello world"),
                     link: Some(Cow::Borrowed("https://example.com")),
-                    skips: vec![],
+                    // we need to test that all the weekdays are recognized
+                    skips: vec![
+                        Skip::Weekday(Weekday::Mon),
+                        Skip::Weekday(Weekday::Tue),
+                        Skip::Weekday(Weekday::Wed),
+                        Skip::Weekday(Weekday::Thu),
+                        Skip::Weekday(Weekday::Fri),
+                        Skip::Weekday(Weekday::Sat),
+                        Skip::Weekday(Weekday::Sun),
+                    ],
                     update: None,
                     last_update: DateTime::default(),
                 },

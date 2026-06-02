@@ -34,6 +34,9 @@ impl<'a> Reader<'a> {
         })
     }
 
+    pub fn read_text(&mut self, tag: &'a str) -> Result<Text<'a>, quick_xml::Error> {
+        self.0.read_text(QName(tag.as_bytes())).map(Text)
+    }
     pub fn read_to_end(&mut self, tag: &str) -> Result<Span, quick_xml::Error> {
         self.0.read_to_end(QName(tag.as_bytes()))
     }

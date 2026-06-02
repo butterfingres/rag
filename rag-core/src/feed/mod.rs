@@ -2,13 +2,13 @@ pub mod rss;
 
 use {
     crate::utf8::{Event, Reader, Start},
-    chrono::{DateTime, FixedOffset},
+    chrono::{DateTime, FixedOffset, ParseWeekdayError, Weekday},
     quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
     std::{
         borrow::Cow,
         error::Error,
         fmt::{self, Display, Formatter},
-        num::TryFromIntError,
+        num::{ParseIntError, TryFromIntError},
         str,
     },
 };
@@ -16,7 +16,7 @@ use {
 #[derive(Debug, PartialEq)]
 pub enum Skip {
     Hour(u8),
-    Weekday(u8),
+    Weekday(Weekday),
 }
 #[derive(Debug, PartialEq)]
 pub enum UpdatePeriod {
@@ -97,6 +97,8 @@ pub struct ParsedFeed<'a> {
 pub enum ParserError {
     Encoding(EncodingError),
     Invalid,
+    ParseInt(ParseIntError),
+    ParseWeekday(ParseWeekdayError),
     Xml(quick_xml::Error),
     TryFromInt(TryFromIntError),
     UnrecognizedRoot(Option<Box<str>>),
@@ -106,6 +108,8 @@ impl Display for ParserError {
         match self {
             Self::Encoding(e) => e.fmt(f),
             Self::Invalid => f.write_str("the feed does not conform to specifications"),
+            Self::ParseInt(e) => e.fmt(f),
+            Self::ParseWeekday(e) => e.fmt(f),
             Self::Xml(e) => e.fmt(f),
             Self::TryFromInt(e) => e.fmt(f),
             Self::UnrecognizedRoot(Some(tag)) => write!(f, "unrecognized root element `{tag}`"),
@@ -117,6 +121,16 @@ impl Error for ParserError {}
 impl From<EncodingError> for ParserError {
     fn from(e: EncodingError) -> Self {
         Self::Encoding(e)
+    }
+}
+impl From<ParseIntError> for ParserError {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseInt(e)
+    }
+}
+impl From<ParseWeekdayError> for ParserError {
+    fn from(e: ParseWeekdayError) -> Self {
+        Self::ParseWeekday(e)
     }
 }
 impl From<quick_xml::Error> for ParserError {
