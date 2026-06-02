@@ -146,33 +146,6 @@ where
     }
 }
 
-// pub fn decode_text_to_end(reader: &mut Reader, tag: &str) -> Result<Box<str>, ParserError> {
-//     let mut output = String::new();
-//     loop {
-//         match reader.read_event()? {
-//             Event::Text(text) => {
-//                 output.push_str(text.as_ref());
-//             }
-//             Event::CData(data) => {
-//                 output.push_str(data.as_ref());
-//             }
-//             Event::GeneralRef(ch) => {
-//                 if let Some(ch) = ch.resolve_char_ref()? {
-//                     output.push(ch);
-//                 } else if let Some(ch) = resolve_xml_entity(ch.as_ref_name()) {
-//                     output.push_str(ch);
-//                 }
-//             }
-//             Event::Start(start) => reader.read_to_end(start.name()).map(|_| ())?,
-//             Event::End(end) if end.name() == tag => break,
-//             Event::Eof => break,
-//             _ => {}
-//         }
-//     }
-
-//     Ok(output.into_boxed_str())
-// }
-
 pub fn decode_text_to_end<'a>(
     reader: &mut Reader<'a>,
     tag: &str,
