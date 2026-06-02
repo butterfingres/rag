@@ -1,5 +1,6 @@
 pub mod feed;
 pub mod sym;
+pub mod utf8;
 
 emacs::plugin_is_GPL_compatible!();
 

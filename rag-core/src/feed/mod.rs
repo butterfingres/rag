@@ -1,14 +1,9 @@
 pub mod rss;
 
 use {
+    crate::utf8::{Event, Reader, Start},
     chrono::{DateTime, FixedOffset},
-    quick_xml::{
-        encoding::EncodingError,
-        escape::resolve_xml_entity,
-        events::{BytesStart, Event},
-        name::QName,
-        reader::Reader,
-    },
+    quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
     std::{
         error::Error,
         fmt::{self, Display, Formatter},
@@ -121,59 +116,40 @@ pub trait Parser
 where
     Self: Sized,
 {
-    fn from_start(_: BytesStart) -> Result<Self, BytesStart>;
+    fn from_start(_: Start) -> Result<Self, Start>;
     fn output(self, _: DateTime<FixedOffset>) -> Option<ParsedFeed>;
-    /// # Safety
-    ///
-    /// The [Reader] must only have utf-8 data.
-    unsafe fn handle_event(self, _: Event<'_>, _: &mut Reader<&[u8]>) -> Result<Self, ParserError>;
+    fn handle_event(self, _: Event<'_>, _: &mut Reader) -> Result<Self, ParserError>;
 
-    /// # Safety
-    ///
-    /// See [Self::handle_event].
-    unsafe fn parse(
+    fn parse(
         mut self,
-        reader: &mut Reader<&[u8]>,
+        reader: &mut Reader,
         before_send: DateTime<FixedOffset>,
     ) -> Result<ParsedFeed, ParserError> {
         loop {
             match reader.read_event()? {
                 Event::Eof => break self.output(before_send).ok_or(ParserError::Invalid),
                 ev => {
-                    self = unsafe { self.handle_event(ev, reader) }?;
+                    self = self.handle_event(ev, reader)?;
                 }
             }
         }
     }
 }
 
-/// # Safety
-///
-/// The [Reader] must always be utf-8.
-pub unsafe fn decode_text_to_end(
-    reader: &mut Reader<&[u8]>,
-    tag: QName<'_>,
-) -> Result<Box<str>, ParserError> {
+pub fn decode_text_to_end(reader: &mut Reader, tag: &str) -> Result<Box<str>, ParserError> {
     let mut output = String::new();
     loop {
         match reader.read_event()? {
             Event::Text(text) => {
-                // SAFETY: `reader` must be utf-8
-                output.push_str(unsafe { str::from_utf8_unchecked(text.as_ref()) });
+                output.push_str(text.as_ref());
             }
             Event::CData(data) => {
-                // SAFETY: `reader` must be utf-8
-                output.push_str(unsafe { str::from_utf8_unchecked(data.as_ref()) });
+                output.push_str(data.as_ref());
             }
             Event::GeneralRef(ch) => {
                 if let Some(ch) = ch.resolve_char_ref()? {
                     output.push(ch);
-                } else if let Some(ch) =
-                    // SAFETY: `reader` must be utf-8
-                    resolve_xml_entity(unsafe {
-                        str::from_utf8_unchecked(ch.as_ref())
-                    })
-                {
+                } else if let Some(ch) = resolve_xml_entity(ch.as_ref_name()) {
                     output.push_str(ch);
                 }
             }
@@ -191,15 +167,10 @@ pub unsafe fn decode_text_to_end(
 mod tests {
     use super::*;
 
-    fn decode_text_to_end_safe(text: &str, tag: QName) -> Result<Box<str>, ParserError> {
-        // SAFETY: `text` is a utf-8 [str]
-        unsafe { decode_text_to_end(&mut Reader::from_str(text), tag) }
-    }
-
     #[test]
     fn test_decode_text_to_end() -> Result<(), ParserError> {
         assert_eq!(
-            decode_text_to_end_safe("C &amp;lt; Rust", QName(b"foo"))?.as_ref(),
+            decode_text_to_end(&mut Reader::from_str("C &amp;lt; Rust"), "foo")?.as_ref(),
             "C &lt; Rust"
         );
         Ok(())

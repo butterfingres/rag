@@ -1,10 +1,9 @@
 use {
-    crate::feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed},
-    chrono::{DateTime, FixedOffset},
-    quick_xml::{
-        events::{BytesStart, Event},
-        reader::Reader,
+    crate::{
+        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed},
+        utf8::{Event, Reader, Start},
     },
+    chrono::{DateTime, FixedOffset},
 };
 
 #[derive(Default)]
@@ -20,13 +19,12 @@ pub struct RssParser {
     entries: Vec<Entry>,
 }
 impl Parser for RssParser {
-    fn from_start(tag: BytesStart) -> Result<Self, BytesStart> {
-        tag.decoder()
-            .decode(tag.local_name().into_inner())
-            .ok()
-            .filter(|tag| tag == "rss")
-            .map(|_| Self::default())
-            .ok_or(tag)
+    fn from_start(tag: Start) -> Result<Self, Start> {
+        if tag.local_name() == "rss" {
+            Ok(Self::default())
+        } else {
+            Err(tag)
+        }
     }
     fn output(self, before_send: DateTime<FixedOffset>) -> Option<ParsedFeed> {
         Some(ParsedFeed {
@@ -34,17 +32,13 @@ impl Parser for RssParser {
             entries: self.entries,
         })
     }
-    unsafe fn handle_event(
-        self,
-        ev: Event<'_>,
-        reader: &mut Reader<&[u8]>,
-    ) -> Result<Self, ParserError> {
+    fn handle_event(self, ev: Event<'_>, reader: &mut Reader) -> Result<Self, ParserError> {
         match (self.step, ev) {
-            (Step::OutsideChannel, Event::Start(tag)) if tag.name().0 == b"channel" => Ok(Self {
+            (Step::OutsideChannel, Event::Start(tag)) if tag.name() == "channel" => Ok(Self {
                 step: Step::InsideChannel,
                 ..self
             }),
-            (Step::InsideChannel, Event::End(tag)) if tag.name().0 == b"channel" => Ok(Self {
+            (Step::InsideChannel, Event::End(tag)) if tag.name() == "channel" => Ok(Self {
                 step: Step::OutsideChannel,
                 ..self
             }),
