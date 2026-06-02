@@ -1,0 +1,160 @@
+pub mod rss;
+
+use {
+    chrono::{DateTime, FixedOffset},
+    quick_xml::{
+        encoding::EncodingError,
+        events::{BytesStart, Event},
+        name::QName,
+        reader::Reader,
+    },
+    std::{
+        error::Error,
+        fmt::{self, Display, Formatter},
+    },
+};
+
+pub enum Skip {
+    Hour(u8),
+    Weekday(u8),
+}
+
+pub enum UpdatePeriod {
+    Hourly,
+    Daily,
+    Weekly,
+    Monthly,
+    Yearly,
+}
+pub struct Update {
+    pub period: UpdatePeriod,
+    pub frequency: u32,
+    pub base: DateTime<FixedOffset>,
+}
+
+#[derive(Default)]
+pub struct PartialFeed {
+    pub title: Option<Box<str>>,
+    pub link: Option<Box<str>>,
+    pub skips: Vec<Skip>,
+    pub update: Option<Update>,
+    pub last_update: Option<DateTime<FixedOffset>>,
+}
+pub struct Feed {
+    pub title: Box<str>,
+    // The link is optional in atom.
+    pub link: Option<Box<str>>,
+    pub skips: Vec<Skip>,
+    pub update: Option<Update>,
+    pub last_update: DateTime<FixedOffset>,
+}
+
+pub struct PartialEntry {
+    pub title: Option<Box<str>>,
+    pub link: Option<Box<str>>,
+    pub description: Option<Box<str>>,
+    pub pub_date: Option<DateTime<FixedOffset>>,
+    pub enclosures: Vec<Box<str>>,
+}
+pub struct Entry {
+    pub title: Box<str>,
+    pub link: Option<Box<str>>,
+    pub description: Option<Box<str>>,
+    pub pub_date: DateTime<FixedOffset>,
+    pub enclosures: Vec<Box<str>>,
+}
+
+pub struct ParsedFeed {
+    pub feed: Feed,
+    pub entries: Vec<Entry>,
+}
+
+#[derive(Debug)]
+pub enum ParserError {
+    Encoding(EncodingError),
+    Xml(quick_xml::Error),
+}
+impl Display for ParserError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Self::Encoding(e) => e.fmt(f),
+            Self::Xml(e) => e.fmt(f),
+        }
+    }
+}
+impl Error for ParserError {}
+impl From<EncodingError> for ParserError {
+    fn from(e: EncodingError) -> Self {
+        Self::Encoding(e)
+    }
+}
+impl From<quick_xml::Error> for ParserError {
+    fn from(e: quick_xml::Error) -> Self {
+        Self::Xml(e)
+    }
+}
+pub trait Parser
+where
+    Self: Sized,
+    ParsedFeed: TryFrom<Self, Error = ParserError>,
+{
+    fn from_start(_: BytesStart) -> Result<Self, BytesStart>;
+    fn handle_event(self, _: Event<'_>, _: &mut Reader<&[u8]>) -> Result<Self, ParserError>;
+
+    fn parse(mut self, reader: &mut Reader<&[u8]>) -> Result<ParsedFeed, ParserError> {
+        loop {
+            match reader.read_event()? {
+                Event::Eof => break ParsedFeed::try_from(self),
+                ev => {
+                    self = self.handle_event(ev, reader)?;
+                }
+            }
+        }
+    }
+}
+
+pub fn decode_text_to_end(
+    reader: &mut Reader<&[u8]>,
+    tag: QName<'_>,
+) -> Result<Box<str>, ParserError> {
+    let mut output = String::new();
+    loop {
+        match reader.read_event()? {
+            Event::Text(text) => {
+                reader
+                    .decoder()
+                    .decode_into(text.into_inner().as_ref(), &mut output)?;
+            }
+            Event::CData(data) => {
+                reader
+                    .decoder()
+                    .decode_into(data.into_inner().as_ref(), &mut output)?;
+            }
+            Event::GeneralRef(ch) => {
+                if let Some(ch) = ch.resolve_char_ref()? {
+                    output.push(ch);
+                }
+            }
+            Event::Start(start) => reader.read_to_end(start.name()).map(|_| ())?,
+            Event::End(end) if end.name() == tag => break,
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+
+    Ok(output.into_boxed_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_text_to_end() -> Result<(), ParserError> {
+        assert_eq!(
+            decode_text_to_end(&mut Reader::from_str("C &amp; Rust"), QName(b"foo"))?.as_ref(),
+            "C < Rust"
+        );
+        Ok(())
+    }
+}
