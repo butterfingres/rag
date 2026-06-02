@@ -187,30 +187,30 @@ pub fn decode_text_to_end<'a>(
 
 #[cfg(test)]
 mod tests {
-    use {super::*, std::assert_matches};
+    use super::*;
 
     #[test]
     fn test_decode_text_to_end() -> Result<(), ParserError> {
-        assert_matches!(
+        assert!(matches!(
             decode_text_to_end(&mut Reader::from_str("&lt;/link<![CDATA[>]]>"), "p")?,
             Cow::Owned(s) if s == "</link>",
-        );
+        ));
 
-        assert_matches!(
+        assert!(matches!(
             decode_text_to_end(&mut Reader::from_str("foo"), "p")?,
             Cow::Borrowed("foo"),
-        );
-        assert_matches!(
+        ));
+        assert!(matches!(
             decode_text_to_end(&mut Reader::from_str(""), "p")?,
             Cow::Borrowed(""),
-        );
+        ));
 
         let mut reader = Reader::from_str("<p>&lt;/link<![CDATA[>]]></p>");
         reader.read_event()?;
-        assert_matches!(
+        assert!(matches!(
             decode_text_to_end(&mut reader, "p")?,
             Cow::Owned(s) if s == "</link>",
-        );
+        ));
 
         Ok(())
     }
