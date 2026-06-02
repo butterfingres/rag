@@ -9,6 +9,7 @@ pub mod v {
     //! Other symbols.
 
     emacs::use_symbols! {
-        RAG_DB => "rag-db"
+        RAG_DB_PATH => "rag-db-path"
+        RAG_FEEDS => "rag-feeds"
     }
 }
