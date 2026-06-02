@@ -152,15 +152,14 @@ pub fn decode_text_to_end<'a>(
 ) -> Result<Cow<'a, str>, ParserError> {
     let mut output = Cow::Borrowed("");
     let start = usize::try_from(reader.buffer_position())?;
-    let mut end;
     let slice = reader.as_str();
 
     loop {
         match reader.read_event()? {
             Event::Text(text) => match output {
                 Cow::Borrowed(_) => {
-                    end = usize::try_from(reader.buffer_position())?;
-                    output = Cow::Borrowed(&slice[start..end]);
+                    output =
+                        Cow::Borrowed(&slice[start..usize::try_from(reader.buffer_position())?]);
                 }
                 Cow::Owned(_) => {
                     output.to_mut().push_str(text.as_ref());
