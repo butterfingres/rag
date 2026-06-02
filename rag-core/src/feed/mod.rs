@@ -170,13 +170,13 @@ mod tests {
     #[test]
     fn test_decode_text_to_end() -> Result<(), ParserError> {
         assert_eq!(
-            decode_text_to_end(&mut Reader::from_str("&lt;b<![CDATA[>]]>"), "foo")?.as_ref(),
-            "<b>"
+            decode_text_to_end(&mut Reader::from_str("&lt;/link<![CDATA[>]]>"), "/link")?.as_ref(),
+            "</link>"
         );
 
-        let mut reader = Reader::from_str("<p>&lt;b<![CDATA[>]]></p>");
+        let mut reader = Reader::from_str("<p>&lt;/link<![CDATA[>]]></p>");
         reader.read_event()?;
-        assert_eq!(decode_text_to_end(&mut reader, "p")?.as_ref(), "<b>");
+        assert_eq!(decode_text_to_end(&mut reader, "p")?.as_ref(), "</link>");
 
         Ok(())
     }
