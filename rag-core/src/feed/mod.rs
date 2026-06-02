@@ -57,14 +57,14 @@ impl Feed {
             update,
             last_update,
         }: PartialFeed,
-        before_send: &DateTime<FixedOffset>,
+        before_send: DateTime<FixedOffset>,
     ) -> Option<Self> {
         Some(Self {
             title: title?,
             link,
             skips,
             update,
-            last_update: last_update.unwrap_or_else(|| *before_send),
+            last_update: last_update.unwrap_or(before_send),
         })
     }
 }
@@ -120,13 +120,13 @@ where
     Self: Sized,
 {
     fn from_start(_: BytesStart) -> Result<Self, BytesStart>;
-    fn output(self, _: &DateTime<FixedOffset>) -> Option<ParsedFeed>;
+    fn output(self, _: DateTime<FixedOffset>) -> Option<ParsedFeed>;
     fn handle_event(self, _: Event<'_>, _: &mut Reader<&[u8]>) -> Result<Self, ParserError>;
 
     fn parse(
         mut self,
         reader: &mut Reader<&[u8]>,
-        before_send: &DateTime<FixedOffset>,
+        before_send: DateTime<FixedOffset>,
     ) -> Result<ParsedFeed, ParserError> {
         loop {
             match reader.read_event()? {

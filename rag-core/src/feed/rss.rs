@@ -28,7 +28,7 @@ impl Parser for RssParser {
             .map(|_| Self::default())
             .ok_or(tag)
     }
-    fn output(self, before_send: &DateTime<FixedOffset>) -> Option<ParsedFeed> {
+    fn output(self, before_send: DateTime<FixedOffset>) -> Option<ParsedFeed> {
         Some(ParsedFeed {
             feed: Feed::from_partial(self.feed, before_send)?,
             entries: self.entries,
