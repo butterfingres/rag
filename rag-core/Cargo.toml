@@ -9,3 +9,5 @@ crate-type = ["cdylib"]
 [dependencies]
 chrono = { version = "0.4.44", default-features = false }
 emacs = { version = "0.21.0", default-features = false }
+quick-xml = { version = "0.40.1", default-features = false, features = ["async-tokio"] }
+tokio = { version = "1.52.3", default-features = false }
