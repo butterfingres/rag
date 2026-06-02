@@ -13,6 +13,7 @@ enum Step {
     OutsideChannel,
     InsideChannel,
     InsideSkipDays,
+    InsideSkipHours,
 }
 #[derive(Default)]
 pub struct RssParser<'a> {
@@ -60,6 +61,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 },
                 ..self
             }),
+
             (Step::InsideChannel, Event::Start(tag)) if tag.name() == "skipDays" => Ok(Self {
                 step: Step::InsideSkipDays,
                 ..self
@@ -76,6 +78,21 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 ..self
             }),
 
+            (Step::InsideChannel, Event::Start(tag)) if tag.name() == "skipHours" => Ok(Self {
+                step: Step::InsideSkipHours,
+                ..self
+            }),
+            (step @ Step::InsideSkipHours, Event::Start(tag)) if tag.name() == "hour" => {
+                let hour = decode_text_to_end(reader, "hour")?;
+                let hour = usize::from_str(&hour)?;
+                self.feed.cache.skip_hours.set(hour, true);
+
+                Ok(Self { step, ..self })
+            }
+            (Step::InsideSkipHours, Event::End(tag)) if tag.name() == "skipHours" => Ok(Self {
+                step: Step::InsideChannel,
+                ..self
+            }),
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
                 Ok(Self { step, ..self })
@@ -109,6 +126,10 @@ mod tests {
       <day>Saturday</day>
       <day>Sunday</day>
     </skipDays>
+    <skipHours>
+      <hour>0</hour>
+      <hour>23</hour>
+    </skipHours>
   </channel>
 </rss>",
             ParsedFeed {
@@ -118,7 +139,7 @@ mod tests {
                     // we need to test that all the weekdays are recognized
                     cache: Cache {
                         skip_weekdays: SkipWeekdays::new([0b0111_1111]),
-                        skip_hours: SkipHours::ZERO,
+                        skip_hours: SkipHours::new([0b0000_0000_1000_0000_0000_0000_0000_0001]),
                         period: None,
                     },
                     last_update: DateTime::default(),
