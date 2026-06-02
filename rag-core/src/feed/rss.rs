@@ -1,8 +1,6 @@
 use {
     crate::{
-        feed::{
-            Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, Skip, decode_text_to_end,
-        },
+        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
         utf8::{Event, Reader, Start},
     },
     chrono::{DateTime, FixedOffset, Weekday},
@@ -69,7 +67,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
             (step @ Step::InsideSkipDays, Event::Start(tag)) if tag.name() == "day" => {
                 let day = decode_text_to_end(reader, "day")?;
                 let day = Weekday::from_str(&day)?;
-                self.feed.skips.push(Skip::Weekday(day));
+                self.feed.cache.skip_weekdays.set(day as usize, true);
 
                 Ok(Self { step, ..self })
             }
@@ -89,7 +87,11 @@ impl<'a> Parser<'a> for RssParser<'a> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, std::borrow::Cow};
+    use {
+        super::*,
+        crate::feed::{Cache, SkipHours, SkipWeekdays},
+        std::borrow::Cow,
+    };
 
     #[test]
     fn test_parser() -> Result<(), ParserError> {
@@ -114,16 +116,11 @@ mod tests {
                     title: Cow::Borrowed("hello world"),
                     link: Some(Cow::Borrowed("https://example.com")),
                     // we need to test that all the weekdays are recognized
-                    skips: vec![
-                        Skip::Weekday(Weekday::Mon),
-                        Skip::Weekday(Weekday::Tue),
-                        Skip::Weekday(Weekday::Wed),
-                        Skip::Weekday(Weekday::Thu),
-                        Skip::Weekday(Weekday::Fri),
-                        Skip::Weekday(Weekday::Sat),
-                        Skip::Weekday(Weekday::Sun),
-                    ],
-                    update: None,
+                    cache: Cache {
+                        skip_weekdays: SkipWeekdays::new([0b0111_1111]),
+                        skip_hours: SkipHours::ZERO,
+                        period: None,
+                    },
                     last_update: DateTime::default(),
                 },
                 entries: vec![],

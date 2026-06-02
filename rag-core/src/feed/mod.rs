@@ -2,7 +2,8 @@ pub mod rss;
 
 use {
     crate::utf8::{Event, Reader, Start},
-    chrono::{DateTime, FixedOffset, ParseWeekdayError, Weekday},
+    bitvec::BitArr,
+    chrono::{DateTime, FixedOffset, ParseWeekdayError},
     quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
     std::{
         borrow::Cow,
@@ -13,13 +14,11 @@ use {
     },
 };
 
+pub type SkipWeekdays = BitArr![for 7, in u8];
+pub type SkipHours = BitArr![for 24, in u32];
+
 #[derive(Debug, PartialEq)]
-pub enum Skip {
-    Hour(u8),
-    Weekday(Weekday),
-}
-#[derive(Debug, PartialEq)]
-pub enum UpdatePeriod {
+pub enum Interval {
     Hourly,
     Daily,
     Weekly,
@@ -27,18 +26,24 @@ pub enum UpdatePeriod {
     Yearly,
 }
 #[derive(Debug, PartialEq)]
-pub struct Update {
-    pub period: UpdatePeriod,
-    pub frequency: u32,
-    pub base: DateTime<FixedOffset>,
+pub struct Period {
+    interval: Interval,
+    base: Option<DateTime<FixedOffset>>,
+    frequency: u32,
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct Cache {
+    skip_weekdays: SkipWeekdays,
+    skip_hours: SkipHours,
+    period: Option<Period>,
 }
 
 #[derive(Default)]
 pub struct PartialFeed<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
-    pub skips: Vec<Skip>,
-    pub update: Option<Update>,
+    pub cache: Cache,
     pub last_update: Option<DateTime<FixedOffset>>,
 }
 #[derive(Debug, PartialEq)]
@@ -46,8 +51,7 @@ pub struct Feed<'a> {
     pub title: Cow<'a, str>,
     // The link is optional in atom.
     pub link: Option<Cow<'a, str>>,
-    pub skips: Vec<Skip>,
-    pub update: Option<Update>,
+    pub cache: Cache,
     pub last_update: DateTime<FixedOffset>,
 }
 impl<'a> Feed<'a> {
@@ -55,8 +59,7 @@ impl<'a> Feed<'a> {
         PartialFeed {
             title,
             link,
-            skips,
-            update,
+            cache,
             last_update,
         }: PartialFeed<'a>,
         before_send: DateTime<FixedOffset>,
@@ -64,8 +67,7 @@ impl<'a> Feed<'a> {
         Some(Self {
             title: title?,
             link,
-            skips,
-            update,
+            cache,
             last_update: last_update.unwrap_or(before_send),
         })
     }
