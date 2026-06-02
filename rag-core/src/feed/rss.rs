@@ -19,7 +19,7 @@ pub struct RssParser<'a> {
     entries: Vec<Entry<'a>>,
 }
 impl<'a> Parser<'a> for RssParser<'a> {
-    fn from_start(tag: Start) -> Result<Self, Start> {
+    fn try_from_root(tag: Start) -> Result<Self, Start> {
         if tag.local_name() == "rss" {
             Ok(Self::default())
         } else {
@@ -57,5 +57,34 @@ impl<'a> Parser<'a> for RssParser<'a> {
             }
             (step, _) => Ok(Self { step, ..self }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, std::borrow::Cow};
+
+    #[test]
+    fn test_parser() -> Result<(), ParserError> {
+        crate::feed::tests::test_parser::<RssParser>(
+            "<rss>
+  <channel>
+    <title>hello world</title>
+  </channel>
+</rss>",
+            ParsedFeed {
+                feed: Feed {
+                    title: Cow::Borrowed("hello world"),
+                    link: None,
+                    skips: vec![],
+                    update: None,
+                    last_update: DateTime::default(),
+                },
+                entries: vec![],
+            },
+            DateTime::default(),
+        )?;
+
+        Ok(())
     }
 }

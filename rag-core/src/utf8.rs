@@ -98,6 +98,9 @@ def_wrapper!(pub struct Decl(BytesDecl));
 def_wrapper!(pub struct PI(BytesPI));
 def_wrapper!(pub struct Ref(BytesRef));
 impl<'a> Start<'a> {
+    pub fn new(start: &'a str) -> Self {
+        Self(quick_xml::events::BytesStart::new(start))
+    }
     pub fn name(&self) -> &str {
         unsafe { str::from_utf8_unchecked(self.0.name().0) }
     }

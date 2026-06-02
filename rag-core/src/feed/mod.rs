@@ -13,11 +13,12 @@ use {
     },
 };
 
+#[derive(Debug, PartialEq)]
 pub enum Skip {
     Hour(u8),
     Weekday(u8),
 }
-
+#[derive(Debug, PartialEq)]
 pub enum UpdatePeriod {
     Hourly,
     Daily,
@@ -25,6 +26,7 @@ pub enum UpdatePeriod {
     Monthly,
     Yearly,
 }
+#[derive(Debug, PartialEq)]
 pub struct Update {
     pub period: UpdatePeriod,
     pub frequency: u32,
@@ -39,6 +41,7 @@ pub struct PartialFeed<'a> {
     pub update: Option<Update>,
     pub last_update: Option<DateTime<FixedOffset>>,
 }
+#[derive(Debug, PartialEq)]
 pub struct Feed<'a> {
     pub title: Cow<'a, str>,
     // The link is optional in atom.
@@ -75,6 +78,7 @@ pub struct PartialEntry<'a> {
     pub pub_date: Option<DateTime<FixedOffset>>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
+#[derive(Debug, PartialEq)]
 pub struct Entry<'a> {
     pub title: Cow<'a, str>,
     pub link: Option<Cow<'a, str>>,
@@ -83,6 +87,7 @@ pub struct Entry<'a> {
     pub enclosures: Vec<Cow<'a, str>>,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct ParsedFeed<'a> {
     pub feed: Feed<'a>,
     pub entries: Vec<Entry<'a>>,
@@ -94,6 +99,7 @@ pub enum ParserError {
     Invalid,
     Xml(quick_xml::Error),
     TryFromInt(TryFromIntError),
+    UnrecognizedRoot(Option<Box<str>>),
 }
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
@@ -102,6 +108,8 @@ impl Display for ParserError {
             Self::Invalid => f.write_str("the feed does not conform to specifications"),
             Self::Xml(e) => e.fmt(f),
             Self::TryFromInt(e) => e.fmt(f),
+            Self::UnrecognizedRoot(Some(tag)) => write!(f, "unrecognized root element `{tag}`"),
+            Self::UnrecognizedRoot(None) => f.write_str("root element is not an element"),
         }
     }
 }
@@ -126,7 +134,7 @@ pub trait Parser<'a>
 where
     Self: Sized,
 {
-    fn from_start(_: Start) -> Result<Self, Start>;
+    fn try_from_root(_: Start) -> Result<Self, Start>;
     fn output(self, _: DateTime<FixedOffset>) -> Option<ParsedFeed<'a>>;
     fn handle_event(self, _: Event<'a>, _: &mut Reader<'a>) -> Result<Self, ParserError>;
 
@@ -159,7 +167,7 @@ pub fn decode_text_to_end<'a>(
             Event::Text(text) => match output {
                 Cow::Borrowed(_) => {
                     output =
-                        Cow::Borrowed(&slice[start..usize::try_from(reader.buffer_position())?]);
+                        Cow::Borrowed(&slice[..usize::try_from(reader.buffer_position())? - start]);
                 }
                 Cow::Owned(_) => {
                     output.to_mut().push_str(text.as_ref());
@@ -188,6 +196,26 @@ pub fn decode_text_to_end<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    pub fn test_parser<'a, T>(
+        input: &'a str,
+        output: ParsedFeed,
+        date: DateTime<FixedOffset>,
+    ) -> Result<(), ParserError>
+    where
+        T: Parser<'a>,
+    {
+        let mut reader = Reader::from_str(input);
+        let Event::Start(root) = reader.read_event()? else {
+            return Err(ParserError::UnrecognizedRoot(None));
+        };
+        let parser = T::try_from_root(root)
+            .map_err(|tag| ParserError::UnrecognizedRoot(Some(Box::from(tag.local_name()))))?;
+
+        assert_eq!(parser.parse(&mut reader, date)?, output);
+
+        Ok(())
+    }
 
     #[test]
     fn test_decode_text_to_end() -> Result<(), ParserError> {
