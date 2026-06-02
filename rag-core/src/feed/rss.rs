@@ -43,9 +43,17 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 ..self
             }),
             (Step::InsideChannel, Event::Start(tag)) if tag.name() == "title" => Ok(Self {
-                step: Step::OutsideChannel,
+                step: Step::InsideChannel,
                 feed: PartialFeed {
                     title: Some(decode_text_to_end(reader, "title")?),
+                    ..self.feed
+                },
+                ..self
+            }),
+            (Step::InsideChannel, Event::Start(tag)) if tag.name() == "link" => Ok(Self {
+                step: Step::InsideChannel,
+                feed: PartialFeed {
+                    link: Some(decode_text_to_end(reader, "link")?),
                     ..self.feed
                 },
                 ..self
@@ -70,12 +78,13 @@ mod tests {
             "<rss>
   <channel>
     <title>hello world</title>
+    <link>https://example.com</link>
   </channel>
 </rss>",
             ParsedFeed {
                 feed: Feed {
                     title: Cow::Borrowed("hello world"),
-                    link: None,
+                    link: Some(Cow::Borrowed("https://example.com")),
                     skips: vec![],
                     update: None,
                     last_update: DateTime::default(),
