@@ -2,10 +2,9 @@ use {
     chrono::{DateTime, FixedOffset},
     quick_xml::{
         XmlVersion,
-        encoding::{Decoder, EncodingError},
+        encoding::EncodingError,
         events::{BytesStart, Event},
-        name::ResolveResult,
-        reader::NsReader,
+        reader::Reader,
     },
     std::{
         error::Error,
@@ -66,24 +65,6 @@ pub struct ParsedFeed {
     pub entries: Vec<Entry>,
 }
 
-pub enum Namespace {
-    Dc,
-    Sy,
-}
-impl Namespace {
-    pub fn new(ns: ResolveResult, decoder: Decoder) -> Result<Option<Self>, EncodingError> {
-        if let ResolveResult::Bound(quick_xml::name::Namespace(bytes)) = ns {
-            match decoder.decode(bytes)?.as_ref() {
-                "dc" => Ok(Some(Self::Dc)),
-                "sy" => Ok(Some(Self::Sy)),
-                _ => Ok(None),
-            }
-        } else {
-            Ok(None)
-        }
-    }
-}
-
 #[derive(Debug)]
 pub enum ParserError {
     Encoding(EncodingError),
@@ -115,8 +96,8 @@ where
     fn try_new<'a>(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>>;
     fn handle_event<T>(
         self,
-        _: (Option<Namespace>, Event<'_>),
-        _: &mut NsReader<T>,
+        _: Event<'_>,
+        _: &mut Reader<T>,
         _: &mut Vec<u8>,
         _: &XmlVersion,
     ) -> impl Future<Output = Result<Self, ParserError>>
@@ -125,7 +106,7 @@ where
 
     fn parse<T>(
         mut self,
-        reader: &mut NsReader<T>,
+        reader: &mut Reader<T>,
         ev_buf: &mut Vec<u8>,
         text_buf: &mut Vec<u8>,
         version: &XmlVersion,
@@ -135,15 +116,11 @@ where
         ParsedFeed: TryFrom<Self, Error = ParserError>,
     {
         async {
-            let decoder = reader.decoder();
             loop {
-                match reader.read_resolved_event_into_async(ev_buf).await? {
-                    (_, Event::Eof) => break ParsedFeed::try_from(self),
-                    (ns, ev) => {
-                        let ns = Namespace::new(ns, decoder)?;
-                        self = self
-                            .handle_event((ns, ev), reader, text_buf, version)
-                            .await?;
+                match reader.read_event_into_async(ev_buf).await? {
+                    Event::Eof => break ParsedFeed::try_from(self),
+                    ev => {
+                        self = self.handle_event(ev, reader, text_buf, version).await?;
                     }
                 }
             }
