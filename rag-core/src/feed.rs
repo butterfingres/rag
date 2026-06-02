@@ -1,4 +1,11 @@
-use chrono::{DateTime, FixedOffset};
+use {
+    chrono::{DateTime, FixedOffset},
+    quick_xml::{
+        events::{BytesStart, Event},
+        reader::NsReader,
+    },
+    std::io::BufRead,
+};
 
 pub enum Skip {
     Hour(u8),
@@ -46,3 +53,15 @@ pub struct PartialEntry<T> {
     meta: T,
 }
 pub type Entry = PartialEntry<()>;
+
+pub enum ParserError {}
+
+pub trait Parser
+where
+    Self: Sized,
+{
+    fn try_new<'a>(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>>;
+    fn handle_event<T>(self, _: Event<'_>, _: NsReader<T>) -> Result<Self, ParserError>
+    where
+        T: BufRead;
+}
