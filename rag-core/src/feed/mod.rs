@@ -223,9 +223,14 @@ mod tests {
             decode_text_to_end(&mut Reader::from_str("&lt;/link<![CDATA[>]]>"), "p")?,
             Cow::Owned(s) if s == "</link>",
         );
+
         assert_matches!(
             decode_text_to_end(&mut Reader::from_str("foo"), "p")?,
             Cow::Borrowed("foo"),
+        );
+        assert_matches!(
+            decode_text_to_end(&mut Reader::from_str(""), "p")?,
+            Cow::Borrowed(""),
         );
 
         let mut reader = Reader::from_str("<p>&lt;/link<![CDATA[>]]></p>");
