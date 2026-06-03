@@ -1,7 +1,10 @@
 pub mod rss;
 
 use {
-    crate::utf8::{Event, Reader, Start},
+    crate::{
+        rfc822,
+        utf8::{Event, Reader, Start},
+    },
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, Zoned},
     quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
@@ -96,6 +99,7 @@ pub enum ParserError {
     // TODO: merge ParseTime and ParseWeekday
     ParseTime(jiff::Error),
     ParseWeekday(Box<str>),
+    Rfc822(rfc822::Error),
     Xml(quick_xml::Error),
     TryFromInt(TryFromIntError),
     UnrecognizedRoot(Option<Box<str>>),
@@ -108,6 +112,7 @@ impl Display for ParserError {
             Self::ParseInt(e) => e.fmt(f),
             Self::ParseTime(e) => e.fmt(f),
             Self::ParseWeekday(day) => write!(f, "failed to parse weekday `{day}`"),
+            Self::Rfc822(e) => e.fmt(f),
             Self::Xml(e) => e.fmt(f),
             Self::TryFromInt(e) => e.fmt(f),
             Self::UnrecognizedRoot(Some(tag)) => write!(f, "unrecognized root element `{tag}`"),
@@ -124,6 +129,11 @@ impl From<EncodingError> for ParserError {
 impl From<ParseIntError> for ParserError {
     fn from(e: ParseIntError) -> Self {
         Self::ParseInt(e)
+    }
+}
+impl From<rfc822::Error> for ParserError {
+    fn from(e: rfc822::Error) -> Self {
+        Self::Rfc822(e)
     }
 }
 impl From<jiff::Error> for ParserError {
