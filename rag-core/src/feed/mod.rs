@@ -43,7 +43,7 @@ pub struct PartialFeed<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
     pub cache: Cache,
-    pub last_update: Option<Zoned>,
+    pub last_update: Option<Timestamp>,
 }
 #[derive(Debug, PartialEq)]
 pub struct Feed<'a> {
@@ -51,7 +51,7 @@ pub struct Feed<'a> {
     // The link is optional in atom.
     pub link: Option<Cow<'a, str>>,
     pub cache: Cache,
-    pub last_update: Option<Zoned>,
+    pub last_update: Option<Timestamp>,
 }
 impl<'a> Feed<'a> {
     pub fn from_partial(

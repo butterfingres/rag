@@ -71,7 +71,9 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 Ok(Self {
                     step,
                     feed: PartialFeed {
-                        last_update: Some(rfc822::parse(&decode_text_to_end(reader, "pubDate")?)?),
+                        last_update: Some(
+                            rfc822::parse(&decode_text_to_end(reader, "pubDate")?)?.timestamp(),
+                        ),
                         ..self.feed
                     },
                     ..self
@@ -238,7 +240,8 @@ mod tests {
                     },
                     last_update: Some(
                         DateTime::new(2002, 09, 07, 00, 00, 01, 00)?
-                            .to_zoned(TimeZone::fixed(offset(0)))?,
+                            .to_zoned(TimeZone::fixed(offset(0)))?
+                            .timestamp(),
                     ),
                 },
                 entries: vec![Entry {
