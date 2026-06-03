@@ -1,3 +1,4 @@
+pub mod atom;
 pub mod rss;
 
 use {
@@ -158,6 +159,7 @@ pub enum ParserError {
     Attr(AttrError),
     Encoding(EncodingError),
     Invalid,
+    MissingRoot,
     ParseInt(ParseIntError),
     // TODO: merge ParseTime and ParseWeekday
     ParseTime(jiff::Error),
@@ -173,6 +175,7 @@ impl Display for ParserError {
             Self::Attr(e) => e.fmt(f),
             Self::Encoding(e) => e.fmt(f),
             Self::Invalid => f.write_str("the feed does not conform to specifications"),
+            Self::MissingRoot => f.write_str("root element not found"),
             Self::ParseInt(e) => e.fmt(f),
             Self::ParseTime(e) => e.fmt(f),
             Self::ParseWeekday(day) => write!(f, "failed to parse weekday `{day}`"),
@@ -289,8 +292,13 @@ mod tests {
         T: Parser<'a>,
     {
         let mut reader = Reader::from_str(input);
-        let Event::Start(root) = reader.read_event()? else {
-            return Err(ParserError::UnrecognizedRoot(None));
+
+        let root = loop {
+            match reader.read_event()? {
+                Event::Start(root) => break root,
+                Event::Eof => return Err(ParserError::UnrecognizedRoot(None)),
+                _ => {}
+            }
         };
         let parser = T::try_from_root(root)
             .map_err(|tag| ParserError::UnrecognizedRoot(Some(Box::from(tag.local_name()))))?;
