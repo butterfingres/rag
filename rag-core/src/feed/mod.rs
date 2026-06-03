@@ -68,12 +68,13 @@ impl<'a> Feed<'a> {
     }
 }
 
-#[derive(PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd)]
 pub enum Authority {
     Weak,
     Strong,
 }
 
+#[derive(Debug, PartialEq)]
 pub struct PartialText<'a> {
     text: Cow<'a, str>,
     authority: Authority,
@@ -309,8 +310,94 @@ mod tests {
         Ok(())
     }
 
+    fn test_replacement(
+        mut input: Option<PartialText>,
+        output: Option<PartialText>,
+        authority: Authority,
+    ) -> Result<(), ParserError> {
+        let mut reader = Reader::from_str("<p>hello world</p>");
+        reader.read_event()?;
+
+        PartialText::replace_with_text_or_skip(&mut input, "p", &mut reader, authority)?;
+        assert_eq!(input, output);
+
+        Ok(())
+    }
+
     #[test]
-    fn test_replacement() -> Result<(), ParserError> {
+    fn test_replacement_empty() -> Result<(), ParserError> {
+        test_replacement(
+            None,
+            Some(PartialText {
+                text: Cow::Borrowed("hello world"),
+                authority: Authority::Weak,
+            }),
+            Authority::Weak,
+        )?;
+        test_replacement(
+            None,
+            Some(PartialText {
+                text: Cow::Borrowed("hello world"),
+                authority: Authority::Strong,
+            }),
+            Authority::Strong,
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_replacement_overpower() -> Result<(), ParserError> {
+        test_replacement(
+            Some(PartialText {
+                text: Cow::Borrowed("weak text"),
+                authority: Authority::Weak,
+            }),
+            Some(PartialText {
+                text: Cow::Borrowed("hello world"),
+                authority: Authority::Strong,
+            }),
+            Authority::Strong,
+        )
+    }
+
+    #[test]
+    fn test_replacement_lazy() -> Result<(), ParserError> {
+        test_replacement(
+            Some(PartialText {
+                text: Cow::Borrowed("weak text"),
+                authority: Authority::Weak,
+            }),
+            Some(PartialText {
+                text: Cow::Borrowed("weak text"),
+                authority: Authority::Weak,
+            }),
+            Authority::Weak,
+        )?;
+
+        test_replacement(
+            Some(PartialText {
+                text: Cow::Borrowed("strong text"),
+                authority: Authority::Strong,
+            }),
+            Some(PartialText {
+                text: Cow::Borrowed("strong text"),
+                authority: Authority::Strong,
+            }),
+            Authority::Strong,
+        )?;
+        test_replacement(
+            Some(PartialText {
+                text: Cow::Borrowed("strong text"),
+                authority: Authority::Strong,
+            }),
+            Some(PartialText {
+                text: Cow::Borrowed("strong text"),
+                authority: Authority::Strong,
+            }),
+            Authority::Weak,
+        )?;
+
         Ok(())
     }
 }
