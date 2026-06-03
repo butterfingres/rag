@@ -97,19 +97,6 @@ impl<'a> PartialText<'a> {
                 .map(|_| ())
                 .map_err(ParserError::Xml)
         }
-        // if text.is_none() || let Some(Self { authority: current_authority, .. }) = text && authority > current_authority {}
-
-        // if let None
-        // | Some(Self {
-        //     authority: Authority::Weak,
-        //     ..
-        // }) = text
-        // {
-        //     *text = Some(with()?);
-        //     Ok(())
-        // } else {
-        //     or_else()
-        // }
     }
 }
 
@@ -319,6 +306,11 @@ mod tests {
             Cow::Owned(s) if s == "</link>",
         ));
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_replacement() -> Result<(), ParserError> {
         Ok(())
     }
 }
