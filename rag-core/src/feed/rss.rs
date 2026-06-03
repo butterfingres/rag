@@ -1,8 +1,8 @@
 use {
     crate::{
         feed::{
-            Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed, Period,
-            decode_text_to_end,
+            Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed,
+            PartialText, Period, decode_text_to_end,
         },
         rfc822,
         utf8::{Event, Reader, Start},
@@ -135,17 +135,37 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 ..self
             }),
 
-            // (Step::InsideChannel, Event::Start(tag)) if tag.name() == "item" => Ok(Self {
-            //     step: Step::InsideItem(PartialEntry::default()),
-            //     ..self
-            // }),
-            // (Step::InsideItem(entry), Event::End(tag)) if tag.name() == "item" => {
-            //     //
-            //     Ok(Self {
-            //         step: Step::InsideChannel,
-            //         ..self
-            //     })
-            // }
+            (Step::InsideChannel, Event::Start(tag)) if tag.name() == "item" => Ok(Self {
+                step: Step::InsideItem(PartialEntry::default().into()),
+                ..self
+            }),
+            (Step::InsideItem(entry), Event::End(tag)) if tag.name() == "item" => {
+                self.entries.push(entry.into());
+                Ok(Self {
+                    step: Step::InsideChannel,
+                    ..self
+                })
+            }
+            (Step::InsideItem(mut entry), Event::Start(tag)) if tag.name() == "title" => {
+                entry.title = Some(decode_text_to_end(reader, "title")?);
+                Ok(Self {
+                    step: Step::InsideItem(entry),
+                    ..self
+                })
+            }
+            (Step::InsideItem(mut entry), Event::Start(tag)) if tag.name() == "link" => {
+                PartialText::replace_with_text_or_skip(
+                    &mut entry.link,
+                    "link",
+                    reader,
+                    Authority::Strong,
+                )?;
+                Ok(Self {
+                    step: Step::InsideItem(entry),
+                    ..self
+                })
+            }
+
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
                 Ok(Self { step, ..self })
@@ -189,6 +209,11 @@ mod tests {
     </skipHours>
     <ttl>69</ttl>
     <pubDate>Sat, 07 Sep 2002 00:00:01 GMT</pubDate>
+    <item>
+      <title>entry 1</title>
+      <link>https://example.com</link>
+      <link>https://example.com/foo</link>
+    </item>
   </channel>
 </rss>",
             ParsedFeed {
@@ -210,7 +235,14 @@ mod tests {
                             .to_zoned(TimeZone::fixed(offset(0)))?,
                     ),
                 },
-                entries: vec![],
+                entries: vec![Entry {
+                    title: Some(Cow::Borrowed("entry 1")),
+                    // the title element is perfectly fine
+                    link: Some(Cow::Borrowed("https://example.com")),
+                    description: None,
+                    pub_date: None,
+                    enclosures: vec![],
+                }],
             },
         )?;
 

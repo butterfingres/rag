@@ -79,26 +79,37 @@ pub struct PartialText<'a> {
     authority: Authority,
 }
 impl<'a> PartialText<'a> {
-    pub fn replace_with_or_else<F, G>(
+    pub fn replace_with_text_or_skip(
         text: &mut Option<Self>,
-        with: F,
-        or_else: G,
-    ) -> Result<(), ParserError>
-    where
-        F: FnOnce() -> Result<Self, ParserError>,
-        G: FnOnce() -> Result<(), ParserError>,
-    {
-        if let None
-        | Some(Self {
-            authority: Authority::Weak,
-            ..
-        }) = text
-        {
-            *text = Some(with()?);
+        tag: &str,
+        reader: &mut Reader<'a>,
+        authority: Authority,
+    ) -> Result<(), ParserError> {
+        if text.is_none() || text.as_ref().is_some_and(|text| authority > text.authority) {
+            *text = Some(Self {
+                text: decode_text_to_end(reader, tag)?,
+                authority,
+            });
             Ok(())
         } else {
-            or_else()
+            reader
+                .read_to_end(tag)
+                .map(|_| ())
+                .map_err(ParserError::Xml)
         }
+        // if text.is_none() || let Some(Self { authority: current_authority, .. }) = text && authority > current_authority {}
+
+        // if let None
+        // | Some(Self {
+        //     authority: Authority::Weak,
+        //     ..
+        // }) = text
+        // {
+        //     *text = Some(with()?);
+        //     Ok(())
+        // } else {
+        //     or_else()
+        // }
     }
 }
 
