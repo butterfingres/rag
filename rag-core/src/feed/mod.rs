@@ -74,6 +74,13 @@ pub enum Authority {
     Strong,
 }
 
+/// Text content that may come from multiple sources, with differing
+/// reliablility.
+///
+/// You should use this over a standard [Cow] whenever there are
+/// multiple sources for the same information such as with links and
+/// descriptions where their quality can differ. Otherwise, you should
+/// stick to a normal type and always override it.
 #[derive(Debug, PartialEq)]
 pub struct PartialText<'a> {
     text: Cow<'a, str>,
