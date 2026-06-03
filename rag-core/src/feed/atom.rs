@@ -1,16 +1,10 @@
 use {
     crate::{
-        feed::{
-            Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed,
-            PartialText, Period, decode_text_to_end,
-        },
-        utf8::{Attribute, Event, Reader, Start},
+        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
+        utf8::{Event, Reader, Start},
     },
-    jiff::{
-        Span, Timestamp,
-        civil::{DateTime, Weekday},
-    },
-    std::{num::NonZeroU32, str::FromStr},
+    jiff::Timestamp,
+    std::str::FromStr,
 };
 
 #[derive(Default)]
@@ -38,7 +32,7 @@ impl<'a> Parser<'a> for AtomParser<'a> {
             entries: self.entries,
         })
     }
-    fn handle_event(mut self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
+    fn handle_event(self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
         match (self.step, ev) {
             (step @ Step::InsideFeed, Event::Start(tag)) if tag.name() == "title" => Ok(Self {
                 step,
@@ -71,7 +65,7 @@ mod tests {
             feed::{Cache, SkipHours, SkipWeekdays},
             tz,
         },
-        jiff::tz::TimeZone,
+        jiff::{civil::DateTime, tz::TimeZone},
         std::borrow::Cow,
     };
 
