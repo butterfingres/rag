@@ -212,6 +212,7 @@ dependencies = [
  "bitvec",
  "emacs",
  "jiff",
+ "memchr",
  "quick-xml",
 ]
 

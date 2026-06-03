@@ -1,4 +1,5 @@
 pub mod feed;
+pub mod split;
 pub mod sym;
 pub mod utf8;
 
