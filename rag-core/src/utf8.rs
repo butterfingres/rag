@@ -1,10 +1,13 @@
 use {
     quick_xml::{
-        events::Event as BytesEvent,
-        name::QName,
+        events::{
+            BytesStart, Event as BytesEvent,
+            attributes::{AttrError, Attribute as BytesAttribute},
+        },
+        name::QName as BytesQName,
         reader::{Reader as BytesReader, Span},
     },
-    std::str,
+    std::{borrow::Cow, str},
 };
 
 pub struct Reader<'a>(BytesReader<&'a [u8]>);
@@ -35,10 +38,10 @@ impl<'a> Reader<'a> {
     }
 
     pub fn read_text(&mut self, tag: &'a str) -> Result<Text<'a>, quick_xml::Error> {
-        self.0.read_text(QName(tag.as_bytes())).map(Text)
+        self.0.read_text(BytesQName(tag.as_bytes())).map(Text)
     }
     pub fn read_to_end(&mut self, tag: &str) -> Result<Span, quick_xml::Error> {
-        self.0.read_to_end(QName(tag.as_bytes()))
+        self.0.read_to_end(BytesQName(tag.as_bytes()))
     }
 }
 impl<'a> Reader<'a> {
@@ -102,7 +105,7 @@ def_wrapper!(pub struct PI(BytesPI));
 def_wrapper!(pub struct Ref(BytesRef));
 impl<'a> Start<'a> {
     pub fn new(start: &'a str) -> Self {
-        Self(quick_xml::events::BytesStart::new(start))
+        Self(BytesStart::new(start))
     }
     pub fn name(&self) -> &str {
         unsafe { str::from_utf8_unchecked(self.0.name().0) }
@@ -110,7 +113,23 @@ impl<'a> Start<'a> {
     pub fn local_name(&self) -> &str {
         unsafe { str::from_utf8_unchecked(self.0.local_name().into_inner()) }
     }
+
+    pub fn try_get_attribute<T>(&self, name: T) -> Result<Option<Attribute<'_>>, AttrError>
+    where
+        T: AsRef<str> + Sized,
+    {
+        self.0.try_get_attribute(name.as_ref()).map(move |opt| {
+            opt.map(move |BytesAttribute { key, value }| Attribute {
+                key: QName(key),
+                value: match value {
+                    Cow::Borrowed(val) => Cow::Borrowed(unsafe { str::from_utf8_unchecked(val) }),
+                    Cow::Owned(val) => Cow::Owned(unsafe { String::from_utf8_unchecked(val) }),
+                },
+            })
+        })
+    }
 }
+
 impl<'a> End<'a> {
     pub fn name(&self) -> &str {
         unsafe { str::from_utf8_unchecked(self.0.name().0) }
@@ -132,5 +151,21 @@ impl AsRef<str> for CData<'_> {
 impl AsRef<str> for Text<'_> {
     fn as_ref(&self) -> &str {
         unsafe { str::from_utf8_unchecked(self.0.as_ref()) }
+    }
+}
+
+pub struct Attribute<'a> {
+    pub key: QName<'a>,
+    pub value: Cow<'a, str>,
+}
+
+pub struct QName<'a>(BytesQName<'a>);
+impl<'a> QName<'a> {
+    pub fn into_inner(&self) -> &'a str {
+        unsafe { str::from_utf8_unchecked(self.0.into_inner()) }
+    }
+    pub fn local_name(&self) -> &'a str {
+        let local_name = self.0.local_name().into_inner();
+        unsafe { str::from_utf8_unchecked(local_name) }
     }
 }

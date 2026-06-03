@@ -7,7 +7,7 @@ use {
         ToSpan, Zoned,
         civil::Date,
         fmt::temporal::DateTimeParser,
-        tz::{Offset, TimeZone, offset},
+        tz::{Offset, TimeZone},
     },
     std::{
         fmt::{self, Display, Formatter},
@@ -173,7 +173,10 @@ pub fn parse(dt: &str) -> Result<Zoned, Error> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, jiff::civil::DateTime};
+    use {
+        super::*,
+        jiff::{civil::DateTime, tz::offset},
+    };
 
     #[test]
     fn test_parse() -> Result<(), Error> {

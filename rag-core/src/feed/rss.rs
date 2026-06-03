@@ -5,7 +5,7 @@ use {
             PartialText, Period, decode_text_to_end,
         },
         rfc822,
-        utf8::{Event, Reader, Start},
+        utf8::{Attribute, Event, Reader, Start},
     },
     jiff::{Span, civil::Weekday},
     std::{num::NonZeroU32, str::FromStr},
@@ -181,6 +181,18 @@ impl<'a> Parser<'a> for RssParser<'a> {
                     ..self
                 })
             }
+            (Step::InsideItem(mut entry), Event::Start(tag) | Event::Empty(tag))
+                if tag.name() == "enclosure" =>
+            {
+                if let Some(Attribute { value, .. }) = tag.try_get_attribute("url")? {
+                    entry.enclosures.push(Box::from(value));
+                }
+
+                Ok(Self {
+                    step: Step::InsideItem(entry),
+                    ..self
+                })
+            }
 
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
@@ -237,7 +249,10 @@ mod tests {
                         DateTime::new(2023, 07, 21, 09, 04, 00, 00)?
                             .to_zoned(TimeZone::fixed(tz::EDT))?,
                     ),
-                    enclosures: vec![],
+                    enclosures: vec![
+                        Box::from("https://example.com/audio.mp3"),
+                        Box::from("https://example.com/video.mp4"),
+                    ],
                 }],
             },
         )?;

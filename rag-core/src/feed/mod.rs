@@ -7,7 +7,9 @@ use {
     },
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, Zoned},
-    quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
+    quick_xml::{
+        encoding::EncodingError, escape::resolve_xml_entity, events::attributes::AttrError,
+    },
     std::{
         borrow::Cow,
         error::Error,
@@ -114,7 +116,7 @@ pub struct PartialEntry<'a> {
     pub link: Option<PartialText<'a>>,
     pub description: Option<Cow<'a, str>>,
     pub pub_date: Option<Zoned>,
-    pub enclosures: Vec<Cow<'a, str>>,
+    pub enclosures: Vec<Box<str>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -123,7 +125,7 @@ pub struct Entry<'a> {
     pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
     pub pub_date: Option<Zoned>,
-    pub enclosures: Vec<Cow<'a, str>>,
+    pub enclosures: Vec<Box<str>>,
 }
 impl<'a> From<PartialEntry<'a>> for Entry<'a> {
     fn from(
@@ -153,6 +155,7 @@ pub struct ParsedFeed<'a> {
 
 #[derive(Debug)]
 pub enum ParserError {
+    Attr(AttrError),
     Encoding(EncodingError),
     Invalid,
     ParseInt(ParseIntError),
@@ -167,6 +170,7 @@ pub enum ParserError {
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
+            Self::Attr(e) => e.fmt(f),
             Self::Encoding(e) => e.fmt(f),
             Self::Invalid => f.write_str("the feed does not conform to specifications"),
             Self::ParseInt(e) => e.fmt(f),
@@ -181,6 +185,11 @@ impl Display for ParserError {
     }
 }
 impl Error for ParserError {}
+impl From<AttrError> for ParserError {
+    fn from(e: AttrError) -> Self {
+        Self::Attr(e)
+    }
+}
 impl From<EncodingError> for ParserError {
     fn from(e: EncodingError) -> Self {
         Self::Encoding(e)
