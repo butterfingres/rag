@@ -4,10 +4,12 @@ use {
             Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed,
             PartialText, Period, decode_text_to_end,
         },
-        rfc822,
         utf8::{Attribute, Event, Reader, Start},
     },
-    jiff::{Span, civil::Weekday},
+    jiff::{
+        Span, Timestamp,
+        civil::{DateTime, Weekday},
+    },
     std::{num::NonZeroU32, str::FromStr},
 };
 
@@ -46,6 +48,16 @@ impl<'a> Parser<'a> for AtomParser<'a> {
                 },
                 ..self
             }),
+            (step @ Step::InsideFeed, Event::Start(tag)) if tag.name() == "updated" => Ok(Self {
+                step,
+                feed: PartialFeed {
+                    last_update: Some(Timestamp::from_str(&decode_text_to_end(
+                        reader, "updated",
+                    )?)?),
+                    ..self.feed
+                },
+                ..self
+            }),
             (step, _) => Ok(Self { step, ..self }),
         }
     }
@@ -55,7 +67,11 @@ impl<'a> Parser<'a> for AtomParser<'a> {
 mod tests {
     use {
         super::*,
-        crate::feed::{Cache, SkipHours, SkipWeekdays},
+        crate::{
+            feed::{Cache, SkipHours, SkipWeekdays},
+            tz,
+        },
+        jiff::tz::TimeZone,
         std::borrow::Cow,
     };
 
@@ -73,7 +89,11 @@ mod tests {
                         skip_hours: SkipHours::default(),
                         period: None,
                     },
-                    last_update: None,
+                    last_update: Some(
+                        DateTime::new(2003, 12, 13, 18, 30, 02, 00)?
+                            .to_zoned(TimeZone::fixed(tz::Z))?
+                            .timestamp(),
+                    ),
                 },
                 entries: vec![],
             },
