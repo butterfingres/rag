@@ -3,7 +3,7 @@ pub mod rss;
 use {
     crate::utf8::{Event, Reader, Start},
     bitvec::BitArr,
-    jiff::{SpanFieldwise, Timestamp},
+    jiff::{SpanFieldwise, Timestamp, Zoned},
     quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
     std::{
         borrow::Cow,
@@ -37,7 +37,7 @@ pub struct PartialFeed<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
     pub cache: Cache,
-    pub last_update: Option<Timestamp>,
+    pub last_update: Option<Zoned>,
 }
 #[derive(Debug, PartialEq)]
 pub struct Feed<'a> {
@@ -45,7 +45,7 @@ pub struct Feed<'a> {
     // The link is optional in atom.
     pub link: Option<Cow<'a, str>>,
     pub cache: Cache,
-    pub last_update: Timestamp,
+    pub last_update: Option<Zoned>,
 }
 impl<'a> Feed<'a> {
     pub fn from_partial(
@@ -55,17 +55,17 @@ impl<'a> Feed<'a> {
             cache,
             last_update,
         }: PartialFeed<'a>,
-        before_send: Timestamp,
     ) -> Option<Self> {
         Some(Self {
             title: title?,
             link,
             cache,
-            last_update: last_update.unwrap_or(before_send),
+            last_update,
         })
     }
 }
 
+#[derive(Default)]
 pub struct PartialEntry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
@@ -147,17 +147,13 @@ where
     Self: Sized,
 {
     fn try_from_root(_: Start) -> Result<Self, Start>;
-    fn output(self, _: Timestamp) -> Option<ParsedFeed<'a>>;
+    fn output(self) -> Option<ParsedFeed<'a>>;
     fn handle_event(self, _: Event<'a>, _: &mut Reader<'a>) -> Result<Self, ParserError>;
 
-    fn parse(
-        mut self,
-        reader: &mut Reader<'a>,
-        before_send: Timestamp,
-    ) -> Result<ParsedFeed<'a>, ParserError> {
+    fn parse(mut self, reader: &mut Reader<'a>) -> Result<ParsedFeed<'a>, ParserError> {
         loop {
             match reader.read_event()? {
-                Event::Eof => break self.output(before_send).ok_or(ParserError::Invalid),
+                Event::Eof => break self.output().ok_or(ParserError::Invalid),
                 ev => {
                     self = self.handle_event(ev, reader)?;
                 }
@@ -209,11 +205,7 @@ pub fn decode_text_to_end<'a>(
 mod tests {
     use super::*;
 
-    pub fn test_parser<'a, T>(
-        input: &'a str,
-        output: ParsedFeed,
-        date: Timestamp,
-    ) -> Result<(), ParserError>
+    pub fn test_parser<'a, T>(input: &'a str, output: ParsedFeed) -> Result<(), ParserError>
     where
         T: Parser<'a>,
     {
@@ -224,7 +216,7 @@ mod tests {
         let parser = T::try_from_root(root)
             .map_err(|tag| ParserError::UnrecognizedRoot(Some(Box::from(tag.local_name()))))?;
 
-        assert_eq!(parser.parse(&mut reader, date)?, output);
+        assert_eq!(parser.parse(&mut reader)?, output);
 
         Ok(())
     }

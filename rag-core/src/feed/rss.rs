@@ -1,25 +1,27 @@
 use {
     crate::{
         feed::{
-            Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, Period, decode_text_to_end,
+            Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed, Period,
+            decode_text_to_end,
         },
         utf8::{Event, Reader, Start},
     },
-    jiff::{Span, Timestamp, civil::Weekday},
+    jiff::{Span, civil::Weekday},
     std::{num::NonZeroU32, str::FromStr},
 };
 
 #[derive(Default)]
-enum Step {
+enum Step<'a> {
     #[default]
     OutsideChannel,
     InsideChannel,
     InsideSkipDays,
     InsideSkipHours,
+    InsideItem(PartialEntry<'a>),
 }
 #[derive(Default)]
 pub struct RssParser<'a> {
-    step: Step,
+    step: Step<'a>,
     feed: PartialFeed<'a>,
     entries: Vec<Entry<'a>>,
 }
@@ -31,9 +33,9 @@ impl<'a> Parser<'a> for RssParser<'a> {
             Err(tag)
         }
     }
-    fn output(self, before_send: Timestamp) -> Option<ParsedFeed<'a>> {
+    fn output(self) -> Option<ParsedFeed<'a>> {
         Some(ParsedFeed {
-            feed: Feed::from_partial(self.feed, before_send)?,
+            feed: Feed::from_partial(self.feed)?,
             entries: self.entries,
         })
     }
@@ -63,6 +65,17 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 },
                 ..self
             }),
+
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "pubDate" => {
+                Ok(Self {
+                    step,
+                    feed: PartialFeed {
+                        // link: Some(decode_text_to_end(reader, "link")?),
+                        ..self.feed
+                    },
+                    ..self
+                })
+            }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "ttl" => {
                 let mins = decode_text_to_end(reader, "ttl")?;
@@ -122,6 +135,17 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 ..self
             }),
 
+            // (Step::InsideChannel, Event::Start(tag)) if tag.name() == "item" => Ok(Self {
+            //     step: Step::InsideItem(PartialEntry::default()),
+            //     ..self
+            // }),
+            // (Step::InsideItem(entry), Event::End(tag)) if tag.name() == "item" => {
+            //     //
+            //     Ok(Self {
+            //         step: Step::InsideChannel,
+            //         ..self
+            //     })
+            // }
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
                 Ok(Self { step, ..self })
@@ -176,11 +200,10 @@ mod tests {
                             base: None,
                         }),
                     },
-                    last_update: Timestamp::default(),
+                    last_update: None,
                 },
                 entries: vec![],
             },
-            Timestamp::default(),
         )?;
 
         Ok(())
