@@ -3,7 +3,7 @@ use {
         feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
         utf8::{Event, Reader, Start},
     },
-    chrono::{DateTime, FixedOffset, Weekday},
+    jiff::{Timestamp, civil::Weekday},
     std::str::FromStr,
 };
 
@@ -29,7 +29,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
             Err(tag)
         }
     }
-    fn output(self, before_send: DateTime<FixedOffset>) -> Option<ParsedFeed<'a>> {
+    fn output(self, before_send: Timestamp) -> Option<ParsedFeed<'a>> {
         Some(ParsedFeed {
             feed: Feed::from_partial(self.feed, before_send)?,
             entries: self.entries,
@@ -62,14 +62,36 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 ..self
             }),
 
+            // (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "ttl" => {
+            //     let mins = decode_text_to_end(reader, "ttl")?;
+            //     let mins = usize::from_str(&mins)?;
+            //     // self.period = some(period {
+            //     // });
+
+            //     Ok(Self { step, ..self })
+            // }
             (Step::InsideChannel, Event::Start(tag)) if tag.name() == "skipDays" => Ok(Self {
                 step: Step::InsideSkipDays,
                 ..self
             }),
             (step @ Step::InsideSkipDays, Event::Start(tag)) if tag.name() == "day" => {
                 let day = decode_text_to_end(reader, "day")?;
-                let day = Weekday::from_str(&day)?;
-                self.feed.cache.skip_weekdays.set(day as usize, true);
+                let day = match day.as_ref() {
+                    "Monday" => Ok(Weekday::Monday),
+                    "Tuesday" => Ok(Weekday::Tuesday),
+                    "Wednesday" => Ok(Weekday::Wednesday),
+                    "Thursday" => Ok(Weekday::Thursday),
+                    "Friday" => Ok(Weekday::Friday),
+                    "Saturday" => Ok(Weekday::Saturday),
+                    "Sunday" => Ok(Weekday::Sunday),
+                    _ => Err(ParserError::ParseWeekday(Box::from(day))),
+                }?;
+                self.feed.cache.skip_weekdays.set(
+                    usize::try_from(day.to_monday_zero_offset()).expect(
+                        "[Weekday] is `repr(u8)` meaning it would always fit in an [usize]",
+                    ),
+                    true,
+                );
 
                 Ok(Self { step, ..self })
             }
@@ -93,6 +115,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 step: Step::InsideChannel,
                 ..self
             }),
+
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
                 Ok(Self { step, ..self })
@@ -142,11 +165,11 @@ mod tests {
                         skip_hours: SkipHours::new([0b0000_0000_1000_0000_0000_0000_0000_0001]),
                         period: None,
                     },
-                    last_update: DateTime::default(),
+                    last_update: Timestamp::default(),
                 },
                 entries: vec![],
             },
-            DateTime::default(),
+            Timestamp::default(),
         )?;
 
         Ok(())

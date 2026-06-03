@@ -3,7 +3,7 @@ pub mod rss;
 use {
     crate::utf8::{Event, Reader, Start},
     bitvec::BitArr,
-    chrono::{DateTime, FixedOffset, ParseWeekdayError},
+    jiff::Timestamp,
     quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
     std::{
         borrow::Cow,
@@ -28,7 +28,7 @@ pub enum Interval {
 #[derive(Debug, PartialEq)]
 pub struct Period {
     interval: Interval,
-    base: Option<DateTime<FixedOffset>>,
+    base: Option<Timestamp>,
     frequency: u32,
 }
 
@@ -44,7 +44,7 @@ pub struct PartialFeed<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
     pub cache: Cache,
-    pub last_update: Option<DateTime<FixedOffset>>,
+    pub last_update: Option<Timestamp>,
 }
 #[derive(Debug, PartialEq)]
 pub struct Feed<'a> {
@@ -52,7 +52,7 @@ pub struct Feed<'a> {
     // The link is optional in atom.
     pub link: Option<Cow<'a, str>>,
     pub cache: Cache,
-    pub last_update: DateTime<FixedOffset>,
+    pub last_update: Timestamp,
 }
 impl<'a> Feed<'a> {
     pub fn from_partial(
@@ -62,7 +62,7 @@ impl<'a> Feed<'a> {
             cache,
             last_update,
         }: PartialFeed<'a>,
-        before_send: DateTime<FixedOffset>,
+        before_send: Timestamp,
     ) -> Option<Self> {
         Some(Self {
             title: title?,
@@ -77,7 +77,7 @@ pub struct PartialEntry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
-    pub pub_date: Option<DateTime<FixedOffset>>,
+    pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
 #[derive(Debug, PartialEq)]
@@ -85,7 +85,7 @@ pub struct Entry<'a> {
     pub title: Cow<'a, str>,
     pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
-    pub pub_date: DateTime<FixedOffset>,
+    pub pub_date: Timestamp,
     pub enclosures: Vec<Cow<'a, str>>,
 }
 
@@ -100,7 +100,7 @@ pub enum ParserError {
     Encoding(EncodingError),
     Invalid,
     ParseInt(ParseIntError),
-    ParseWeekday(ParseWeekdayError),
+    ParseWeekday(Box<str>),
     Xml(quick_xml::Error),
     TryFromInt(TryFromIntError),
     UnrecognizedRoot(Option<Box<str>>),
@@ -111,7 +111,7 @@ impl Display for ParserError {
             Self::Encoding(e) => e.fmt(f),
             Self::Invalid => f.write_str("the feed does not conform to specifications"),
             Self::ParseInt(e) => e.fmt(f),
-            Self::ParseWeekday(e) => e.fmt(f),
+            Self::ParseWeekday(day) => write!(f, "failed to parse weekday `{day}`"),
             Self::Xml(e) => e.fmt(f),
             Self::TryFromInt(e) => e.fmt(f),
             Self::UnrecognizedRoot(Some(tag)) => write!(f, "unrecognized root element `{tag}`"),
@@ -130,11 +130,6 @@ impl From<ParseIntError> for ParserError {
         Self::ParseInt(e)
     }
 }
-impl From<ParseWeekdayError> for ParserError {
-    fn from(e: ParseWeekdayError) -> Self {
-        Self::ParseWeekday(e)
-    }
-}
 impl From<quick_xml::Error> for ParserError {
     fn from(e: quick_xml::Error) -> Self {
         Self::Xml(e)
@@ -151,13 +146,13 @@ where
     Self: Sized,
 {
     fn try_from_root(_: Start) -> Result<Self, Start>;
-    fn output(self, _: DateTime<FixedOffset>) -> Option<ParsedFeed<'a>>;
+    fn output(self, _: Timestamp) -> Option<ParsedFeed<'a>>;
     fn handle_event(self, _: Event<'a>, _: &mut Reader<'a>) -> Result<Self, ParserError>;
 
     fn parse(
         mut self,
         reader: &mut Reader<'a>,
-        before_send: DateTime<FixedOffset>,
+        before_send: Timestamp,
     ) -> Result<ParsedFeed<'a>, ParserError> {
         loop {
             match reader.read_event()? {
@@ -216,7 +211,7 @@ mod tests {
     pub fn test_parser<'a, T>(
         input: &'a str,
         output: ParsedFeed,
-        date: DateTime<FixedOffset>,
+        date: Timestamp,
     ) -> Result<(), ParserError>
     where
         T: Parser<'a>,
