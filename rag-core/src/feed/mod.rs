@@ -113,7 +113,7 @@ pub struct PartialEntry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<PartialText<'a>>,
     pub description: Option<Cow<'a, str>>,
-    pub pub_date: Option<Timestamp>,
+    pub pub_date: Option<Zoned>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
 
@@ -122,7 +122,7 @@ pub struct Entry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
-    pub pub_date: Option<Timestamp>,
+    pub pub_date: Option<Zoned>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
 impl<'a> From<PartialEntry<'a>> for Entry<'a> {

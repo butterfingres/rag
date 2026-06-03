@@ -186,7 +186,10 @@ impl<'a> Parser<'a> for RssParser<'a> {
 mod tests {
     use {
         super::*,
-        crate::feed::{Cache, SkipHours, SkipWeekdays},
+        crate::{
+            feed::{Cache, SkipHours, SkipWeekdays},
+            tz,
+        },
         jiff::{
             civil::DateTime,
             tz::{TimeZone, offset},
@@ -249,7 +252,7 @@ mod tests {
                     description: None,
                     pub_date: Some(
                         DateTime::new(2023, 07, 21, 09, 04, 00, 00)?
-                            .to_zoned(TimeZone::fixed(offset(-4)))?,
+                            .to_zoned(TimeZone::fixed(tz::EDT))?,
                     ),
                     enclosures: vec![],
                 }],

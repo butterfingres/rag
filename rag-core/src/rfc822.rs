@@ -1,5 +1,8 @@
 use {
-    crate::split::{AsciiSplitter, Split},
+    crate::{
+        split::{AsciiSplitter, Split},
+        tz,
+    },
     jiff::{
         ToSpan, Zoned,
         civil::Date,
@@ -143,20 +146,20 @@ pub fn parse(dt: &str) -> Result<Zoned, Error> {
                 Ok(offset)
             } else {
                 match tz {
-                    "UT" | "GMT" => Ok(offset(0)),
-                    "EST" => Ok(offset(-5)),
-                    "EDT" => Ok(offset(-4)),
-                    "CST" => Ok(offset(-6)),
-                    "CDT" => Ok(offset(-5)),
-                    "MST" => Ok(offset(-7)),
-                    "MDT" => Ok(offset(-6)),
-                    "PST" => Ok(offset(-8)),
-                    "PDT" => Ok(offset(-7)),
-                    "Z" => Ok(offset(0)),
-                    "A" => Ok(offset(-1)),
-                    "M" => Ok(offset(-12)),
-                    "N" => Ok(offset(1)),
-                    "Y" => Ok(offset(12)),
+                    "UT" | "GMT" => Ok(tz::GMT),
+                    "EST" => Ok(tz::EST),
+                    "EDT" => Ok(tz::EDT),
+                    "CST" => Ok(tz::CST),
+                    "CDT" => Ok(tz::CDT),
+                    "MST" => Ok(tz::MST),
+                    "MDT" => Ok(tz::MDT),
+                    "PST" => Ok(tz::PST),
+                    "PDT" => Ok(tz::PDT),
+                    "Z" => Ok(tz::Z),
+                    "A" => Ok(tz::A),
+                    "M" => Ok(tz::M),
+                    "N" => Ok(tz::N),
+                    "Y" => Ok(tz::Y),
                     tz => Err(Error::UnknownTimezone(Box::from(tz))),
                 }
             }
@@ -177,13 +180,11 @@ mod tests {
         [
             (
                 ["Wed, 02 Oct 2002 08:00:00 EST", "02 Oct 2002 08:00:00 EST"],
-                DateTime::new(2002, 10, 02, 08, 00, 00, 00)?
-                    .to_zoned(TimeZone::fixed(offset(-5)))?,
+                DateTime::new(2002, 10, 02, 08, 00, 00, 00)?.to_zoned(TimeZone::fixed(tz::EST))?,
             ),
             (
                 ["Wed, 02 Oct 2002 13:00:00 GMT", "02 Oct 2002 13:00:00 GMT"],
-                DateTime::new(2002, 10, 02, 13, 00, 00, 00)?
-                    .to_zoned(TimeZone::fixed(offset(0)))?,
+                DateTime::new(2002, 10, 02, 13, 00, 00, 00)?.to_zoned(TimeZone::fixed(tz::GMT))?,
             ),
             (
                 [
@@ -195,8 +196,7 @@ mod tests {
             ),
             (
                 ["Wed, 02 Oct 2002 15:00:00 A", "02 Oct 2002 15:00:00 A"],
-                DateTime::new(2002, 10, 02, 15, 00, 00, 00)?
-                    .to_zoned(TimeZone::fixed(offset(-1)))?,
+                DateTime::new(2002, 10, 02, 15, 00, 00, 00)?.to_zoned(TimeZone::fixed(tz::A))?,
             ),
         ]
         .into_iter()
