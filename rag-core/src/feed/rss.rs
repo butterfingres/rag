@@ -165,6 +165,13 @@ impl<'a> Parser<'a> for RssParser<'a> {
                     ..self
                 })
             }
+            (Step::InsideItem(entry), Event::Start(tag)) if tag.name() == "pubDate" => Ok(Self {
+                step: Step::InsideItem(PartialEntry {
+                    pub_date: Some(rfc822::parse(&decode_text_to_end(reader, "pubDate")?)?),
+                    ..entry
+                }),
+                ..self
+            }),
 
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
@@ -213,6 +220,7 @@ mod tests {
       <title>entry 1</title>
       <link>https://example.com</link>
       <link>https://example.com/foo</link>
+      <pubDate>Fri, 21 Jul 2023 09:04 EDT</pubDate>
     </item>
   </channel>
 </rss>",
@@ -237,10 +245,12 @@ mod tests {
                 },
                 entries: vec![Entry {
                     title: Some(Cow::Borrowed("entry 1")),
-                    // the title element is perfectly fine
                     link: Some(Cow::Borrowed("https://example.com")),
                     description: None,
-                    pub_date: None,
+                    pub_date: Some(
+                        DateTime::new(2023, 07, 21, 09, 04, 00, 00)?
+                            .to_zoned(TimeZone::fixed(offset(-4)))?,
+                    ),
                     enclosures: vec![],
                 }],
             },
