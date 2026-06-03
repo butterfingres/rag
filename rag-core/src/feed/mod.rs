@@ -68,21 +68,75 @@ impl<'a> Feed<'a> {
     }
 }
 
+#[derive(PartialEq, PartialOrd)]
+pub enum Authority {
+    Weak,
+    Strong,
+}
+
+pub struct PartialText<'a> {
+    text: Cow<'a, str>,
+    authority: Authority,
+}
+impl<'a> PartialText<'a> {
+    pub fn replace_with_or_else<F, G>(
+        text: &mut Option<Self>,
+        with: F,
+        or_else: G,
+    ) -> Result<(), ParserError>
+    where
+        F: FnOnce() -> Result<Self, ParserError>,
+        G: FnOnce() -> Result<(), ParserError>,
+    {
+        if let None
+        | Some(Self {
+            authority: Authority::Weak,
+            ..
+        }) = text
+        {
+            *text = Some(with()?);
+            Ok(())
+        } else {
+            or_else()
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct PartialEntry<'a> {
+    pub title: Option<Cow<'a, str>>,
+    pub link: Option<PartialText<'a>>,
+    pub description: Option<Cow<'a, str>>,
+    pub pub_date: Option<Timestamp>,
+    pub enclosures: Vec<Cow<'a, str>>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Entry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
-#[derive(Debug, PartialEq)]
-pub struct Entry<'a> {
-    pub title: Cow<'a, str>,
-    pub link: Option<Cow<'a, str>>,
-    pub description: Option<Cow<'a, str>>,
-    pub pub_date: Timestamp,
-    pub enclosures: Vec<Cow<'a, str>>,
+impl<'a> From<PartialEntry<'a>> for Entry<'a> {
+    fn from(
+        PartialEntry {
+            title,
+            link,
+            description,
+            pub_date,
+            enclosures,
+        }: PartialEntry<'a>,
+    ) -> Self {
+        Self {
+            title,
+            link: link.map(|link| link.text),
+            description,
+            pub_date,
+            enclosures,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
