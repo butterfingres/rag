@@ -1,10 +1,12 @@
 use {
     crate::{
-        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
+        feed::{
+            Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, Period, decode_text_to_end,
+        },
         utf8::{Event, Reader, Start},
     },
-    jiff::{Timestamp, civil::Weekday},
-    std::str::FromStr,
+    jiff::{Span, Timestamp, civil::Weekday},
+    std::{num::NonZeroU32, str::FromStr},
 };
 
 #[derive(Default)]
@@ -62,14 +64,18 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 ..self
             }),
 
-            // (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "ttl" => {
-            //     let mins = decode_text_to_end(reader, "ttl")?;
-            //     let mins = usize::from_str(&mins)?;
-            //     // self.period = some(period {
-            //     // });
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "ttl" => {
+                let mins = decode_text_to_end(reader, "ttl")?;
+                let mins = i64::from_str(&mins)?;
+                self.feed.cache.period = Some(Period {
+                    interval: Span::new().try_minutes(mins)?.into(),
+                    base: None,
+                    frequency: NonZeroU32::MIN,
+                });
 
-            //     Ok(Self { step, ..self })
-            // }
+                Ok(Self { step, ..self })
+            }
+
             (Step::InsideChannel, Event::Start(tag)) if tag.name() == "skipDays" => Ok(Self {
                 step: Step::InsideSkipDays,
                 ..self
@@ -153,6 +159,7 @@ mod tests {
       <hour>0</hour>
       <hour>23</hour>
     </skipHours>
+    <ttl>69</ttl>
   </channel>
 </rss>",
             ParsedFeed {
@@ -163,7 +170,11 @@ mod tests {
                     cache: Cache {
                         skip_weekdays: SkipWeekdays::new([0b0111_1111]),
                         skip_hours: SkipHours::new([0b0000_0000_1000_0000_0000_0000_0000_0001]),
-                        period: None,
+                        period: Some(Period {
+                            interval: Span::new().try_minutes(69)?.into(),
+                            frequency: NonZeroU32::MIN,
+                            base: None,
+                        }),
                     },
                     last_update: Timestamp::default(),
                 },

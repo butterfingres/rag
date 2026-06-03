@@ -3,13 +3,13 @@ pub mod rss;
 use {
     crate::utf8::{Event, Reader, Start},
     bitvec::BitArr,
-    jiff::Timestamp,
+    jiff::{SpanFieldwise, Timestamp},
     quick_xml::{encoding::EncodingError, escape::resolve_xml_entity},
     std::{
         borrow::Cow,
         error::Error,
         fmt::{self, Display, Formatter},
-        num::{ParseIntError, TryFromIntError},
+        num::{NonZeroU32, ParseIntError, TryFromIntError},
         str,
     },
 };
@@ -18,18 +18,11 @@ pub type SkipWeekdays = BitArr![for 7, in u8];
 pub type SkipHours = BitArr![for 24, in u32];
 
 #[derive(Debug, PartialEq)]
-pub enum Interval {
-    Hourly,
-    Daily,
-    Weekly,
-    Monthly,
-    Yearly,
-}
-#[derive(Debug, PartialEq)]
 pub struct Period {
-    interval: Interval,
+    interval: SpanFieldwise,
     base: Option<Timestamp>,
-    frequency: u32,
+    // A frequency of 0 means nothing.
+    frequency: NonZeroU32,
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -100,6 +93,8 @@ pub enum ParserError {
     Encoding(EncodingError),
     Invalid,
     ParseInt(ParseIntError),
+    // TODO: merge ParseTime and ParseWeekday
+    ParseTime(jiff::Error),
     ParseWeekday(Box<str>),
     Xml(quick_xml::Error),
     TryFromInt(TryFromIntError),
@@ -111,6 +106,7 @@ impl Display for ParserError {
             Self::Encoding(e) => e.fmt(f),
             Self::Invalid => f.write_str("the feed does not conform to specifications"),
             Self::ParseInt(e) => e.fmt(f),
+            Self::ParseTime(e) => e.fmt(f),
             Self::ParseWeekday(day) => write!(f, "failed to parse weekday `{day}`"),
             Self::Xml(e) => e.fmt(f),
             Self::TryFromInt(e) => e.fmt(f),
@@ -128,6 +124,11 @@ impl From<EncodingError> for ParserError {
 impl From<ParseIntError> for ParserError {
     fn from(e: ParseIntError) -> Self {
         Self::ParseInt(e)
+    }
+}
+impl From<jiff::Error> for ParserError {
+    fn from(e: jiff::Error) -> Self {
+        Self::ParseTime(e)
     }
 }
 impl From<quick_xml::Error> for ParserError {
