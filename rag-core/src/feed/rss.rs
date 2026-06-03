@@ -66,17 +66,16 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 ..self
             }),
 
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "pubDate" => {
-                Ok(Self {
-                    step,
-                    feed: PartialFeed {
-                        // link: Some(decode_text_to_end(reader, "link")?),
-                        ..self.feed
-                    },
-                    ..self
-                })
-            }
-
+            // (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "pubDate" => {
+            //     Ok(Self {
+            //         step,
+            //         feed: PartialFeed {
+            //             last_update: Some(rfc2822::parse(&decode_text_to_end(reader, "link")?)?),
+            //             ..self.feed
+            //         },
+            //         ..self
+            //     })
+            // }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "ttl" => {
                 let mins = decode_text_to_end(reader, "ttl")?;
                 let mins = i64::from_str(&mins)?;
@@ -160,6 +159,10 @@ mod tests {
     use {
         super::*,
         crate::feed::{Cache, SkipHours, SkipWeekdays},
+        jiff::{
+            civil::date,
+            tz::{Offset, TimeZone},
+        },
         std::borrow::Cow,
     };
 
@@ -184,6 +187,7 @@ mod tests {
       <hour>23</hour>
     </skipHours>
     <ttl>69</ttl>
+    <!-- <pubDate>Sat, 07 Sep 2002 00:00:01 GMT</pubDate> -->
   </channel>
 </rss>",
             ParsedFeed {
