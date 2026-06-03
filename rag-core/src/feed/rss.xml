@@ -1,0 +1,27 @@
+<rss>
+  <channel>
+    <title>hello world</title>
+    <link>https://example.com</link>
+    <skipDays>
+      <day>Monday</day>
+      <day>Tuesday</day>
+      <day>Wednesday</day>
+      <day>Thursday</day>
+      <day>Friday</day>
+      <day>Saturday</day>
+      <day>Sunday</day>
+    </skipDays>
+    <skipHours>
+      <hour>0</hour>
+      <hour>23</hour>
+    </skipHours>
+    <ttl>69</ttl>
+    <pubDate>Sat, 07 Sep 2002 00:00:01 GMT</pubDate>
+    <item>
+      <title>entry 1</title>
+      <link>https://example.com</link>
+      <link>https://example.com/foo</link>
+      <pubDate>Fri, 21 Jul 2023 09:04 EDT</pubDate>
+    </item>
+  </channel>
+</rss>
