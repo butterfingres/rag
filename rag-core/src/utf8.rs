@@ -2,7 +2,7 @@ use {
     quick_xml::{
         events::{
             BytesStart, Event as BytesEvent,
-            attributes::{AttrError, Attribute as BytesAttribute},
+            attributes::{AttrError, Attribute as BytesAttribute, Attributes as BytesAttributes},
         },
         name::QName as BytesQName,
         reader::{Reader as BytesReader, Span},
@@ -122,15 +122,12 @@ impl<'a> Start<'a> {
     where
         T: AsRef<str> + Sized,
     {
-        self.0.try_get_attribute(name.as_ref()).map(move |opt| {
-            opt.map(move |BytesAttribute { key, value }| Attribute {
-                key: QName(key),
-                value: match value {
-                    Cow::Borrowed(val) => Cow::Borrowed(unsafe { str::from_utf8_unchecked(val) }),
-                    Cow::Owned(val) => Cow::Owned(unsafe { String::from_utf8_unchecked(val) }),
-                },
-            })
-        })
+        self.0
+            .try_get_attribute(name.as_ref())
+            .map(move |opt| opt.map(move |attr| unsafe { Attribute::new(attr) }))
+    }
+    pub fn attributes(&self) -> Attributes<'_> {
+        Attributes(self.0.attributes())
     }
 }
 
@@ -162,6 +159,17 @@ pub struct Attribute<'a> {
     pub key: QName<'a>,
     pub value: Cow<'a, str>,
 }
+impl<'a> Attribute<'a> {
+    unsafe fn new(BytesAttribute { key, value }: BytesAttribute<'a>) -> Self {
+        Self {
+            key: QName(key),
+            value: match value {
+                Cow::Borrowed(value) => Cow::Borrowed(unsafe { str::from_utf8_unchecked(value) }),
+                Cow::Owned(value) => Cow::Owned(unsafe { String::from_utf8_unchecked(value) }),
+            },
+        }
+    }
+}
 
 pub struct QName<'a>(BytesQName<'a>);
 impl<'a> QName<'a> {
@@ -171,5 +179,16 @@ impl<'a> QName<'a> {
     pub fn local_name(&self) -> &'a str {
         let local_name = self.0.local_name().into_inner();
         unsafe { str::from_utf8_unchecked(local_name) }
+    }
+}
+
+pub struct Attributes<'a>(BytesAttributes<'a>);
+impl<'a> Iterator for Attributes<'a> {
+    type Item = Result<Attribute<'a>, AttrError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0
+            .next()
+            .map(|res| res.map(|attr| unsafe { Attribute::new(attr) }))
     }
 }

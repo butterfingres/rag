@@ -1,10 +1,13 @@
 use {
     crate::{
-        feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
+        feed::{
+            Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, PartialText,
+            decode_text_to_end,
+        },
         utf8::{Event, Reader, Start},
     },
     jiff::Timestamp,
-    std::str::FromStr,
+    std::{borrow::Cow, str::FromStr},
 };
 
 #[derive(Default)]
@@ -17,6 +20,47 @@ pub struct AtomParser<'a> {
     step: Step,
     feed: PartialFeed<'a>,
     entries: Vec<Entry<'a>>,
+}
+impl<'a> AtomParser<'a> {
+    fn handle_link(&mut self, tag: Start<'a>) -> Result<(), ParserError> {
+        let mut href = None;
+        let mut rel = None;
+        for attr in tag.attributes() {
+            let attr = attr?;
+            match attr.key.local_name() {
+                "href" => {
+                    href = Some(attr.value);
+                    if rel.is_some() {
+                        break;
+                    }
+                }
+                "rel" => {
+                    if attr.value == "alternate" {
+                        rel = Some(Authority::Strong);
+                    } else {
+                        rel = Some(Authority::Weak);
+                        if href.is_some() {
+                            break;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let rel = rel.unwrap_or_default();
+        if let Some(href) = href {
+            PartialText::replace_text(
+                &mut self.feed.link,
+                PartialText {
+                    text: Cow::Owned(href.into_owned()),
+                    authority: rel,
+                },
+            );
+        }
+
+        Ok(())
+    }
 }
 impl<'a> Parser<'a> for AtomParser<'a> {
     fn try_from_root(tag: Start) -> Result<Self, Start> {
@@ -32,7 +76,7 @@ impl<'a> Parser<'a> for AtomParser<'a> {
             entries: self.entries,
         })
     }
-    fn handle_event(self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
+    fn handle_event(mut self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
         match (self.step, ev) {
             (step @ Step::InsideFeed, Event::Start(tag)) if tag.name() == "title" => Ok(Self {
                 step,
@@ -52,6 +96,17 @@ impl<'a> Parser<'a> for AtomParser<'a> {
                 },
                 ..self
             }),
+            (step @ Step::InsideFeed, Event::Start(tag)) if tag.name() == "link" => {
+                reader.read_to_end("link")?;
+                self = Self { step, ..self };
+                self.handle_link(tag)?;
+                Ok(self)
+            }
+            (step @ Step::InsideFeed, Event::Empty(tag)) if tag.name() == "link" => {
+                self = Self { step, ..self };
+                self.handle_link(tag)?;
+                Ok(self)
+            }
             (step, _) => Ok(Self { step, ..self }),
         }
     }
@@ -76,7 +131,7 @@ mod tests {
             ParsedFeed {
                 feed: Feed {
                     title: Cow::Borrowed("example atom feed"),
-                    link: None,
+                    link: Some(Cow::Borrowed("https://example.com/")),
                     // we need to test that all the weekdays are recognized
                     cache: Cache {
                         skip_weekdays: SkipWeekdays::default(),

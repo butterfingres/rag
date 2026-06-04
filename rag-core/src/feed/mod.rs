@@ -69,8 +69,9 @@ impl<'a> Feed<'a> {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub enum Authority {
+    #[default]
     Weak,
     Strong,
 }
@@ -88,13 +89,16 @@ pub struct PartialText<'a> {
     authority: Authority,
 }
 impl<'a> PartialText<'a> {
+    fn should_replace(old: &Option<Self>, authority: Authority) -> bool {
+        old.is_none() || old.as_ref().is_some_and(|old| authority > old.authority)
+    }
     pub fn replace_with_text_or_skip(
         text: &mut Option<Self>,
         tag: &str,
         reader: &mut Reader<'a>,
         authority: Authority,
     ) -> Result<(), ParserError> {
-        if text.is_none() || text.as_ref().is_some_and(|text| authority > text.authority) {
+        if Self::should_replace(text, authority) {
             *text = Some(Self {
                 text: decode_text_to_end(reader, tag)?,
                 authority,
@@ -105,6 +109,11 @@ impl<'a> PartialText<'a> {
                 .read_to_end(tag)
                 .map(|_| ())
                 .map_err(ParserError::Xml)
+        }
+    }
+    pub fn replace_text(old: &mut Option<Self>, new: Self) {
+        if Self::should_replace(old, new.authority) {
+            *old = Some(new);
         }
     }
 }
