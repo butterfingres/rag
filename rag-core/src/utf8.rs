@@ -12,6 +12,10 @@ use {
 
 pub struct Reader<'a>(BytesReader<&'a [u8]>);
 impl<'a> Reader<'a> {
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "the name works for this function"
+    )]
     pub fn from_str(s: &'a str) -> Self {
         Self(BytesReader::from_str(s))
     }
@@ -46,7 +50,7 @@ impl<'a> Reader<'a> {
 }
 impl<'a> Reader<'a> {
     pub fn as_str(&self) -> &'a str {
-        unsafe { str::from_utf8_unchecked(&self.0.get_ref()) }
+        unsafe { str::from_utf8_unchecked(self.0.get_ref()) }
     }
 }
 impl<'a> std::ops::Deref for Reader<'a> {

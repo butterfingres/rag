@@ -138,7 +138,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
             }),
 
             (Step::InsideChannel, Event::Start(tag)) if tag.name() == "item" => Ok(Self {
-                step: Step::InsideItem(PartialEntry::default().into()),
+                step: Step::InsideItem(PartialEntry::default()),
                 ..self
             }),
             (Step::InsideItem(entry), Event::End(tag)) if tag.name() == "item" => {
