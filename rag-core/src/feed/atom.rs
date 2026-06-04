@@ -120,6 +120,14 @@ impl<'a> Parser<'a> for AtomParser<'a> {
                     ..self
                 })
             }
+            (Step::InsideEntry(mut entry), Event::Start(tag)) if tag.name() == "title" => {
+                entry.title = Some(decode_text_to_end(reader, "title")?);
+
+                Ok(Self {
+                    step: Step::InsideEntry(entry),
+                    ..self
+                })
+            }
 
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
@@ -163,7 +171,7 @@ mod tests {
                     ),
                 },
                 entries: vec![Entry {
-                    title: None,
+                    title: Some(Cow::Borrowed("entry 1")),
                     link: None,
                     description: None,
                     pub_date: None,
