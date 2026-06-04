@@ -64,7 +64,7 @@ impl<'a> Feed<'a> {
     ) -> Option<Self> {
         Some(Self {
             title: title?,
-            link: link.map(|link| link.text),
+            link: link.map(Cow::<'a, str>::from),
             cache,
             last_update,
         })
@@ -110,6 +110,11 @@ impl<'a> PartialText<'a> {
         }
     }
 }
+impl<'a> From<PartialText<'a>> for Cow<'a, str> {
+    fn from(PartialText { text, .. }: PartialText<'a>) -> Cow<'a, str> {
+        text
+    }
+}
 
 #[derive(Default)]
 pub struct PartialEntry<'a> {
@@ -140,7 +145,7 @@ impl<'a> From<PartialEntry<'a>> for Entry<'a> {
     ) -> Self {
         Self {
             title,
-            link: link.map(|link| link.text),
+            link: link.map(Cow::<'a, str>::from),
             description,
             pub_date,
             enclosures,
