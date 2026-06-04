@@ -8,9 +8,7 @@ use {
     },
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, Zoned},
-    quick_xml::{
-        encoding::EncodingError, escape::resolve_xml_entity, events::attributes::AttrError,
-    },
+    quick_xml::{escape::resolve_xml_entity, events::attributes::AttrError},
     std::{
         borrow::Cow,
         error::Error,
@@ -161,10 +159,7 @@ pub struct ParsedFeed<'a> {
 
 #[derive(Debug)]
 pub enum ParserError {
-    Attr(AttrError),
-    Encoding(EncodingError),
     Invalid,
-    MissingRoot,
     ParseInt(ParseIntError),
     // TODO: merge ParseTime and ParseWeekday
     ParseTime(jiff::Error),
@@ -177,10 +172,7 @@ pub enum ParserError {
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            Self::Attr(e) => e.fmt(f),
-            Self::Encoding(e) => e.fmt(f),
             Self::Invalid => f.write_str("the feed does not conform to specifications"),
-            Self::MissingRoot => f.write_str("root element not found"),
             Self::ParseInt(e) => e.fmt(f),
             Self::ParseTime(e) => e.fmt(f),
             Self::ParseWeekday(day) => write!(f, "failed to parse weekday `{day}`"),
@@ -188,19 +180,14 @@ impl Display for ParserError {
             Self::Xml(e) => e.fmt(f),
             Self::TryFromInt(e) => e.fmt(f),
             Self::UnrecognizedRoot(Some(tag)) => write!(f, "unrecognized root element `{tag}`"),
-            Self::UnrecognizedRoot(None) => f.write_str("root element is not an element"),
+            Self::UnrecognizedRoot(None) => f.write_str("failed to get root element"),
         }
     }
 }
 impl Error for ParserError {}
 impl From<AttrError> for ParserError {
     fn from(e: AttrError) -> Self {
-        Self::Attr(e)
-    }
-}
-impl From<EncodingError> for ParserError {
-    fn from(e: EncodingError) -> Self {
-        Self::Encoding(e)
+        Self::Xml(quick_xml::Error::InvalidAttr(e))
     }
 }
 impl From<ParseIntError> for ParserError {
