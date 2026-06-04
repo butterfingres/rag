@@ -1,8 +1,8 @@
 use {
     crate::{
         feed::{
-            Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, PartialText,
-            decode_text_to_end,
+            Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed,
+            PartialText, decode_text_to_end,
         },
         utf8::{Event, Reader, Start},
     },
@@ -11,13 +11,14 @@ use {
 };
 
 #[derive(Default)]
-enum Step {
+enum Step<'a> {
     #[default]
     InsideFeed,
+    InsideEntry(PartialEntry<'a>),
 }
 #[derive(Default)]
 pub struct AtomParser<'a> {
-    step: Step,
+    step: Step<'a>,
     feed: PartialFeed<'a>,
     entries: Vec<Entry<'a>>,
 }
@@ -107,6 +108,23 @@ impl<'a> Parser<'a> for AtomParser<'a> {
                 self.handle_link(tag)?;
                 Ok(self)
             }
+
+            (Step::InsideFeed, Event::Start(tag)) if tag.name() == "entry" => Ok(Self {
+                step: Step::InsideEntry(PartialEntry::default()),
+                ..self
+            }),
+            (Step::InsideEntry(entry), Event::End(tag)) if tag.name() == "entry" => {
+                self.entries.push(entry.into());
+                Ok(Self {
+                    step: Step::InsideFeed,
+                    ..self
+                })
+            }
+
+            (step, Event::Start(tag)) => {
+                reader.read_to_end(tag.name())?;
+                Ok(Self { step, ..self })
+            }
             (step, _) => Ok(Self { step, ..self }),
         }
     }
@@ -144,7 +162,13 @@ mod tests {
                             .timestamp(),
                     ),
                 },
-                entries: vec![],
+                entries: vec![Entry {
+                    title: None,
+                    link: None,
+                    description: None,
+                    pub_date: None,
+                    enclosures: vec![],
+                }],
             },
         )
     }
