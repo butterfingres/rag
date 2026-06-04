@@ -27,5 +27,14 @@
       <enclosure url="https://example.com/audio.mp3"></enclosure>
       <enclosure url="https://example.com/video.mp4"/>
     </item>
+    <item>
+      <guid>https://example.com/entry_2</guid>
+    </item>
+    <item>
+      <guid isPermaLink="false">8ltPnNZyKyW8G6Vmm8h/wlFIToti/Y4g5q3z1edsWN54JRQQUGJ2r5J6tJCm7xFC2RYTDivEw0Zp</guid>
+    </item>
+    <item>
+      <guid isPermaLink="true">https://example.com/entry_3</guid>
+    </item>
   </channel>
 </rss>

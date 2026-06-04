@@ -196,6 +196,25 @@ impl<'a> Parser<'a> for RssParser<'a> {
                     ..self
                 })
             }
+            (Step::InsideItem(mut entry), Event::Start(tag)) if tag.name() == "guid" => {
+                if tag
+                    .try_get_attribute("isPermaLink")?
+                    .is_none_or(|Attribute { value, .. }| value != "false")
+                {
+                    PartialText::replace_with_text_or_skip(
+                        &mut entry.link,
+                        "guid",
+                        reader,
+                        Authority::Strong,
+                    )?;
+                } else {
+                    reader.read_to_end("guid")?;
+                }
+                Ok(Self {
+                    step: Step::InsideItem(entry),
+                    ..self
+                })
+            }
 
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
@@ -245,19 +264,42 @@ mod tests {
                             .timestamp(),
                     ),
                 },
-                entries: vec![Entry {
-                    title: Some(Cow::Borrowed("entry 1")),
-                    link: Some(Cow::Borrowed("https://example.com")),
-                    description: Some(Cow::Borrowed("example rss entry description")),
-                    pub_date: Some(
-                        DateTime::new(2023, 07, 21, 09, 04, 00, 00)?
-                            .to_zoned(TimeZone::fixed(tz::EDT))?,
-                    ),
-                    enclosures: vec![
-                        Box::from("https://example.com/audio.mp3"),
-                        Box::from("https://example.com/video.mp4"),
-                    ],
-                }],
+                entries: vec![
+                    Entry {
+                        title: Some(Cow::Borrowed("entry 1")),
+                        link: Some(Cow::Borrowed("https://example.com")),
+                        description: Some(Cow::Borrowed("example rss entry description")),
+                        pub_date: Some(
+                            DateTime::new(2023, 07, 21, 09, 04, 00, 00)?
+                                .to_zoned(TimeZone::fixed(tz::EDT))?,
+                        ),
+                        enclosures: vec![
+                            Box::from("https://example.com/audio.mp3"),
+                            Box::from("https://example.com/video.mp4"),
+                        ],
+                    },
+                    Entry {
+                        title: None,
+                        link: Some(Cow::Borrowed("https://example.com/entry_2")),
+                        description: None,
+                        pub_date: None,
+                        enclosures: vec![],
+                    },
+                    Entry {
+                        title: None,
+                        link: None,
+                        description: None,
+                        pub_date: None,
+                        enclosures: vec![],
+                    },
+                    Entry {
+                        title: None,
+                        link: Some(Cow::Borrowed("https://example.com/entry_3")),
+                        description: None,
+                        pub_date: None,
+                        enclosures: vec![],
+                    },
+                ],
             },
         )?;
 
