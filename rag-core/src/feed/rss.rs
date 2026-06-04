@@ -58,14 +58,15 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 },
                 ..self
             }),
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "link" => Ok(Self {
-                step,
-                feed: PartialFeed {
-                    link: Some(decode_text_to_end(reader, "link")?),
-                    ..self.feed
-                },
-                ..self
-            }),
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "link" => {
+                PartialText::replace_with_text_or_skip(
+                    &mut self.feed.link,
+                    "link",
+                    reader,
+                    Authority::Strong,
+                )?;
+                Ok(Self { step, ..self })
+            }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "pubDate" => {
                 Ok(Self {

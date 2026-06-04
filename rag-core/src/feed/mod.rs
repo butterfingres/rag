@@ -41,7 +41,7 @@ pub struct Cache {
 #[derive(Default)]
 pub struct PartialFeed<'a> {
     pub title: Option<Cow<'a, str>>,
-    pub link: Option<Cow<'a, str>>,
+    pub link: Option<PartialText<'a>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
@@ -64,7 +64,7 @@ impl<'a> Feed<'a> {
     ) -> Option<Self> {
         Some(Self {
             title: title?,
-            link,
+            link: link.map(|link| link.text),
             cache,
             last_update,
         })
