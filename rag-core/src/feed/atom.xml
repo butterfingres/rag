@@ -3,4 +3,5 @@
   <title>example atom feed</title>
   <updated>2003-12-13T18:30:02Z</updated>
   <link rel="alternate" href="https://example.com/"/>
+  <link rel="related" href="https://example.com/related_thing"/>
 </feed>
