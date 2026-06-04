@@ -184,9 +184,18 @@ impl<'a> Parser<'a> for RssParser<'a> {
                     ..self
                 })
             }
-            (Step::InsideItem(mut entry), Event::Start(tag) | Event::Empty(tag))
-                if tag.name() == "enclosure" =>
-            {
+            (Step::InsideItem(mut entry), Event::Start(tag)) if tag.name() == "enclosure" => {
+                reader.read_to_end("enclosure")?;
+                if let Some(Attribute { value, .. }) = tag.try_get_attribute("url")? {
+                    entry.enclosures.push(Box::from(value));
+                }
+
+                Ok(Self {
+                    step: Step::InsideItem(entry),
+                    ..self
+                })
+            }
+            (Step::InsideItem(mut entry), Event::Empty(tag)) if tag.name() == "enclosure" => {
                 if let Some(Attribute { value, .. }) = tag.try_get_attribute("url")? {
                     entry.enclosures.push(Box::from(value));
                 }
