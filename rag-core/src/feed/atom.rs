@@ -11,6 +11,87 @@ use {
 };
 
 #[derive(Default)]
+enum Rel {
+    Alternate,
+    Enclosure,
+    #[default]
+    Other,
+}
+impl From<Rel> for Authority {
+    fn from(rel: Rel) -> Self {
+        match rel {
+            Rel::Alternate => Authority::Strong,
+            Rel::Enclosure | Rel::Other => Authority::Weak,
+        }
+    }
+}
+
+struct Link<'a> {
+    uri: Cow<'a, str>,
+    rel: Rel,
+}
+impl<'a> From<Link<'a>> for PartialText<'a> {
+    fn from(Link { uri, rel }: Link) -> PartialText {
+        PartialText {
+            text: uri,
+            authority: rel.into(),
+        }
+    }
+}
+
+trait HandleLink<'a> {
+    fn handle_link(&mut self, _link: Link<'a>);
+
+    fn handle_link_tag(&mut self, tag: Start<'a>) -> Result<(), ParserError> {
+        let mut href = None;
+        let mut rel = None;
+        for attr in tag.attributes() {
+            let attr = attr?;
+            match attr.key.local_name() {
+                "href" => {
+                    href = Some(Cow::Owned(attr.value.into_owned()));
+                    if rel.is_some() {
+                        break;
+                    }
+                }
+                "rel" => {
+                    rel = Some(match attr.value.as_ref() {
+                        "alternate" => Rel::Alternate,
+                        "enclosure" => Rel::Enclosure,
+                        _ => Rel::Other,
+                    });
+                    if href.is_some() {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let rel = rel.unwrap_or_default();
+        if let Some(uri) = href {
+            self.handle_link(Link { rel, uri });
+        }
+
+        Ok(())
+    }
+}
+impl<'a> HandleLink<'a> for AtomParser<'a> {
+    fn handle_link(&mut self, link: Link<'a>) {
+        PartialText::replace_text(&mut self.feed.link, link.into());
+    }
+}
+impl<'a> HandleLink<'a> for PartialEntry<'a> {
+    fn handle_link(&mut self, link: Link<'a>) {
+        if let Rel::Enclosure = link.rel {
+            self.enclosures.push(link.uri);
+        } else {
+            PartialText::replace_text(&mut self.link, link.into());
+        }
+    }
+}
+
+#[derive(Default)]
 enum Step<'a> {
     #[default]
     InsideFeed,
@@ -22,47 +103,7 @@ pub struct AtomParser<'a> {
     feed: PartialFeed<'a>,
     entries: Vec<Entry<'a>>,
 }
-impl<'a> AtomParser<'a> {
-    fn handle_link(&mut self, tag: Start<'a>) -> Result<(), ParserError> {
-        let mut href = None;
-        let mut rel = None;
-        for attr in tag.attributes() {
-            let attr = attr?;
-            match attr.key.local_name() {
-                "href" => {
-                    href = Some(attr.value);
-                    if rel.is_some() {
-                        break;
-                    }
-                }
-                "rel" => {
-                    if attr.value == "alternate" {
-                        rel = Some(Authority::Strong);
-                    } else {
-                        rel = Some(Authority::Weak);
-                        if href.is_some() {
-                            break;
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        let rel = rel.unwrap_or_default();
-        if let Some(href) = href {
-            PartialText::replace_text(
-                &mut self.feed.link,
-                PartialText {
-                    text: Cow::Owned(href.into_owned()),
-                    authority: rel,
-                },
-            );
-        }
-
-        Ok(())
-    }
-}
+impl<'a> AtomParser<'a> {}
 impl<'a> Parser<'a> for AtomParser<'a> {
     fn try_from_root(tag: Start) -> Result<Self, Start> {
         if tag.local_name() == "feed" {
@@ -100,12 +141,12 @@ impl<'a> Parser<'a> for AtomParser<'a> {
             (step @ Step::InsideFeed, Event::Start(tag)) if tag.name() == "link" => {
                 reader.read_to_end("link")?;
                 self = Self { step, ..self };
-                self.handle_link(tag)?;
+                self.handle_link_tag(tag)?;
                 Ok(self)
             }
             (step @ Step::InsideFeed, Event::Empty(tag)) if tag.name() == "link" => {
                 self = Self { step, ..self };
-                self.handle_link(tag)?;
+                self.handle_link_tag(tag)?;
                 Ok(self)
             }
 
@@ -123,6 +164,21 @@ impl<'a> Parser<'a> for AtomParser<'a> {
             (Step::InsideEntry(mut entry), Event::Start(tag)) if tag.name() == "title" => {
                 entry.title = Some(decode_text_to_end(reader, "title")?);
 
+                Ok(Self {
+                    step: Step::InsideEntry(entry),
+                    ..self
+                })
+            }
+            (Step::InsideEntry(mut entry), Event::Start(tag)) if tag.name() == "link" => {
+                reader.read_to_end("link")?;
+                entry.handle_link_tag(tag)?;
+                Ok(Self {
+                    step: Step::InsideEntry(entry),
+                    ..self
+                })
+            }
+            (Step::InsideEntry(mut entry), Event::Empty(tag)) if tag.name() == "link" => {
+                entry.handle_link_tag(tag)?;
                 Ok(Self {
                     step: Step::InsideEntry(entry),
                     ..self
@@ -172,10 +228,13 @@ mod tests {
                 },
                 entries: vec![Entry {
                     title: Some(Cow::Borrowed("entry 1")),
-                    link: None,
+                    link: Some(Cow::Borrowed("https://example.com/entry_1")),
                     description: None,
                     pub_date: None,
-                    enclosures: vec![],
+                    enclosures: vec![
+                        Cow::Borrowed("https://example.com/audio_enclosure.mp3"),
+                        Cow::Borrowed("https://example.com/video_enclosure.mp4"),
+                    ],
                 }],
             },
         )

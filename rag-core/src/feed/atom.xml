@@ -6,5 +6,9 @@
   <link rel="related" href="https://example.com/related_thing"/>
   <entry>
     <title>entry 1</title>
+    <link rel="feed" href="https://example.com/feed"/>
+    <link rel="alternate" href="https://example.com/entry_1"/>
+    <link rel="enclosure" href="https://example.com/audio_enclosure.mp3"/>
+    <link rel="enclosure" href="https://example.com/video_enclosure.mp4"></link>
   </entry>
 </feed>

@@ -129,7 +129,7 @@ pub struct PartialEntry<'a> {
     pub link: Option<PartialText<'a>>,
     pub description: Option<Cow<'a, str>>,
     pub pub_date: Option<Zoned>,
-    pub enclosures: Vec<Box<str>>,
+    pub enclosures: Vec<Cow<'a, str>>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -138,7 +138,7 @@ pub struct Entry<'a> {
     pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
     pub pub_date: Option<Zoned>,
-    pub enclosures: Vec<Box<str>>,
+    pub enclosures: Vec<Cow<'a, str>>,
 }
 impl<'a> From<PartialEntry<'a>> for Entry<'a> {
     fn from(

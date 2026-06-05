@@ -8,7 +8,7 @@ use {
         utf8::{Attribute, Event, Reader, Start},
     },
     jiff::{Span, civil::Weekday},
-    std::{num::NonZeroU32, str::FromStr},
+    std::{borrow::Cow, num::NonZeroU32, str::FromStr},
 };
 
 #[derive(Default)]
@@ -40,6 +40,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
             entries: self.entries,
         })
     }
+    // TODO: use borrowed attributes
     fn handle_event(mut self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
         match (self.step, ev) {
             (Step::OutsideChannel, Event::Start(tag)) if tag.name() == "channel" => Ok(Self {
@@ -187,7 +188,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
             (Step::InsideItem(mut entry), Event::Start(tag)) if tag.name() == "enclosure" => {
                 reader.read_to_end("enclosure")?;
                 if let Some(Attribute { value, .. }) = tag.try_get_attribute("url")? {
-                    entry.enclosures.push(Box::from(value));
+                    entry.enclosures.push(Cow::Owned(value.into_owned()));
                 }
 
                 Ok(Self {
@@ -197,7 +198,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
             }
             (Step::InsideItem(mut entry), Event::Empty(tag)) if tag.name() == "enclosure" => {
                 if let Some(Attribute { value, .. }) = tag.try_get_attribute("url")? {
-                    entry.enclosures.push(Box::from(value));
+                    entry.enclosures.push(Cow::Owned(value.into_owned()));
                 }
 
                 Ok(Self {
@@ -283,8 +284,8 @@ mod tests {
                                 .to_zoned(TimeZone::fixed(tz::EDT))?,
                         ),
                         enclosures: vec![
-                            Box::from("https://example.com/audio.mp3"),
-                            Box::from("https://example.com/video.mp4"),
+                            Cow::Borrowed("https://example.com/audio.mp3"),
+                            Cow::Borrowed("https://example.com/video.mp4"),
                         ],
                     },
                     Entry {
