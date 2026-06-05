@@ -193,6 +193,30 @@ impl<'a> Parser<'a> for AtomParser<'a> {
                 }),
                 ..self
             }),
+            (Step::InsideEntry(mut entry), Event::Start(tag)) if tag.name() == "content" => {
+                PartialText::replace_with_text_or_skip(
+                    &mut entry.description,
+                    "content",
+                    reader,
+                    Authority::Strong,
+                )?;
+                Ok(Self {
+                    step: Step::InsideEntry(entry),
+                    ..self
+                })
+            }
+            (Step::InsideEntry(mut entry), Event::Start(tag)) if tag.name() == "summary" => {
+                PartialText::replace_with_text_or_skip(
+                    &mut entry.description,
+                    "summary",
+                    reader,
+                    Authority::Weak,
+                )?;
+                Ok(Self {
+                    step: Step::InsideEntry(entry),
+                    ..self
+                })
+            }
 
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
@@ -241,7 +265,7 @@ mod tests {
                 entries: vec![Entry {
                     title: Some(Cow::Borrowed("entry 1")),
                     link: Some(Cow::Borrowed("https://example.com/entry_1")),
-                    description: None,
+                    description: Some(Cow::Borrowed("first post content")),
                     pub_date: Some(
                         DateTime::new(2003, 12, 13, 18, 30, 02, 00)?
                             .to_zoned(TimeZone::fixed(offset(-5)))?

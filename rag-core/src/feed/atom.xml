@@ -11,5 +11,7 @@
     <link rel="enclosure" href="https://example.com/audio_enclosure.mp3"/>
     <link rel="enclosure" href="https://example.com/video_enclosure.mp4"></link>
     <updated>2003-12-13T18:30:02-05:00</updated>
+    <summary>first post</summary>
+    <content>first post content</content>
   </entry>
 </feed>
