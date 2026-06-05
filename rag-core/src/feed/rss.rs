@@ -171,7 +171,9 @@ impl<'a> Parser<'a> for RssParser<'a> {
             }
             (Step::InsideItem(entry), Event::Start(tag)) if tag.name() == "pubDate" => Ok(Self {
                 step: Step::InsideItem(PartialEntry {
-                    pub_date: Some(rfc822::parse(&decode_text_to_end(reader, "pubDate")?)?),
+                    pub_date: Some(
+                        rfc822::parse(&decode_text_to_end(reader, "pubDate")?)?.timestamp(),
+                    ),
                     ..entry
                 }),
                 ..self
@@ -281,7 +283,8 @@ mod tests {
                         description: Some(Cow::Borrowed("example rss entry description")),
                         pub_date: Some(
                             DateTime::new(2023, 07, 21, 09, 04, 00, 00)?
-                                .to_zoned(TimeZone::fixed(tz::EDT))?,
+                                .to_zoned(TimeZone::fixed(tz::EDT))?
+                                .timestamp(),
                         ),
                         enclosures: vec![
                             Cow::Borrowed("https://example.com/audio.mp3"),

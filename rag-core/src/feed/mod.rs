@@ -7,7 +7,7 @@ use {
         utf8::{Event, Reader, Start},
     },
     bitvec::BitArr,
-    jiff::{SpanFieldwise, Timestamp, Zoned},
+    jiff::{SpanFieldwise, Timestamp},
     quick_xml::{escape::resolve_xml_entity, events::attributes::AttrError},
     std::{
         borrow::Cow,
@@ -128,7 +128,7 @@ pub struct PartialEntry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<PartialText<'a>>,
     pub description: Option<Cow<'a, str>>,
-    pub pub_date: Option<Zoned>,
+    pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
 
@@ -137,7 +137,7 @@ pub struct Entry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<Cow<'a, str>>,
     pub description: Option<Cow<'a, str>>,
-    pub pub_date: Option<Zoned>,
+    pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
 impl<'a> From<PartialEntry<'a>> for Entry<'a> {

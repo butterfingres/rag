@@ -184,6 +184,15 @@ impl<'a> Parser<'a> for AtomParser<'a> {
                     ..self
                 })
             }
+            (Step::InsideEntry(entry), Event::Start(tag)) if tag.name() == "updated" => Ok(Self {
+                step: Step::InsideEntry(PartialEntry {
+                    pub_date: Some(Timestamp::from_str(&decode_text_to_end(
+                        reader, "updated",
+                    )?)?),
+                    ..entry
+                }),
+                ..self
+            }),
 
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
@@ -202,7 +211,10 @@ mod tests {
             feed::{Cache, SkipHours, SkipWeekdays},
             tz,
         },
-        jiff::{civil::DateTime, tz::TimeZone},
+        jiff::{
+            civil::DateTime,
+            tz::{TimeZone, offset},
+        },
         std::borrow::Cow,
     };
 
@@ -230,7 +242,11 @@ mod tests {
                     title: Some(Cow::Borrowed("entry 1")),
                     link: Some(Cow::Borrowed("https://example.com/entry_1")),
                     description: None,
-                    pub_date: None,
+                    pub_date: Some(
+                        DateTime::new(2003, 12, 13, 18, 30, 02, 00)?
+                            .to_zoned(TimeZone::fixed(offset(-5)))?
+                            .timestamp(),
+                    ),
                     enclosures: vec![
                         Cow::Borrowed("https://example.com/audio_enclosure.mp3"),
                         Cow::Borrowed("https://example.com/video_enclosure.mp4"),
