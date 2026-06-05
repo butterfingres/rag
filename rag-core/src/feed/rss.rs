@@ -181,7 +181,10 @@ impl<'a> Parser<'a> for RssParser<'a> {
             (Step::InsideItem(entry), Event::Start(tag)) if tag.name() == "description" => {
                 Ok(Self {
                     step: Step::InsideItem(PartialEntry {
-                        description: Some(decode_text_to_end(reader, "description")?),
+                        description: Some(PartialText {
+                            text: decode_text_to_end(reader, "description")?,
+                            authority: Authority::Strong,
+                        }),
                         ..entry
                     }),
                     ..self

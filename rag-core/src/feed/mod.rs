@@ -127,7 +127,7 @@ impl<'a> From<PartialText<'a>> for Cow<'a, str> {
 pub struct PartialEntry<'a> {
     pub title: Option<Cow<'a, str>>,
     pub link: Option<PartialText<'a>>,
-    pub description: Option<Cow<'a, str>>,
+    pub description: Option<PartialText<'a>>,
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'a, str>>,
 }
@@ -153,7 +153,7 @@ impl<'a> From<PartialEntry<'a>> for Entry<'a> {
         Self {
             title,
             link: link.map(Cow::<'a, str>::from),
-            description,
+            description: description.map(Cow::<'a, str>::from),
             pub_date,
             enclosures,
         }
