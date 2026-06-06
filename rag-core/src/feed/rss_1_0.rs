@@ -1,9 +1,13 @@
-use crate::{
-    feed::{
-        Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed, PartialText,
-        decode_text_to_end,
+use {
+    crate::{
+        feed::{
+            Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed, PartialText,
+            decode_text_to_end,
+        },
+        utf8::{Event, Reader, Start},
     },
-    utf8::{Event, Reader, Start},
+    jiff::Timestamp,
+    std::str::FromStr,
 };
 
 #[derive(Default)]
@@ -51,7 +55,7 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
                 Ok(Self {
                     step,
                     feed: PartialFeed {
-                        title: Some(decode_text_to_end(reader, "title")?),
+                        title: Some(decode_text_to_end(reader, tag.name())?),
                         ..self.feed
                     },
                     ..self
@@ -61,7 +65,19 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
                 Ok(Self {
                     step,
                     feed: PartialFeed {
-                        link: Some(PartialText::strong(decode_text_to_end(reader, "link")?)),
+                        link: Some(PartialText::strong(decode_text_to_end(reader, tag.name())?)),
+                        ..self.feed
+                    },
+                    ..self
+                })
+            }
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name() == "dc:date" => {
+                Ok(Self {
+                    step,
+                    feed: PartialFeed {
+                        last_update: Some(Timestamp::from_str(&decode_text_to_end(
+                            reader, "dc:date",
+                        )?)?),
                         ..self.feed
                     },
                     ..self
@@ -82,7 +98,7 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
             (Step::InsideItem(item), Event::Start(tag)) if tag.local_name() == "title" => {
                 Ok(Self {
                     step: Step::InsideItem(PartialEntry {
-                        title: Some(decode_text_to_end(reader, "title")?),
+                        title: Some(decode_text_to_end(reader, tag.name())?),
                         ..item
                     }),
                     ..self
@@ -90,7 +106,7 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
             }
             (Step::InsideItem(item), Event::Start(tag)) if tag.local_name() == "link" => Ok(Self {
                 step: Step::InsideItem(PartialEntry {
-                    link: Some(PartialText::strong(decode_text_to_end(reader, "link")?)),
+                    link: Some(PartialText::strong(decode_text_to_end(reader, tag.name())?)),
                     ..item
                 }),
                 ..self
@@ -100,7 +116,7 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
                     step: Step::InsideItem(PartialEntry {
                         description: Some(PartialText::strong(decode_text_to_end(
                             reader,
-                            "description",
+                            tag.name(),
                         )?)),
                         ..item
                     }),
@@ -122,6 +138,10 @@ mod tests {
     use {
         super::*,
         crate::feed::{Cache, SkipHours, SkipWeekdays},
+        jiff::{
+            civil::DateTime,
+            tz::{TimeZone, offset},
+        },
         std::borrow::Cow,
     };
 
@@ -139,7 +159,11 @@ mod tests {
                         skip_hours: SkipHours::default(),
                         period: None,
                     },
-                    last_update: None,
+                    last_update: Some(
+                        DateTime::new(2000, 01, 01, 12, 00, 00, 00)?
+                            .to_zoned(TimeZone::fixed(offset(0)))?
+                            .timestamp(),
+                    ),
                 },
                 entries: vec![Entry {
                     title: Some(Cow::Borrowed("entry 1")),
