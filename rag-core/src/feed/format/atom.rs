@@ -1,6 +1,6 @@
 use {
     crate::{
-        feed::{
+        feed::format::{
             Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed,
             PartialText, decode_text_to_end,
         },
@@ -232,7 +232,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            feed::{Cache, SkipHours, SkipWeekdays},
+            feed::format::{Cache, SkipHours, SkipWeekdays},
             tz,
         },
         jiff::{
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_parser() -> Result<(), ParserError> {
-        crate::feed::tests::test_parser::<AtomParser>(
+        crate::feed::format::tests::test_parser::<AtomParser>(
             include_str!("./atom.xml"),
             ParsedFeed {
                 feed: Feed {

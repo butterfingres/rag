@@ -1,6 +1,6 @@
 use {
     crate::{
-        feed::{
+        feed::format::{
             Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed, PartialText,
             decode_text_to_end,
         },
@@ -137,7 +137,7 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
 mod tests {
     use {
         super::*,
-        crate::feed::{Cache, SkipHours, SkipWeekdays},
+        crate::feed::format::{Cache, SkipHours, SkipWeekdays},
         jiff::{
             civil::DateTime,
             tz::{TimeZone, offset},
@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_parser() -> Result<(), ParserError> {
-        crate::feed::tests::test_parser::<Rss1Parser>(
+        crate::feed::format::tests::test_parser::<Rss1Parser>(
             include_str!("./rss_1_0.xml"),
             ParsedFeed {
                 feed: Feed {

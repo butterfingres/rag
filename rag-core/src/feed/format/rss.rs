@@ -1,6 +1,6 @@
 use {
     crate::{
-        feed::{
+        feed::format::{
             Authority, Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed,
             PartialText, Period, decode_text_to_end,
         },
@@ -245,7 +245,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            feed::{Cache, SkipHours, SkipWeekdays},
+            feed::format::{Cache, SkipHours, SkipWeekdays},
             tz,
         },
         jiff::{
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_parser() -> Result<(), ParserError> {
-        crate::feed::tests::test_parser::<RssParser>(
+        crate::feed::format::tests::test_parser::<RssParser>(
             include_str!("./rss.xml"),
             ParsedFeed {
                 feed: Feed {
