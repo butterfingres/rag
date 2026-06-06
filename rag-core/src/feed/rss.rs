@@ -8,7 +8,7 @@ use {
         utf8::{Attribute, Event, Reader, Start},
     },
     jiff::{Span, civil::Weekday},
-    std::{borrow::Cow, num::NonZeroU32, str::FromStr},
+    std::{borrow::Cow, num::NonZeroU16, str::FromStr},
 };
 
 #[derive(Default)]
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> for RssParser<'a> {
                 self.feed.cache.period = Some(Period {
                     interval: Span::new().try_minutes(mins)?.into(),
                     base: None,
-                    frequency: NonZeroU32::MIN,
+                    frequency: NonZeroU16::MIN,
                 });
 
                 Ok(Self { step, ..self })
@@ -269,7 +269,7 @@ mod tests {
                         skip_hours: SkipHours::new([0b0000_0000_1000_0000_0000_0000_0000_0001]),
                         period: Some(Period {
                             interval: Span::new().try_minutes(69)?.into(),
-                            frequency: NonZeroU32::MIN,
+                            frequency: NonZeroU16::MIN,
                             base: None,
                         }),
                     },

@@ -14,7 +14,7 @@ use {
         borrow::Cow,
         error::Error,
         fmt::{self, Display, Formatter},
-        num::{NonZeroU32, ParseIntError, TryFromIntError},
+        num::{NonZeroU16, ParseIntError, TryFromIntError},
         str,
     },
 };
@@ -27,7 +27,7 @@ pub struct Period {
     interval: SpanFieldwise,
     base: Option<Timestamp>,
     // A frequency of 0 means nothing.
-    frequency: NonZeroU32,
+    frequency: NonZeroU16,
 }
 
 #[derive(Debug, Default, PartialEq)]
