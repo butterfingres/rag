@@ -90,6 +90,19 @@ pub struct PartialText<'a> {
     authority: Authority,
 }
 impl<'a> PartialText<'a> {
+    pub const fn strong(text: Cow<'a, str>) -> Self {
+        Self {
+            text,
+            authority: Authority::Strong,
+        }
+    }
+    pub const fn weak(text: Cow<'a, str>) -> Self {
+        Self {
+            text,
+            authority: Authority::Weak,
+        }
+    }
+
     fn should_replace(old: &Option<Self>, authority: Authority) -> bool {
         old.is_none() || old.as_ref().is_some_and(|old| authority > old.authority)
     }

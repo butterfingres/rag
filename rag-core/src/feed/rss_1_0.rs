@@ -1,5 +1,7 @@
 use crate::{
-    feed::{Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, decode_text_to_end},
+    feed::{
+        Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, PartialText, decode_text_to_end,
+    },
     utf8::{Event, Reader, Start},
 };
 
@@ -47,6 +49,16 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
                     step,
                     feed: PartialFeed {
                         title: Some(decode_text_to_end(reader, "title")?),
+                        ..self.feed
+                    },
+                    ..self
+                })
+            }
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.local_name() == "link" => {
+                Ok(Self {
+                    step,
+                    feed: PartialFeed {
+                        link: Some(PartialText::strong(decode_text_to_end(reader, "link")?)),
                         ..self.feed
                     },
                     ..self
@@ -263,7 +275,7 @@ mod tests {
             ParsedFeed {
                 feed: Feed {
                     title: Cow::Borrowed("rss 1.0 feed"),
-                    link: None,
+                    link: Some(Cow::Borrowed("https://example.com")),
                     // we need to test that all the weekdays are recognized
                     cache: Cache {
                         skip_weekdays: SkipWeekdays::default(),
