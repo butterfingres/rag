@@ -104,6 +104,18 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
                 }),
                 ..self
             }),
+            (Step::InsideItem(item), Event::Start(tag)) if tag.local_name() == "description" => {
+                Ok(Self {
+                    step: Step::InsideItem(PartialEntry {
+                        description: Some(PartialText::strong(decode_text_to_end(
+                            reader,
+                            "description",
+                        )?)),
+                        ..item
+                    }),
+                    ..self
+                })
+            }
 
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
@@ -141,7 +153,7 @@ mod tests {
                 entries: vec![Entry {
                     title: Some(Cow::Borrowed("entry 1")),
                     link: Some(Cow::Borrowed("https://example.com/entry_1")),
-                    description: None,
+                    description: Some(Cow::Borrowed("first entry")),
                     pub_date: None,
                     enclosures: vec![],
                 }],
