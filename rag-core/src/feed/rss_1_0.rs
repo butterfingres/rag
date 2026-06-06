@@ -1,19 +1,22 @@
 use crate::{
     feed::{
-        Entry, Feed, ParsedFeed, Parser, ParserError, PartialFeed, PartialText, decode_text_to_end,
+        Entry, Feed, ParsedFeed, Parser, ParserError, PartialEntry, PartialFeed, PartialText,
+        decode_text_to_end,
     },
     utf8::{Event, Reader, Start},
 };
 
 #[derive(Default)]
-enum Step {
+enum Step<'a> {
     #[default]
     OutsideChannel,
     InsideChannel,
+    InsideItems,
+    InsideItem(PartialEntry<'a>),
 }
 #[derive(Default)]
 pub struct Rss1Parser<'a> {
-    step: Step,
+    step: Step<'a>,
     feed: PartialFeed<'a>,
     entries: Vec<Entry<'a>>,
 }
@@ -31,7 +34,7 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
             entries: self.entries,
         })
     }
-    fn handle_event(self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
+    fn handle_event(mut self, ev: Event<'a>, reader: &mut Reader<'a>) -> Result<Self, ParserError> {
         match (self.step, ev) {
             (Step::OutsideChannel, Event::Start(tag)) if tag.local_name() == "channel" => {
                 Ok(Self {
@@ -61,6 +64,36 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
                         link: Some(PartialText::strong(decode_text_to_end(reader, "link")?)),
                         ..self.feed
                     },
+                    ..self
+                })
+            }
+
+            (Step::InsideChannel, Event::Start(tag)) if tag.local_name() == "items" => Ok(Self {
+                step: Step::InsideItems,
+                ..self
+            }),
+            (Step::InsideItems, Event::End(tag)) if tag.local_name() == "items" => Ok(Self {
+                step: Step::InsideChannel,
+                ..self
+            }),
+
+            (Step::InsideItems, Event::Start(tag)) if tag.local_name() == "item" => Ok(Self {
+                step: Step::InsideItem(PartialEntry::default()),
+                ..self
+            }),
+            (Step::InsideItem(item), Event::End(tag)) if tag.local_name() == "item" => {
+                self.entries.push(item.into());
+                Ok(Self {
+                    step: Step::InsideItems,
+                    ..self
+                })
+            }
+            (Step::InsideItem(item), Event::Start(tag)) if tag.local_name() == "title" => {
+                Ok(Self {
+                    step: Step::InsideItem(PartialEntry {
+                        title: Some(decode_text_to_end(reader, "title")?),
+                        ..item
+                    }),
                     ..self
                 })
             }
@@ -98,7 +131,13 @@ mod tests {
                     },
                     last_update: None,
                 },
-                entries: vec![],
+                entries: vec![Entry {
+                    title: Some(Cow::Borrowed("entry 1")),
+                    link: None,
+                    description: None,
+                    pub_date: None,
+                    enclosures: vec![],
+                }],
             },
         )?;
 
