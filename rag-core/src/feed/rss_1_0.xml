@@ -3,12 +3,10 @@
   <channel>
     <title>rss 1.0 feed</title>
     <link>https://example.com</link>
-    <items>
-      <item>
-        <title>entry 1</title>
-        <link>https://example.com/entry_1</link>
-        <description>first entry</description>
-      </item>
-    </items>
   </channel>
+  <item>
+    <title>entry 1</title>
+    <link>https://example.com/entry_1</link>
+    <description>first entry</description>
+  </item>
 </rdf:RDF>

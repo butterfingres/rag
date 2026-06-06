@@ -68,16 +68,7 @@ impl<'a> Parser<'a> for Rss1Parser<'a> {
                 })
             }
 
-            (Step::InsideChannel, Event::Start(tag)) if tag.local_name() == "items" => Ok(Self {
-                step: Step::InsideItems,
-                ..self
-            }),
-            (Step::InsideItems, Event::End(tag)) if tag.local_name() == "items" => Ok(Self {
-                step: Step::InsideChannel,
-                ..self
-            }),
-
-            (Step::InsideItems, Event::Start(tag)) if tag.local_name() == "item" => Ok(Self {
+            (Step::OutsideChannel, Event::Start(tag)) if tag.local_name() == "item" => Ok(Self {
                 step: Step::InsideItem(PartialEntry::default()),
                 ..self
             }),
