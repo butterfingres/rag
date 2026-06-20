@@ -43,23 +43,38 @@ impl<'e> Read for BufferReader<'e> {
                     .call(self.marker.env, (self.marker,))?
                     .into_rust::<usize>()?;
                 let end = max.into_rust::<usize>()?;
+                let request = end - start;
 
-                let read = cmp::min(end - start, buf.len());
-                let substring = sym::fun::BUFFER_SUBSTRING
-                    .call(self.marker.env, (start, start + read))?
-                    // .copy_string_contents(buf)?
-                    .into_rust::<String>()?;
+                if buf.len() == 1 {
+                    let request = cmp::min(request, 1);
+                    let substring = sym::fun::BUFFER_SUBSTRING
+                        .call(self.marker.env, (start, start + request))?;
 
-                let mut read = 0;
-                for (i, byte) in substring.as_bytes().into_iter().enumerate() {
-                    buf[i] = *byte;
-                    read += 1;
+                    let mut temp_buf = [0; 2];
+                    let read = substring.copy_string_contents(&mut temp_buf)?.len();
+                    for i in 0..read {
+                        buf[i] = temp_buf[i];
+                    }
+                    let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
+                    sym::fun::SET_MARKER.call(self.marker.env, (self.marker, new_pos))?;
+
+                    Ok(read)
+                } else {
+                    // the capacity that can be used by [Value::copy_string_contents].
+                    let request = cmp::min(request, buf.len() - 1);
+                    let substring = sym::fun::BUFFER_SUBSTRING
+                        .call(self.marker.env, (start, start + request))?;
+                    let read = substring.copy_string_contents(buf)?.len();
+                    let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
+                    sym::fun::SET_MARKER.call(self.marker.env, (self.marker, new_pos))?;
+                    Ok(read)
                 }
-                let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
-                sym::fun::SET_MARKER.call(self.marker.env, (self.marker, new_pos))?;
-                Ok(read)
             }
         })()
+        // .inspect(|e| eprintln!("read {e}"))
+        // .inspect_err(|e| {
+        //     eprintln!("error: {e}");
+        // })
         .map_err(EmacsError)
         .map_err(io::Error::other)
     }
@@ -73,7 +88,7 @@ impl<'e> Read for BufferReader<'e> {
 /// assertions as this is only intended to be used in tests.
 fn buffer_string<'e>(env: &'e emacs::Env) -> Result<String, emacs::Error> {
     let mut buf = String::new();
-    let mut reader = BufferReader::try_new(env)?;
+    let mut reader = std::io::BufReader::new(BufferReader::try_new(env)?);
     reader.read_to_string(&mut buf)?;
 
     Ok(buf)
