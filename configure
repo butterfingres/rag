@@ -1,0 +1,9 @@
+#!/bin/sh
+
+LIB="$(rustc --crate-name rag_core --crate-type cdylib --print file-names src/lib.rs)"
+SO="$(echo "${LIB}" | awk -F. '{ print $2 }')"
+
+(
+    echo "LIB=${LIB}"
+    echo "SO=${SO}"
+) > Makefile.in

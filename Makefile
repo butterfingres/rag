@@ -7,6 +7,8 @@ EMACSFLAGS = -Q -batch -L target/debug -L lisp
 
 CARGO = cargo
 
+include Makefile.in
+
 all: ${ELCS}
 check: all
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests -l ert -f ert-run-tests-batch-and-exit
@@ -15,9 +17,9 @@ clean:
 	-rm ${ELCS}
 	-${CARGO} ${CARGOFLAGS} clean
 
-target/debug/librag_core.so: Cargo.toml src/buffer.rs src/lib.rs src/sym.rs
+target/debug/${LIB}: Cargo.toml src/buffer.rs src/lib.rs src/sym.rs
 	${CARGO} ${CARGOFLAGS} build
-target/debug/rag-core.so: target/debug/librag_core.so
+target/debug/rag-core.${SO}: target/debug/librag_core.${SO}
 	ln -sf $$(realpath $<) $@
 
 lisp/rag-core-tests.elc: target/debug/rag-core.so
