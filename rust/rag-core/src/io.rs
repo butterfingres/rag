@@ -82,7 +82,8 @@ impl<'e> Read for BufferReader<'e> {
 /// Return the the buffer contents as a string.
 ///
 /// This function is only available when compling with debug
-/// assertions as this is only intended to be used in tests.
+/// assertions as this is only intended to be used in tests.  If you
+/// need to get a buffer's string efficiently, use `buffer-substring'.
 fn buffer_string<'e>(env: &'e emacs::Env) -> Result<String, emacs::Error> {
     let mut buf = String::new();
     let mut reader = std::io::BufReader::new(BufferReader::try_new(env)?);
