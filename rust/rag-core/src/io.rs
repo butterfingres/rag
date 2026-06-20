@@ -1,21 +1,8 @@
 use {
     crate::sym,
     emacs::Value,
-    std::{
-        error::Error,
-        fmt::{self, Display, Formatter},
-        io::{self, Read},
-    },
+    std::io::{self, Read},
 };
-
-#[derive(Debug)]
-struct EmacsError(emacs::Error);
-impl Display for EmacsError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        self.0.fmt(f)
-    }
-}
-impl Error for EmacsError {}
 
 pub struct BufferReader<'e> {
     marker: Value<'e>,
@@ -82,7 +69,6 @@ impl<'e> Read for BufferReader<'e> {
                 }
             }
         })()
-        .map_err(EmacsError)
         .map_err(io::Error::other)
     }
 }
