@@ -16,7 +16,7 @@ clean:
 	-rm ${ELCS}
 	-${CARGO} clean ${CARGOFLAGS}
 
-rust/rag-core/target/debug/librag_core.so: rust/rag-core/Cargo.toml rust/rag-core/src/io.rs rust/rag-core/src/lib.rs rust/rag-core/src/sym.rs
+rust/rag-core/target/debug/librag_core.so: rust/rag-core/Cargo.toml rust/rag-core/src/buffer.rs rust/rag-core/src/lib.rs rust/rag-core/src/sym.rs
 	${CARGO} build ${CARGOFLAGS}
 rust/rag-core/target/debug/rag-core.so: rust/rag-core/target/debug/librag_core.so
 	ln -sf $$(realpath $<) $@

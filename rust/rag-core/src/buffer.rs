@@ -74,7 +74,7 @@ impl<'e> Read for BufferReader<'e> {
 }
 
 #[cfg(debug_assertions)]
-#[emacs::defun(name = "-buffer-string")]
+#[emacs::defun(name = "-string")]
 /// Return the the buffer contents as a string.
 ///
 /// This function is only available when compling with debug

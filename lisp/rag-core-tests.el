@@ -17,7 +17,7 @@
 (defun rag-core-tests-test-buffer-string (input)
   (with-temp-buffer
     (insert input)
-    (should (string= input (rag-core-io--buffer-string)))))
+    (should (string= input (rag-core-buffer--string)))))
 
 (ert-deftest rag-core-tests-buffer-string-empty ()
   (rag-core-tests-test-buffer-string ""))

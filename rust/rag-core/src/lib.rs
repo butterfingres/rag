@@ -1,4 +1,4 @@
-pub mod io;
+pub mod buffer;
 mod sym;
 
 emacs::plugin_is_GPL_compatible!();
