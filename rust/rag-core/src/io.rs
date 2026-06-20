@@ -27,6 +27,22 @@ impl<'e> BufferReader<'e> {
             marker: sym::fun::POINT_MIN_MARKER.call(env, [])?,
         })
     }
+
+    fn read_n_in(
+        &mut self,
+        request: usize,
+        buf: &mut [u8],
+        start: usize,
+    ) -> Result<usize, emacs::Error> {
+        let read = sym::fun::BUFFER_SUBSTRING
+            .call(self.marker.env, (start, start + request))?
+            .copy_string_contents(buf)?
+            .len();
+        let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
+        sym::fun::SET_MARKER.call(self.marker.env, (self.marker, new_pos))?;
+
+        Ok(read)
+    }
 }
 impl<'e> Read for BufferReader<'e> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, io::Error> {
@@ -46,35 +62,16 @@ impl<'e> Read for BufferReader<'e> {
                 let request = end - start;
 
                 if buf.len() == 1 {
-                    let request = cmp::min(request, 1);
-                    let substring = sym::fun::BUFFER_SUBSTRING
-                        .call(self.marker.env, (start, start + request))?;
-
-                    let mut temp_buf = [0; 2];
-                    let read = substring.copy_string_contents(&mut temp_buf)?.len();
-                    for i in 0..read {
-                        buf[i] = temp_buf[i];
-                    }
-                    let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
-                    sym::fun::SET_MARKER.call(self.marker.env, (self.marker, new_pos))?;
+                    let mut proxy_buf = [0; 2];
+                    let read = self.read_n_in(cmp::min(request, 1), &mut proxy_buf, start)?;
+                    buf[0] = proxy_buf[0];
 
                     Ok(read)
                 } else {
-                    // the capacity that can be used by [Value::copy_string_contents].
-                    let request = cmp::min(request, buf.len() - 1);
-                    let substring = sym::fun::BUFFER_SUBSTRING
-                        .call(self.marker.env, (start, start + request))?;
-                    let read = substring.copy_string_contents(buf)?.len();
-                    let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
-                    sym::fun::SET_MARKER.call(self.marker.env, (self.marker, new_pos))?;
-                    Ok(read)
+                    self.read_n_in(cmp::min(request, buf.len() - 1), buf, start)
                 }
             }
         })()
-        // .inspect(|e| eprintln!("read {e}"))
-        // .inspect_err(|e| {
-        //     eprintln!("error: {e}");
-        // })
         .map_err(EmacsError)
         .map_err(io::Error::other)
     }
