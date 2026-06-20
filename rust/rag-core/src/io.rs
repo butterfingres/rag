@@ -45,16 +45,16 @@ impl<'e> Read for BufferReader<'e> {
                 let end = max.into_rust::<usize>()?;
 
                 let read = cmp::min(end - start, buf.len());
-                let read = sym::fun::BUFFER_SUBSTRING
+                let substring = sym::fun::BUFFER_SUBSTRING
                     .call(self.marker.env, (start, start + read))?
-                    .copy_string_contents(buf)?
-                    .len();
+                    // .copy_string_contents(buf)?
+                    .into_rust::<String>()?;
 
-                // let mut read = 0;
-                // for (i, byte) in substring.as_bytes().into_iter().enumerate() {
-                //     buf[i] = *byte;
-                //     read += 1;
-                // }
+                let mut read = 0;
+                for (i, byte) in substring.as_bytes().into_iter().enumerate() {
+                    buf[i] = *byte;
+                    read += 1;
+                }
                 let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
                 sym::fun::SET_MARKER.call(self.marker.env, (self.marker, new_pos))?;
                 Ok(read)
