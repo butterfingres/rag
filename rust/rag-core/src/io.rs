@@ -2,7 +2,6 @@ use {
     crate::sym,
     emacs::Value,
     std::{
-        cmp,
         error::Error,
         fmt::{self, Display, Formatter},
         io::{self, Read},
@@ -30,12 +29,18 @@ impl<'e> BufferReader<'e> {
 
     fn read_n_in(
         &mut self,
-        request: usize,
+        request: emacs::Value<'e>,
         buf: &mut [u8],
-        start: usize,
+        start: emacs::Value<'e>,
     ) -> Result<usize, emacs::Error> {
         let read = sym::fun::BUFFER_SUBSTRING
-            .call(self.marker.env, (start, start + request))?
+            .call(
+                self.marker.env,
+                (
+                    start,
+                    sym::fun::PLUS.call(self.marker.env, (start, request))?,
+                ),
+            )?
             .copy_string_contents(buf)?
             .len();
         let new_pos = sym::fun::PLUS.call(self.marker.env, (self.marker, read))?;
@@ -47,28 +52,33 @@ impl<'e> BufferReader<'e> {
 impl<'e> Read for BufferReader<'e> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, io::Error> {
         (|| {
-            let max = sym::fun::POINT_MAX.call(self.marker.env, [])?;
+            let end = sym::fun::POINT_MAX.call(self.marker.env, [])?;
             if buf.is_empty() || {
                 sym::fun::GEQ
-                    .call(self.marker.env, (self.marker, max))?
+                    .call(self.marker.env, (self.marker, end))?
                     .is_not_nil()
             } {
                 Ok::<usize, emacs::Error>(0)
             } else {
-                let start = sym::fun::MARKER_POSITION
-                    .call(self.marker.env, (self.marker,))?
-                    .into_rust::<usize>()?;
-                let end = max.into_rust::<usize>()?;
-                let request = end - start;
+                let start = sym::fun::MARKER_POSITION.call(self.marker.env, (self.marker,))?;
+                let request = sym::fun::MINUS.call(self.marker.env, (end, start))?;
 
                 if buf.len() == 1 {
                     let mut proxy_buf = [0; 2];
-                    let read = self.read_n_in(cmp::min(request, 1), &mut proxy_buf, start)?;
+                    let read = self.read_n_in(
+                        sym::fun::MIN.call(self.marker.env, (request, 1))?,
+                        &mut proxy_buf,
+                        start,
+                    )?;
                     buf[0] = proxy_buf[0];
 
                     Ok(read)
                 } else {
-                    self.read_n_in(cmp::min(request, buf.len() - 1), buf, start)
+                    self.read_n_in(
+                        sym::fun::MIN.call(self.marker.env, (request, buf.len() - 1))?,
+                        buf,
+                        start,
+                    )
                 }
             }
         })()
