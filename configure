@@ -1,7 +1,12 @@
 #!/bin/sh
 
+printf 'detecting dynamic library file name...'
 LIB="$(rustc --crate-name rag_core --crate-type cdylib --print file-names src/lib.rs)"
+echo " ${LIB}"
+
+printf 'detecting dynamic library suffix...'
 SO="$(echo "${LIB}" | awk -F. '{ print $2 }')"
+echo " ${SO}"
 
 (
     echo "LIB=${LIB}"
