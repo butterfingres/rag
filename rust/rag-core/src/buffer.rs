@@ -6,7 +6,7 @@ use crate::sym;
 /// assertions as this is only intended to be used in tests.  If you
 /// need to get a buffer's string efficiently, use `buffer-substring`.
 #[cfg_attr(debug_assertions, emacs::defun(name = "-string"))]
-fn buffer_string<'e>(env: &'e emacs::Env) -> Result<String, emacs::Error> {
+fn string<'e>(env: &'e emacs::Env) -> Result<String, emacs::Error> {
     sym::fun::BUFFER_SUBSTRING_NO_PROPERTIES
         .call(
             env,
