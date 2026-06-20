@@ -1,0 +1,11 @@
+[package]
+name = "rag-core"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+emacs = { version = "0.21.0", default-features = false }
+quick-xml = { version = "0.40.1", default-features = false }
