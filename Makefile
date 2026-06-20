@@ -11,10 +11,10 @@ CARGOFLAGS = --manifest-path=rust/rag-core/Cargo.toml
 all: ${ELCS}
 check: all
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests -l ert -f ert-run-tests-batch-and-exit
-	-${CARGO} test ${CARGOFLAGS}
+	${CARGO} test ${CARGOFLAGS}
 clean:
 	-rm ${ELCS}
-	-${CARG} clean ${CARGOFLAGS}
+	-${CARGO} clean ${CARGOFLAGS}
 
 rust/rag-core/target/debug/librag_core.so: rust/rag-core/Cargo.toml rust/rag-core/src/io.rs rust/rag-core/src/lib.rs rust/rag-core/src/sym.rs
 	${CARGO} build ${CARGOFLAGS}
