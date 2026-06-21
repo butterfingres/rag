@@ -103,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn test_must_allocate_ok() {
+    fn test_must_allocate_allocated() {
         must_allocate(Global, |alloc| {
             let mut vec = Vec::<u8, _>::new_in(alloc);
             vec.push(0);
