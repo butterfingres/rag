@@ -240,6 +240,34 @@ pub trait XmlParser<'a>: Sized {
     where
         A: Allocator + ?Sized;
 }
+macro_rules! xml_parser {
+    (
+        $ident:ident {
+            $($var:ident),* $(,)?
+        },
+        [$($pat:pat => $expr:expr),* $(,)?]
+    ) => {
+        pub struct $ident;
+
+        impl $crate::xml::XmlParser for $ident {
+            fn try_from_root(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>> {
+                todo!()
+            }
+            fn handle_event<A>(
+                self,
+                _: &mut NsReader<&'a [u8]>,
+                _: Event<'a>,
+                _: &mut Self::State,
+                _: &'a A,
+            ) -> Result<Self, ParserError>
+            where
+                A: Allocator + ?Sized,
+            {
+                todo!()
+            }
+        }
+    };
+}
 
 fn read_to_end<'a, A>(
     reader: &mut NsReader<&'a [u8]>,
