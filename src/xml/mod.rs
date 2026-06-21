@@ -353,7 +353,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::alloc::DummyAllocator, std::assert_matches};
+    use {super::*, crate::alloc, std::assert_matches};
 
     fn test_read_to_end<A, F>(input: &str, alloc: &A, f: F) -> Result<(), ParserError>
     where
@@ -375,12 +375,12 @@ mod tests {
 
     #[test]
     fn read_to_end_borrowed() -> Result<(), ParserError> {
-        test_read_to_end("<p>hello world</p>", &DummyAllocator, |val| {
+        test_read_to_end("<p>hello world</p>", &alloc::Dummy, |val| {
             assert_matches!(val, Cow::Borrowed(b"hello world"))
         })?;
         test_read_to_end(
             "<p><![CDATA[<b>hello</b> world]]></p>",
-            &DummyAllocator,
+            &alloc::Dummy,
             |val| assert_matches!(val, Cow::Borrowed(b"<b>hello</b> world")),
         )?;
 

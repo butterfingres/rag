@@ -5,10 +5,10 @@ use {
 
 /// Allocator that never allocates.
 #[derive(Debug)]
-pub struct DummyAllocator;
+pub struct Dummy;
 
 // SAFETY: This never allocates.
-unsafe impl Allocator for DummyAllocator {
+unsafe impl Allocator for Dummy {
     fn allocate(&self, _: Layout) -> Result<NonNull<[u8]>, AllocError> {
         Err(AllocError)
     }
@@ -16,14 +16,14 @@ unsafe impl Allocator for DummyAllocator {
 }
 
 /// An allocator that tracks whether an allocation has occurred.
-pub struct TrackingAllocator<A>
+pub struct Tracking<A>
 where
     A: Allocator,
 {
     alloc: A,
     allocated: Cell<bool>,
 }
-impl<A> From<A> for TrackingAllocator<A>
+impl<A> From<A> for Tracking<A>
 where
     A: Allocator,
 {
@@ -35,7 +35,7 @@ where
     }
 }
 // SAFETY: we rely on the safety of the underlying allocator
-unsafe impl<A> Allocator for TrackingAllocator<A>
+unsafe impl<A> Allocator for Tracking<A>
 where
     A: Allocator,
 {
@@ -60,9 +60,9 @@ mod tests {
     fn must_allocate<A, F>(alloc: A, f: F)
     where
         A: Allocator,
-        F: FnOnce(&TrackingAllocator<A>),
+        F: FnOnce(&Tracking<A>),
     {
-        let alloc = TrackingAllocator::from(alloc);
+        let alloc = Tracking::from(alloc);
         f(&alloc);
         assert!(alloc.allocated.get());
     }
@@ -76,18 +76,18 @@ mod tests {
         ]
         .into_iter()
         .for_each(|layout| {
-            assert_eq!(DummyAllocator.allocate(layout), Err(AllocError));
+            assert_eq!(Dummy.allocate(layout), Err(AllocError));
         });
         Ok(())
     }
 
     #[test]
     fn tracking_allocator() {
-        let alloc = TrackingAllocator::from(DummyAllocator);
+        let alloc = Tracking::from(Dummy);
         Vec::<(), _>::new_in(&alloc);
         assert_eq!(alloc.allocated.get(), false);
 
-        let alloc = TrackingAllocator::from(Global);
+        let alloc = Tracking::from(Global);
         {
             let mut vec = Vec::<u8, _>::new_in(&alloc);
             vec.push(0);
@@ -99,7 +99,7 @@ mod tests {
     #[should_panic]
     #[test]
     fn test_must_allocate_panic() {
-        must_allocate(DummyAllocator, |_| {});
+        must_allocate(Dummy, |_| {});
     }
 
     #[test]
