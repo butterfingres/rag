@@ -38,7 +38,7 @@ where
     A: Allocator,
 {
     pub title: Option<Cow<'a, [u8], &'a A>>,
-    pub link: Option<PartialText<'a, &'a A>>,
+    pub link: Option<PartialText<'a, A>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
@@ -53,26 +53,26 @@ where
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
-// impl<'a, A> Feed<'a, A>
-// where
-//     A: Allocator,
-// {
-//     pub fn from_partial(
-//         PartialFeed {
-//             title,
-//             link,
-//             cache,
-//             last_update,
-//         }: PartialFeed<'a, A>,
-//     ) -> Option<Self> {
-//         Some(Self {
-//             title: title?,
-//             link: link.map(Cow::from),
-//             cache,
-//             last_update,
-//         })
-//     }
-// }
+impl<'a, A> Feed<'a, A>
+where
+    A: Allocator,
+{
+    pub fn from_partial(
+        PartialFeed {
+            title,
+            link,
+            cache,
+            last_update,
+        }: PartialFeed<'a, A>,
+    ) -> Option<Self> {
+        Some(Self {
+            title: title?,
+            link: link.map(Cow::from),
+            cache,
+            last_update,
+        })
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub enum Authority {
