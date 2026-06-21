@@ -4,7 +4,7 @@ use {
         collections::TryReserveError,
         vec::Vec,
     },
-    std::borrow::Borrow,
+    std::{borrow::Borrow, fmt},
 };
 
 pub trait ToOwnedIn<A>
@@ -32,7 +32,6 @@ where
     }
 }
 
-#[derive(Debug)]
 pub enum Cow<'a, T, A = Global>
 where
     T: ToOwnedIn<A> + ?Sized,
@@ -82,6 +81,18 @@ where
         match self {
             Self::Borrowed(val) => val,
             Self::Owned(val) => val.as_ref(),
+        }
+    }
+}
+impl<T, A> fmt::Debug for Cow<'_, T, A>
+where
+    T: fmt::Debug + ToOwnedIn<A, Owned: fmt::Debug> + ?Sized,
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Cow::Borrowed(ref b) => fmt::Debug::fmt(b, f),
+            Cow::Owned(ref o) => fmt::Debug::fmt(o, f),
         }
     }
 }

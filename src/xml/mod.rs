@@ -4,6 +4,7 @@ use {
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp},
     quick_xml::{
+        escape::resolve_xml_entity,
         events::{BytesStart, Event},
         name::QName,
         reader::NsReader,
@@ -13,6 +14,7 @@ use {
         fmt::{self, Display, Formatter},
         marker::PhantomData,
         num::NonZeroU16,
+        str,
     },
 };
 
@@ -273,6 +275,11 @@ where
                     output
                         .try_to_mut_in(alloc)?
                         .extend(ch.encode_utf8(&mut buf).bytes());
+                } else if let Some(ch) = str::from_utf8(ch.as_ref())
+                    .ok()
+                    .and_then(resolve_xml_entity)
+                {
+                    output.try_to_mut_in(alloc)?.extend(ch.bytes());
                 }
             }
             Event::Start(start) => {
@@ -353,7 +360,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::alloc, std::assert_matches};
+    use {super::*, crate::alloc, std::assert_matches, stumpalo::Arena};
 
     fn test_read_to_end<A, F>(input: &str, alloc: &A, f: F) -> Result<(), ParserError>
     where
@@ -389,14 +396,21 @@ mod tests {
 
     #[test]
     fn read_to_end_owned() -> Result<(), ParserError> {
-        // test_read_to_end("<p>hello world</p>", &DummyAllocator, |val| {
-        //     assert_matches!(val, Cow::Borrowed(b"hello world"))
-        // })?;
-        // test_read_to_end(
-        //     "<p><![CDATA[<b>hello</b> world]]></p>",
-        //     &DummyAllocator,
-        //     |val| assert_matches!(val, Cow::Borrowed(b"<b>hello</b> world")),
-        // )?;
+        let mut alloc = Arena::new();
+
+        test_read_to_end(
+            "<p>&lt;b&gt;hello world&lt;/b&gt;</p>",
+            &alloc,
+            |val| assert_matches!(val, Cow::Owned(val) if val == b"<b>hello world</b>"),
+        )?;
+        alloc.clear();
+
+        test_read_to_end(
+            "<p>&lt;b&gt;hello world<![CDATA[ goodbye world]]>&lt;/b&gt;</p>",
+            &alloc,
+            |val| assert_matches!(val, Cow::Owned(val) if val == b"<b>hello world goodbye world</b>"),
+        )?;
+        alloc.clear();
 
         Ok(())
     }
