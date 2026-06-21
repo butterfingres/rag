@@ -1,6 +1,6 @@
 use {
     allocator_api2::alloc::{AllocError, Allocator},
-    std::{alloc::Layout, ptr::NonNull},
+    std::{alloc::Layout, cell::Cell, ptr::NonNull},
 };
 
 /// Allocator that never allocates.
@@ -15,9 +15,47 @@ unsafe impl Allocator for DummyAllocator {
     unsafe fn deallocate(&self, _: NonNull<u8>, _: Layout) {}
 }
 
+/// An allocator that tracks whether an allocation has occurred.
+pub struct TrackingAllocator<A>
+where
+    A: Allocator,
+{
+    alloc: A,
+    allocated: Cell<bool>,
+}
+impl<A> From<A> for TrackingAllocator<A>
+where
+    A: Allocator,
+{
+    fn from(alloc: A) -> Self {
+        Self {
+            alloc,
+            allocated: Cell::new(false),
+        }
+    }
+}
+// SAFETY: we rely on the safety of the underlying allocator
+unsafe impl<A> Allocator for TrackingAllocator<A>
+where
+    A: Allocator,
+{
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        self.alloc.allocate(layout).inspect(|_| {
+            self.allocated.set(true);
+        })
+    }
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        unsafe { self.alloc.deallocate(ptr, layout) }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use {super::*, std::alloc::LayoutError};
+    use {
+        super::*,
+        allocator_api2::{alloc::Global, vec::Vec},
+        std::alloc::LayoutError,
+    };
 
     #[test]
     fn failing_allocator() -> Result<(), LayoutError> {
@@ -31,5 +69,20 @@ mod tests {
             assert_eq!(DummyAllocator.allocate(layout), Err(AllocError));
         });
         Ok(())
+    }
+
+    #[test]
+    fn tracking_allocator() {
+        let alloc = TrackingAllocator::from(DummyAllocator);
+        Vec::<(), _>::new_in(&alloc);
+        assert_eq!(alloc.allocated.get(), false);
+
+        let alloc = TrackingAllocator::from(Global);
+        {
+            let mut vec = Vec::<u8, _>::new_in(&alloc);
+            vec.push(0);
+        }
+
+        assert_eq!(alloc.allocated.get(), true);
     }
 }

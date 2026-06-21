@@ -386,4 +386,18 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn read_to_end_owned() -> Result<(), ParserError> {
+        // test_read_to_end("<p>hello world</p>", &DummyAllocator, |val| {
+        //     assert_matches!(val, Cow::Borrowed(b"hello world"))
+        // })?;
+        // test_read_to_end(
+        //     "<p><![CDATA[<b>hello</b> world]]></p>",
+        //     &DummyAllocator,
+        //     |val| assert_matches!(val, Cow::Borrowed(b"<b>hello</b> world")),
+        // )?;
+
+        Ok(())
+    }
 }
