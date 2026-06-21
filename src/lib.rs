@@ -1,5 +1,6 @@
 pub mod buffer;
 mod sym;
+pub mod xml;
 
 emacs::plugin_is_GPL_compatible!();
 
