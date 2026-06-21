@@ -57,6 +57,16 @@ mod tests {
         std::alloc::LayoutError,
     };
 
+    fn must_allocate<A, F>(alloc: A, f: F)
+    where
+        A: Allocator,
+        F: FnOnce(&TrackingAllocator<A>),
+    {
+        let alloc = TrackingAllocator::from(alloc);
+        f(&alloc);
+        assert!(alloc.allocated.get());
+    }
+
     #[test]
     fn failing_allocator() -> Result<(), LayoutError> {
         [
@@ -84,5 +94,19 @@ mod tests {
         }
 
         assert_eq!(alloc.allocated.get(), true);
+    }
+
+    #[should_panic]
+    #[test]
+    fn test_must_allocate_panic() {
+        must_allocate(DummyAllocator, |_| {});
+    }
+
+    #[test]
+    fn test_must_allocate_ok() {
+        must_allocate(Global, |alloc| {
+            let mut vec = Vec::<u8, _>::new_in(alloc);
+            vec.push(0);
+        });
     }
 }
