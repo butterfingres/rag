@@ -357,6 +357,24 @@ where
     }
 }
 
+struct StringHandler;
+impl<'a, A> HandleElement<'a, A> for StringHandler
+where
+    A: Allocator + ?Sized + 'a,
+{
+    type State = Cow<'a, [u8], &'a A>;
+
+    fn handle_element(
+        text: &mut Cow<'a, [u8], &'a A>,
+        reader: &mut NsReader<&'a [u8]>,
+        name: QName<'a>,
+        alloc: &'a A,
+    ) -> Result<(), ParserError> {
+        *text = read_to_end(reader, name, alloc)?;
+        Ok(())
+    }
+}
+
 struct OptionalHandler<H> {
     _marker: PhantomData<H>,
 }
