@@ -1,4 +1,5 @@
 use {
+    crate::borrow::Cow,
     allocator_api2::alloc::Allocator,
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp},
@@ -7,7 +8,6 @@ use {
         reader::NsReader,
     },
     std::{
-        borrow::Cow,
         error::Error,
         fmt::{self, Display, Formatter},
         num::NonZeroU16,
@@ -33,37 +33,46 @@ pub struct Cache {
 }
 
 #[derive(Default)]
-pub struct PartialFeed<'a> {
-    pub title: Option<Cow<'a, str>>,
-    pub link: Option<PartialText<'a>>,
+pub struct PartialFeed<'a, A>
+where
+    A: Allocator,
+{
+    pub title: Option<Cow<'a, [u8], &'a A>>,
+    pub link: Option<PartialText<'a, &'a A>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
 #[derive(Debug, PartialEq)]
-pub struct Feed<'a> {
-    pub title: Cow<'a, str>,
+pub struct Feed<'a, A>
+where
+    A: Allocator,
+{
+    pub title: Cow<'a, [u8], &'a A>,
     // The link is optional in atom.
-    pub link: Option<Cow<'a, str>>,
+    pub link: Option<Cow<'a, [u8], &'a A>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
-impl<'a> Feed<'a> {
-    pub fn from_partial(
-        PartialFeed {
-            title,
-            link,
-            cache,
-            last_update,
-        }: PartialFeed<'a>,
-    ) -> Option<Self> {
-        Some(Self {
-            title: title?,
-            link: link.map(Cow::<'a, str>::from),
-            cache,
-            last_update,
-        })
-    }
-}
+// impl<'a, A> Feed<'a, A>
+// where
+//     A: Allocator,
+// {
+//     pub fn from_partial(
+//         PartialFeed {
+//             title,
+//             link,
+//             cache,
+//             last_update,
+//         }: PartialFeed<'a, A>,
+//     ) -> Option<Self> {
+//         Some(Self {
+//             title: title?,
+//             link: link.map(Cow::from),
+//             cache,
+//             last_update,
+//         })
+//     }
+// }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub enum Authority {
@@ -80,18 +89,21 @@ pub enum Authority {
 /// descriptions where their quality can differ. Otherwise, you should
 /// stick to a normal type and always override it.
 #[derive(Debug, PartialEq)]
-pub struct PartialText<'a> {
-    text: Cow<'a, str>,
+pub struct PartialText<'a, A>
+where
+    A: Allocator,
+{
+    text: Cow<'a, [u8], &'a A>,
     authority: Authority,
 }
 // impl<'a> PartialText<'a> {
-//     pub const fn strong(text: Cow<'a, str>) -> Self {
+//     pub const fn strong(text: Cow<'a, [u8], A>) -> Self {
 //         Self {
 //             text,
 //             authority: Authority::Strong,
 //         }
 //     }
-//     pub const fn weak(text: Cow<'a, str>) -> Self {
+//     pub const fn weak(text: Cow<'a, [u8], A>) -> Self {
 //         Self {
 //             text,
 //             authority: Authority::Weak,
@@ -126,30 +138,42 @@ pub struct PartialText<'a> {
 //         }
 //     }
 // }
-impl<'a> From<PartialText<'a>> for Cow<'a, str> {
-    fn from(PartialText { text, .. }: PartialText<'a>) -> Cow<'a, str> {
+impl<'a, A> From<PartialText<'a, A>> for Cow<'a, [u8], &'a A>
+where
+    A: Allocator,
+{
+    fn from(PartialText { text, .. }: PartialText<'a, A>) -> Cow<'a, [u8], &'a A> {
         text
     }
 }
 
 #[derive(Default)]
-pub struct PartialEntry<'a> {
-    pub title: Option<Cow<'a, str>>,
-    pub link: Option<PartialText<'a>>,
-    pub description: Option<PartialText<'a>>,
+pub struct PartialEntry<'a, A>
+where
+    A: Allocator,
+{
+    pub title: Option<Cow<'a, [u8], &'a A>>,
+    pub link: Option<PartialText<'a, A>>,
+    pub description: Option<PartialText<'a, A>>,
     pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Cow<'a, str>>,
+    pub enclosures: Vec<Cow<'a, [u8], &'a A>>,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Entry<'a> {
-    pub title: Option<Cow<'a, str>>,
-    pub link: Option<Cow<'a, str>>,
-    pub description: Option<Cow<'a, str>>,
+pub struct Entry<'a, A>
+where
+    A: Allocator,
+{
+    pub title: Option<Cow<'a, [u8], &'a A>>,
+    pub link: Option<Cow<'a, [u8], &'a A>>,
+    pub description: Option<Cow<'a, [u8], &'a A>>,
     pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Cow<'a, str>>,
+    pub enclosures: Vec<Cow<'a, [u8], &'a A>>,
 }
-impl<'a> From<PartialEntry<'a>> for Entry<'a> {
+impl<'a, A> From<PartialEntry<'a, A>> for Entry<'a, A>
+where
+    A: Allocator,
+{
     fn from(
         PartialEntry {
             title,
@@ -157,12 +181,12 @@ impl<'a> From<PartialEntry<'a>> for Entry<'a> {
             description,
             pub_date,
             enclosures,
-        }: PartialEntry<'a>,
+        }: PartialEntry<'a, A>,
     ) -> Self {
         Self {
             title,
-            link: link.map(Cow::<'a, str>::from),
-            description: description.map(Cow::<'a, str>::from),
+            link: link.map(Cow::from),
+            description: description.map(Cow::from),
             pub_date,
             enclosures,
         }
@@ -170,9 +194,12 @@ impl<'a> From<PartialEntry<'a>> for Entry<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ParsedFeed<'a> {
-    pub feed: Feed<'a>,
-    pub entries: Vec<Entry<'a>>,
+pub struct ParsedFeed<'a, A>
+where
+    A: Allocator,
+{
+    pub feed: Feed<'a, A>,
+    pub entries: Vec<Entry<'a, A>>,
 }
 
 #[derive(Debug)]
@@ -205,5 +232,5 @@ pub trait XmlParser<'a>: Sized {
         _: &'a A,
     ) -> Result<Self, ParserError>
     where
-        A: Allocator + ?Sized;
+        A: Allocator;
 }

@@ -25,6 +25,7 @@ where
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Cow<'a, T, A>
 where
     T: ToOwnedIn<A> + ?Sized,
