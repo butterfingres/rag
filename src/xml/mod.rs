@@ -303,7 +303,7 @@ where
     type State;
 
     fn handle_element(
-        _: &mut Option<Self::State>,
+        _: &mut Self::State,
         _: &mut NsReader<&'a [u8]>,
         _: QName<'a>,
         _: &'a A,
@@ -337,22 +337,50 @@ where
     type State = ReplaceableText<'a, A>;
 
     fn handle_element(
-        text: &mut Option<ReplaceableText<'a, A>>,
+        text: &mut ReplaceableText<'a, A>,
         reader: &mut NsReader<&'a [u8]>,
         name: QName<'a>,
         alloc: &'a A,
     ) -> Result<(), ParserError> {
-        if let Some(ReplaceableText {
+        if let ReplaceableText {
             replaceable: true, ..
-        })
-        | None = text
+        } = text
         {
-            *text = Some(ReplaceableText {
+            *text = ReplaceableText {
                 text: read_to_end(reader, name, alloc)?,
                 replaceable: T::IS_REPLACEABLE,
-            });
+            };
             Ok(())
         } else {
+            Ok(())
+        }
+    }
+}
+
+struct OptionalHandler<H> {
+    _marker: PhantomData<H>,
+}
+impl<'a, H, A> HandleElement<'a, A> for OptionalHandler<H>
+where
+    H: HandleElement<'a, A>,
+    H::State: Default,
+    A: Allocator,
+{
+    type State = Option<H::State>;
+
+    fn handle_element(
+        option: &mut Self::State,
+        reader: &mut NsReader<&'a [u8]>,
+        name: QName<'a>,
+        alloc: &'a A,
+    ) -> Result<(), ParserError> {
+        if option.is_none() {
+            let mut val = Default::default();
+            H::handle_element(&mut val, reader, name, alloc)?;
+            *option = Some(val);
+            Ok(())
+        } else {
+            reader.read_to_end(name)?;
             Ok(())
         }
     }
