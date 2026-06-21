@@ -35,7 +35,7 @@ pub struct Cache {
 #[derive(Default)]
 pub struct PartialFeed<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     pub title: Option<Cow<'a, [u8], &'a A>>,
     pub link: Option<PartialText<'a, A>>,
@@ -45,7 +45,7 @@ where
 #[derive(Debug, PartialEq)]
 pub struct Feed<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     pub title: Cow<'a, [u8], &'a A>,
     // The link is optional in atom.
@@ -55,7 +55,7 @@ where
 }
 impl<'a, A> Feed<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     pub fn from_partial(
         PartialFeed {
@@ -91,7 +91,7 @@ pub enum Authority {
 #[derive(Debug, PartialEq)]
 pub struct PartialText<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     text: Cow<'a, [u8], &'a A>,
     authority: Authority,
@@ -140,7 +140,7 @@ where
 // }
 impl<'a, A> From<PartialText<'a, A>> for Cow<'a, [u8], &'a A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     fn from(PartialText { text, .. }: PartialText<'a, A>) -> Cow<'a, [u8], &'a A> {
         text
@@ -150,7 +150,7 @@ where
 #[derive(Default)]
 pub struct PartialEntry<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     pub title: Option<Cow<'a, [u8], &'a A>>,
     pub link: Option<PartialText<'a, A>>,
@@ -162,7 +162,7 @@ where
 #[derive(Debug, PartialEq)]
 pub struct Entry<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     pub title: Option<Cow<'a, [u8], &'a A>>,
     pub link: Option<Cow<'a, [u8], &'a A>>,
@@ -172,7 +172,7 @@ where
 }
 impl<'a, A> From<PartialEntry<'a, A>> for Entry<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     fn from(
         PartialEntry {
@@ -196,7 +196,7 @@ where
 #[derive(Debug, PartialEq)]
 pub struct ParsedFeed<'a, A>
 where
-    A: Allocator,
+    A: Allocator + ?Sized,
 {
     pub feed: Feed<'a, A>,
     pub entries: Vec<Entry<'a, A>>,
@@ -232,5 +232,5 @@ pub trait XmlParser<'a>: Sized {
         _: &'a A,
     ) -> Result<Self, ParserError>
     where
-        A: Allocator;
+        A: Allocator + ?Sized;
 }
