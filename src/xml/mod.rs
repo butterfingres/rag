@@ -1,15 +1,17 @@
 use {
     crate::borrow::Cow,
-    allocator_api2::alloc::Allocator,
+    allocator_api2::{alloc::Allocator, collections::TryReserveError},
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp},
     quick_xml::{
         events::{BytesStart, Event},
+        name::QName,
         reader::NsReader,
     },
     std::{
         error::Error,
         fmt::{self, Display, Formatter},
+        marker::PhantomData,
         num::NonZeroU16,
     },
 };
@@ -38,7 +40,7 @@ where
     A: Allocator + ?Sized,
 {
     pub title: Option<Cow<'a, [u8], &'a A>>,
-    pub link: Option<PartialText<'a, A>>,
+    pub link: Option<ReplaceableText<'a, A>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
@@ -74,13 +76,6 @@ where
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
-pub enum Authority {
-    #[default]
-    Weak,
-    Strong,
-}
-
 /// Text content that may come from multiple sources, with differing
 /// reliablility.
 ///
@@ -89,14 +84,14 @@ pub enum Authority {
 /// descriptions where their quality can differ. Otherwise, you should
 /// stick to a normal type and always override it.
 #[derive(Debug, PartialEq)]
-pub struct PartialText<'a, A>
+pub struct ReplaceableText<'a, A>
 where
     A: Allocator + ?Sized,
 {
     text: Cow<'a, [u8], &'a A>,
-    authority: Authority,
+    replaceable: bool,
 }
-// impl<'a> PartialText<'a> {
+// impl<'a> ReplaceableText<'a> {
 //     pub const fn strong(text: Cow<'a, [u8], A>) -> Self {
 //         Self {
 //             text,
@@ -138,11 +133,11 @@ where
 //         }
 //     }
 // }
-impl<'a, A> From<PartialText<'a, A>> for Cow<'a, [u8], &'a A>
+impl<'a, A> From<ReplaceableText<'a, A>> for Cow<'a, [u8], &'a A>
 where
     A: Allocator + ?Sized,
 {
-    fn from(PartialText { text, .. }: PartialText<'a, A>) -> Cow<'a, [u8], &'a A> {
+    fn from(ReplaceableText { text, .. }: ReplaceableText<'a, A>) -> Cow<'a, [u8], &'a A> {
         text
     }
 }
@@ -153,8 +148,8 @@ where
     A: Allocator + ?Sized,
 {
     pub title: Option<Cow<'a, [u8], &'a A>>,
-    pub link: Option<PartialText<'a, A>>,
-    pub description: Option<PartialText<'a, A>>,
+    pub link: Option<ReplaceableText<'a, A>>,
+    pub description: Option<ReplaceableText<'a, A>>,
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'a, [u8], &'a A>>,
 }
@@ -204,16 +199,25 @@ where
 
 #[derive(Debug)]
 pub enum ParserError {
+    MissingRoot,
+    TryReserve(TryReserveError),
     Xml(quick_xml::Error),
 }
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
+            Self::MissingRoot => f.write_str("failed to get root element"),
+            Self::TryReserve(e) => e.fmt(f),
             Self::Xml(e) => e.fmt(f),
         }
     }
 }
 impl Error for ParserError {}
+impl From<TryReserveError> for ParserError {
+    fn from(e: TryReserveError) -> Self {
+        Self::TryReserve(e)
+    }
+}
 impl From<quick_xml::Error> for ParserError {
     fn from(e: quick_xml::Error) -> Self {
         Self::Xml(e)
@@ -226,11 +230,160 @@ pub trait XmlParser<'a>: Sized {
     fn try_from_root(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>>;
     fn handle_event<A>(
         self,
-        _: &mut NsReader<&'a str>,
+        _: &mut NsReader<&'a [u8]>,
         _: Event<'a>,
         _: &mut Self::State,
         _: &'a A,
     ) -> Result<Self, ParserError>
     where
         A: Allocator + ?Sized;
+}
+
+fn read_to_end<'a, A>(
+    reader: &mut NsReader<&'a [u8]>,
+    name: QName<'a>,
+    alloc: &'a A,
+) -> Result<Cow<'a, [u8], &'a A>, ParserError>
+where
+    A: Allocator + ?Sized,
+{
+    let mut output = Cow::Borrowed(&b""[..]);
+
+    loop {
+        match reader.read_event()? {
+            Event::Text(text) => match output {
+                Cow::Borrowed(b"") => {
+                    output = Cow::try_from_global_in(text.into_inner(), alloc)?;
+                }
+                _ => {
+                    output.try_to_mut_in(alloc)?.extend(text.iter());
+                }
+            },
+            Event::CData(text) => match output {
+                Cow::Borrowed(b"") => {
+                    output = Cow::try_from_global_in(text.into_inner(), alloc)?;
+                }
+                _ => {
+                    output.try_to_mut_in(alloc)?.extend(text.iter());
+                }
+            },
+            Event::GeneralRef(ch) => {
+                if let Some(ch) = ch.resolve_char_ref()? {
+                    let mut buf = [0; 4];
+                    output
+                        .try_to_mut_in(alloc)?
+                        .extend(ch.encode_utf8(&mut buf).bytes());
+                }
+            }
+            Event::Start(start) => {
+                reader.read_to_end(start.name())?;
+                output.try_to_mut_in(alloc)?;
+            }
+            Event::End(end) if end.name() == name => break,
+            _ => {
+                output.try_to_mut_in(alloc)?;
+            }
+        }
+    }
+
+    Ok(output)
+}
+
+pub trait HandleElement<'a, A>
+where
+    A: Allocator + ?Sized,
+{
+    type State;
+
+    fn handle_element(
+        _: &mut Option<Self::State>,
+        _: &mut NsReader<&'a [u8]>,
+        _: QName<'a>,
+        _: &'a A,
+    ) -> Result<(), ParserError>;
+}
+
+trait IsReplaceable {
+    const IS_REPLACEABLE: bool;
+}
+struct Replaceable;
+impl IsReplaceable for Replaceable {
+    const IS_REPLACEABLE: bool = true;
+}
+struct Unreplaceable;
+impl IsReplaceable for Unreplaceable {
+    const IS_REPLACEABLE: bool = false;
+}
+
+#[expect(private_bounds)]
+pub struct ReplaceableTextHandler<T>
+where
+    T: IsReplaceable,
+{
+    _marker: PhantomData<T>,
+}
+impl<'a, T, A> HandleElement<'a, A> for ReplaceableTextHandler<T>
+where
+    T: IsReplaceable,
+    A: Allocator + ?Sized + 'a,
+{
+    type State = ReplaceableText<'a, A>;
+
+    fn handle_element(
+        text: &mut Option<ReplaceableText<'a, A>>,
+        reader: &mut NsReader<&'a [u8]>,
+        name: QName<'a>,
+        alloc: &'a A,
+    ) -> Result<(), ParserError> {
+        if let Some(ReplaceableText {
+            replaceable: true, ..
+        })
+        | None = text
+        {
+            *text = Some(ReplaceableText {
+                text: read_to_end(reader, name, alloc)?,
+                replaceable: T::IS_REPLACEABLE,
+            });
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, crate::alloc::DummyAllocator, std::assert_matches};
+
+    fn test_read_to_end<A, F>(input: &str, alloc: &A, f: F) -> Result<(), ParserError>
+    where
+        A: Allocator + ?Sized,
+        F: FnOnce(Cow<'_, [u8], &A>),
+    {
+        let mut reader = NsReader::from_str(input);
+        loop {
+            match reader.read_event()? {
+                Event::Start(tag) => {
+                    f(read_to_end(&mut reader, tag.name(), alloc)?);
+                    return Ok(());
+                }
+                Event::Eof => return Err(ParserError::MissingRoot),
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn read_to_end_borrowed() -> Result<(), ParserError> {
+        test_read_to_end("<p>hello world</p>", &DummyAllocator, |val| {
+            assert_matches!(val, Cow::Borrowed(b"hello world"))
+        })?;
+        test_read_to_end(
+            "<p><![CDATA[<b>hello</b> world]]></p>",
+            &DummyAllocator,
+            |val| assert_matches!(val, Cow::Borrowed(b"<b>hello</b> world")),
+        )?;
+
+        Ok(())
+    }
 }

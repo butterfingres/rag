@@ -1,3 +1,4 @@
+pub mod alloc;
 pub mod borrow;
 pub mod buffer;
 mod sym;
