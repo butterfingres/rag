@@ -22,6 +22,8 @@ where
     A: Allocator + ?Sized,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
+    link: Option<Cow<'src, [u8], &'alloc A>>,
+    // modify_date: Option<>,
 }
 
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
@@ -65,7 +67,21 @@ where
                 Option::<_>::handle_element(&mut state.title, reader, tag.name(), alloc)
                     .map(|_| step)
             }
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"link" => {
+                Option::<_>::handle_element(&mut state.link, reader, tag.name(), alloc)
+                    .map(|_| step)
+            }
+
             (step, _) => Ok(step),
         }
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[test]
+//     fn test_parser_try_from_root() {
+//     }
+// }

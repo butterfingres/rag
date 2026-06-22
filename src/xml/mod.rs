@@ -45,7 +45,7 @@ where
     A: Allocator + ?Sized,
 {
     pub title: Option<Cow<'src, [u8], &'alloc A>>,
-    pub link: Option<ReplaceableText<'alloc, 'src, A>>,
+    pub link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
@@ -74,7 +74,7 @@ where
     ) -> Option<Self> {
         Some(Self {
             title: title?,
-            link: link.map(Cow::from),
+            link: link.map(Replaceable::into_inner),
             cache,
             last_update,
         })
@@ -89,14 +89,11 @@ where
 /// descriptions where their quality can differ. Otherwise, you should
 /// stick to a normal type and always override it.
 #[derive(Debug, PartialEq)]
-pub struct ReplaceableText<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    text: Cow<'src, [u8], &'alloc A>,
+pub struct Replaceable<T> {
+    data: T,
     replaceable: bool,
 }
-// impl<'a> ReplaceableText<'a> {
+// impl<'a> Replaceable<'a> {
 //     pub const fn strong(text: Cow<'a, [u8], A>) -> Self {
 //         Self {
 //             text,
@@ -138,14 +135,9 @@ where
 //         }
 //     }
 // }
-impl<'alloc, 'src, A> From<ReplaceableText<'alloc, 'src, A>> for Cow<'src, [u8], &'alloc A>
-where
-    A: Allocator + ?Sized,
-{
-    fn from(
-        ReplaceableText { text, .. }: ReplaceableText<'alloc, 'src, A>,
-    ) -> Cow<'src, [u8], &'alloc A> {
-        text
+impl<T> Replaceable<T> {
+    fn into_inner(Replaceable { data, .. }: Self) -> T {
+        data
     }
 }
 
@@ -155,8 +147,8 @@ where
     A: Allocator + ?Sized,
 {
     pub title: Option<Cow<'src, [u8], &'alloc A>>,
-    pub link: Option<ReplaceableText<'alloc, 'src, A>>,
-    pub description: Option<ReplaceableText<'alloc, 'src, A>>,
+    pub link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
+    pub description: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
 }
@@ -187,8 +179,8 @@ where
     ) -> Self {
         Self {
             title,
-            link: link.map(Cow::from),
-            description: description.map(Cow::from),
+            link: link.map(Replaceable::into_inner),
+            description: description.map(Replaceable::into_inner),
             pub_date,
             enclosures,
         }
@@ -353,45 +345,28 @@ where
     ) -> Result<(), ParserError>;
 }
 
-trait IsReplaceable {
-    const IS_REPLACEABLE: bool;
-}
-struct Replaceable;
-impl IsReplaceable for Replaceable {
-    const IS_REPLACEABLE: bool = true;
-}
-struct Unreplaceable;
-impl IsReplaceable for Unreplaceable {
-    const IS_REPLACEABLE: bool = false;
-}
-
-#[expect(private_bounds)]
-pub struct ReplaceableTextHandler<T>
-where
-    T: IsReplaceable,
-{
+pub struct ReplaceableHandler<const REPLACEABLE: bool, T> {
     _marker: PhantomData<T>,
 }
-impl<'alloc, 'src, T, A> HandleElement<'alloc, 'src, A, ReplaceableText<'alloc, 'src, A>>
-    for ReplaceableTextHandler<T>
+impl<'alloc, 'src, const REPLACEABLE: bool, T, A> HandleElement<'alloc, 'src, A, Replaceable<T>>
+    for ReplaceableHandler<REPLACEABLE, T>
 where
-    T: IsReplaceable,
+    T: HandleElement<'alloc, 'src, A, T>,
     A: Allocator + ?Sized,
 {
     fn handle_element(
-        text: &mut ReplaceableText<'alloc, 'src, A>,
+        replaceable: &mut Replaceable<T>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        if let ReplaceableText {
-            replaceable: true, ..
-        } = text
+        if let Replaceable {
+            replaceable: replaceable @ true,
+            data,
+        } = replaceable
         {
-            *text = ReplaceableText {
-                text: read_to_end(reader, name, alloc)?,
-                replaceable: T::IS_REPLACEABLE,
-            };
+            T::handle_element(data, reader, name, alloc)?;
+            *replaceable = REPLACEABLE;
             Ok(())
         } else {
             Ok(())
