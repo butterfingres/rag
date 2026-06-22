@@ -48,7 +48,6 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
         },
         &arena,
     )?;
-    arena.clear();
 
     Ok(())
 }
