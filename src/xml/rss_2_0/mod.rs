@@ -36,14 +36,16 @@ where
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        fn handle_element_into_generic<'alloc, 'src, A>(
+        fn handle_element_into_generic<'alloc, 'src, A, F>(
             hours: &mut RssSkipHours,
             reader: &mut NsReader<&'src [u8]>,
             name: QName<'_>,
             alloc: &'alloc A,
+            reset: F,
         ) -> Result<(), ParserError>
         where
             A: Allocator + ?Sized,
+            F: Fn(Cow<'src, [u8], &'alloc A>) -> Cow<'src, [u8], &'alloc A>,
         {
             let mut buffer = Cow::Borrowed(&b""[..]);
 
@@ -65,23 +67,24 @@ where
                     _ => {}
                 }
 
-                buffer = match buffer {
-                    Cow::Borrowed(_) => Cow::Borrowed(b""),
-                    Cow::Owned(mut buf) => {
-                        buf.clear();
-                        Cow::Owned(buf)
-                    }
-                };
+                buffer = reset(buffer);
             }
 
             Ok(())
         }
 
         if let Some(bump) = (alloc as &dyn Any).downcast_ref::<Bump>() {
-            bump.claim()
-                .scoped(|alloc| handle_element_into_generic(hours, reader, name, alloc))
+            bump.claim().scoped(|alloc| {
+                handle_element_into_generic(hours, reader, name, alloc, |_| Cow::Borrowed(b""))
+            })
         } else {
-            handle_element_into_generic(hours, reader, name, alloc)
+            handle_element_into_generic(hours, reader, name, alloc, |buf| match buf {
+                Cow::Borrowed(_) => Cow::Borrowed(b""),
+                Cow::Owned(mut buf) => {
+                    buf.clear();
+                    Cow::Owned(buf)
+                }
+            })
         }
     }
 }
