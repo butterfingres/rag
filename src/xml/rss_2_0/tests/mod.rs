@@ -9,7 +9,7 @@ use {
 
 #[test]
 fn test_rss_parser() -> Result<(), TestParserError<'static>> {
-    // the examples don't need allocations
+    // the tests don't need allocations
 
     test_parser::<Step, _>(
         include_str!("./1.xml"),
@@ -49,6 +49,8 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
         },
         &alloc::Dummy,
     )?;
+
+    // TODO: test that skipHours' memory is scoped in Bump
 
     Ok(())
 }
