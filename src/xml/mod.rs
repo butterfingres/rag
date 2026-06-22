@@ -32,13 +32,6 @@ pub struct Period {
     frequency: NonZeroU16,
 }
 
-#[derive(Debug, Default, PartialEq)]
-pub struct Cache {
-    skip_weekdays: SkipWeekdays,
-    skip_hours: SkipHours,
-    period: Option<Period>,
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Feed<'alloc, 'src, A>
 where
@@ -47,7 +40,9 @@ where
     pub title: Cow<'src, [u8], &'alloc A>,
     // The link is optional in atom.
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
-    pub cache: Cache,
+    pub skip_weekdays: SkipWeekdays,
+    pub skip_hours: SkipHours,
+    pub period: Option<Period>,
     pub last_update: Option<Timestamp>,
 }
 
