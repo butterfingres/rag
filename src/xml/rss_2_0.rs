@@ -20,6 +20,7 @@ pub enum Step {
     InsideChannel,
 }
 
+#[derive(Debug, Default)]
 pub struct Channel<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
@@ -27,6 +28,16 @@ where
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
     modify_date: Replaceable<Option<Rfc2822Timestamp>>,
+}
+impl<'alloc, 'src, A> PartialEq for Channel<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn eq(&self, r: &Self) -> bool {
+        self.title.as_ref() == r.title.as_ref()
+            && self.link.as_ref() == r.link.as_ref()
+            && self.modify_date == r.modify_date
+    }
 }
 
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
@@ -99,11 +110,37 @@ where
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::{
+            tz,
+            xml::tests::{TestParserError, test_parser},
+        },
+        allocator_api2::alloc::Global,
+        jiff::civil::datetime,
+    };
 
-//     #[test]
-//     fn test_parser_try_from_root() {
-//     }
-// }
+    #[test]
+    fn test_parser_try_from_root() -> Result<(), TestParserError<'static>> {
+        test_parser::<Step, _>(
+            include_str!("./rss_2_0.xml"),
+            Channel {
+                title: Some(Cow::Borrowed(b"example feed")),
+                link: Some(Cow::Borrowed(b"https://example.com/rss")),
+                modify_date: Replaceable {
+                    // Fri, 21 Jul 2023 09:04 EDT
+                    data: Some(
+                        datetime(2023, 07, 21, 09, 04, 00, 00)
+                            .to_zoned(tz::EDT)?
+                            .timestamp()
+                            .into(),
+                    ),
+                    replaceable: false,
+                },
+            },
+            &Global,
+        )
+    }
+}

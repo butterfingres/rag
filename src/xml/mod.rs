@@ -63,6 +63,17 @@ pub struct Replaceable<T> {
     data: T,
     replaceable: bool,
 }
+impl<T> Default for Replaceable<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            data: T::default(),
+            replaceable: true,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Entry<'alloc, 'src, A>
@@ -296,18 +307,13 @@ where
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        if option.is_none() {
-            let val = T::handle_element(reader, name, alloc)?;
-            *option = Some(val);
-            Ok(())
-        } else {
-            reader.read_to_end(name)?;
-            Ok(())
-        }
+        let val = T::handle_element(reader, name, alloc)?;
+        *option = Some(val);
+        Ok(())
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Rfc2822Timestamp(Timestamp);
 impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for Rfc2822Timestamp
 where
@@ -323,6 +329,11 @@ where
         Ok(Rfc2822Timestamp(new_timestamp))
     }
 }
+impl From<Timestamp> for Rfc2822Timestamp {
+    fn from(ts: Timestamp) -> Self {
+        Self(ts)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -334,18 +345,16 @@ mod tests {
     };
 
     #[derive(Debug)]
-    enum TestParserError<'a> {
+    pub enum TestParserError<'a> {
         Parser(ParserError),
         TryFromRoot(TryFromRootError<'a>),
     }
-    impl From<quick_xml::Error> for TestParserError<'_> {
-        fn from(e: quick_xml::Error) -> Self {
-            Self::Parser(ParserError::Xml(e))
-        }
-    }
-    impl From<ParserError> for TestParserError<'_> {
-        fn from(e: ParserError) -> Self {
-            Self::Parser(e)
+    impl<T> From<T> for TestParserError<'_>
+    where
+        T: Into<ParserError>,
+    {
+        fn from(e: T) -> Self {
+            Self::Parser(e.into())
         }
     }
     impl<'a> From<TryFromRootError<'a>> for TestParserError<'a> {
@@ -353,7 +362,7 @@ mod tests {
             Self::TryFromRoot(e)
         }
     }
-    fn test_parser<'alloc, 'src, T, A>(
+    pub fn test_parser<'alloc, 'src, T, A>(
         input: &'src str,
         output: T::State,
         alloc: &'alloc A,

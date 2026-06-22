@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<rss version="2.0">
+  <channel>
+    <title>example feed</title>
+    <link>https://example.com/rss</link>
+    <pubDate>Tue, 10 Jun 2003 04:00:00 GMT</pubDate>
+    <lastBuildDate>Fri, 21 Jul 2023 09:04 EDT</lastBuildDate>
+  </channel>
+</rss>

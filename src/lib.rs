@@ -2,6 +2,7 @@ pub mod alloc;
 pub mod borrow;
 pub mod buffer;
 mod sym;
+pub mod tz;
 pub mod xml;
 
 emacs::plugin_is_GPL_compatible!();
