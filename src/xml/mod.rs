@@ -39,27 +39,27 @@ pub struct Cache {
 }
 
 #[derive(Default)]
-pub struct PartialFeed<'a, A>
+pub struct PartialFeed<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    pub title: Option<Cow<'a, [u8], &'a A>>,
-    pub link: Option<ReplaceableText<'a, A>>,
+    pub title: Option<Cow<'src, [u8], &'alloc A>>,
+    pub link: Option<ReplaceableText<'alloc, 'src, A>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
 #[derive(Debug, PartialEq)]
-pub struct Feed<'a, A>
+pub struct Feed<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    pub title: Cow<'a, [u8], &'a A>,
+    pub title: Cow<'src, [u8], &'alloc A>,
     // The link is optional in atom.
-    pub link: Option<Cow<'a, [u8], &'a A>>,
+    pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
 }
-impl<'a, A> Feed<'a, A>
+impl<'alloc, 'src, A> Feed<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
@@ -69,7 +69,7 @@ where
             link,
             cache,
             last_update,
-        }: PartialFeed<'a, A>,
+        }: PartialFeed<'alloc, 'src, A>,
     ) -> Option<Self> {
         Some(Self {
             title: title?,
@@ -88,11 +88,11 @@ where
 /// descriptions where their quality can differ. Otherwise, you should
 /// stick to a normal type and always override it.
 #[derive(Debug, PartialEq)]
-pub struct ReplaceableText<'a, A>
+pub struct ReplaceableText<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    text: Cow<'a, [u8], &'a A>,
+    text: Cow<'src, [u8], &'alloc A>,
     replaceable: bool,
 }
 // impl<'a> ReplaceableText<'a> {
@@ -137,39 +137,41 @@ where
 //         }
 //     }
 // }
-impl<'a, A> From<ReplaceableText<'a, A>> for Cow<'a, [u8], &'a A>
+impl<'alloc, 'src, A> From<ReplaceableText<'alloc, 'src, A>> for Cow<'src, [u8], &'alloc A>
 where
     A: Allocator + ?Sized,
 {
-    fn from(ReplaceableText { text, .. }: ReplaceableText<'a, A>) -> Cow<'a, [u8], &'a A> {
+    fn from(
+        ReplaceableText { text, .. }: ReplaceableText<'alloc, 'src, A>,
+    ) -> Cow<'src, [u8], &'alloc A> {
         text
     }
 }
 
 #[derive(Default)]
-pub struct PartialEntry<'a, A>
+pub struct PartialEntry<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    pub title: Option<Cow<'a, [u8], &'a A>>,
-    pub link: Option<ReplaceableText<'a, A>>,
-    pub description: Option<ReplaceableText<'a, A>>,
+    pub title: Option<Cow<'src, [u8], &'alloc A>>,
+    pub link: Option<ReplaceableText<'alloc, 'src, A>>,
+    pub description: Option<ReplaceableText<'alloc, 'src, A>>,
     pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Cow<'a, [u8], &'a A>>,
+    pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Entry<'a, A>
+pub struct Entry<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    pub title: Option<Cow<'a, [u8], &'a A>>,
-    pub link: Option<Cow<'a, [u8], &'a A>>,
-    pub description: Option<Cow<'a, [u8], &'a A>>,
+    pub title: Option<Cow<'src, [u8], &'alloc A>>,
+    pub link: Option<Cow<'src, [u8], &'alloc A>>,
+    pub description: Option<Cow<'src, [u8], &'alloc A>>,
     pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Cow<'a, [u8], &'a A>>,
+    pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
 }
-impl<'a, A> From<PartialEntry<'a, A>> for Entry<'a, A>
+impl<'alloc, 'src, A> From<PartialEntry<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
@@ -180,7 +182,7 @@ where
             description,
             pub_date,
             enclosures,
-        }: PartialEntry<'a, A>,
+        }: PartialEntry<'alloc, 'src, A>,
     ) -> Self {
         Self {
             title,
@@ -193,12 +195,12 @@ where
 }
 
 #[derive(Debug, PartialEq)]
-pub struct ParsedFeed<'a, A>
+pub struct ParsedFeed<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    pub feed: Feed<'a, A>,
-    pub entries: Vec<Entry<'a, A>>,
+    pub feed: Feed<'alloc, 'src, A>,
+    pub entries: Vec<Entry<'alloc, 'src, A>>,
 }
 
 #[derive(Debug)]
@@ -228,20 +230,20 @@ impl From<quick_xml::Error> for ParserError {
     }
 }
 
-pub trait Parser<'a, A>: Sized
+pub trait Parser<'alloc, 'src, A>: Sized
 where
     Self: Sized,
     A: Allocator + ?Sized,
 {
     type State;
 
-    fn try_from_root(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>>;
+    fn try_from_root(_: BytesStart<'src>) -> Result<Self, BytesStart<'src>>;
     fn handle_event(
         self,
-        _: &mut NsReader<&'a [u8]>,
-        _: Event<'a>,
+        _: &mut NsReader<&'src [u8]>,
+        _: Event<'src>,
         _: &mut Self::State,
-        _: &'a A,
+        _: &'alloc A,
     ) -> Result<Self, ParserError>;
 }
 // macro_rules! xml_parser {
@@ -273,11 +275,11 @@ where
 //     };
 // }
 
-fn read_to_end<'a, A>(
-    reader: &mut NsReader<&'a [u8]>,
-    name: QName<'a>,
-    alloc: &'a A,
-) -> Result<Cow<'a, [u8], &'a A>, ParserError>
+fn read_to_end<'alloc, 'src, A>(
+    reader: &mut NsReader<&'src [u8]>,
+    name: QName<'_>,
+    alloc: &'alloc A,
+) -> Result<Cow<'src, [u8], &'alloc A>, ParserError>
 where
     A: Allocator + ?Sized,
 {
@@ -328,15 +330,15 @@ where
     Ok(output)
 }
 
-pub trait HandleElement<'a, A, S = Self>
+pub trait HandleElement<'alloc, 'src, A, S = Self>
 where
     A: Allocator + ?Sized,
 {
     fn handle_element(
         _: &mut S,
-        _: &mut NsReader<&'a [u8]>,
-        _: QName<'a>,
-        _: &'a A,
+        _: &mut NsReader<&'src [u8]>,
+        _: QName<'_>,
+        _: &'alloc A,
     ) -> Result<(), ParserError>;
 }
 
@@ -359,16 +361,17 @@ where
 {
     _marker: PhantomData<T>,
 }
-impl<'a, T, A> HandleElement<'a, A, ReplaceableText<'a, A>> for ReplaceableTextHandler<T>
+impl<'alloc, 'src, T, A> HandleElement<'alloc, 'src, A, ReplaceableText<'alloc, 'src, A>>
+    for ReplaceableTextHandler<T>
 where
     T: IsReplaceable,
-    A: Allocator + ?Sized + 'a,
+    A: Allocator + ?Sized,
 {
     fn handle_element(
-        text: &mut ReplaceableText<'a, A>,
-        reader: &mut NsReader<&'a [u8]>,
-        name: QName<'a>,
-        alloc: &'a A,
+        text: &mut ReplaceableText<'alloc, 'src, A>,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         if let ReplaceableText {
             replaceable: true, ..
@@ -385,31 +388,31 @@ where
     }
 }
 
-impl<'a, A> HandleElement<'a, A> for Cow<'a, [u8], &'a A>
+impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for Cow<'src, [u8], &'alloc A>
 where
-    A: Allocator + ?Sized + 'a,
+    A: Allocator + ?Sized,
 {
     fn handle_element(
-        text: &mut Cow<'a, [u8], &'a A>,
-        reader: &mut NsReader<&'a [u8]>,
-        name: QName<'a>,
-        alloc: &'a A,
+        text: &mut Cow<'src, [u8], &'alloc A>,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         *text = read_to_end(reader, name, alloc)?;
         Ok(())
     }
 }
 
-impl<'a, T, A> HandleElement<'a, A> for Option<T>
+impl<'alloc, 'src, 'c, T, A> HandleElement<'alloc, 'src, A> for Option<T>
 where
-    T: Default + HandleElement<'a, A>,
+    T: Default + HandleElement<'alloc, 'src, A>,
     A: Allocator + ?Sized,
 {
     fn handle_element(
         option: &mut Option<T>,
-        reader: &mut NsReader<&'a [u8]>,
-        name: QName<'a>,
-        alloc: &'a A,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         if option.is_none() {
             let mut val = Default::default();

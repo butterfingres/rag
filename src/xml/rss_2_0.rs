@@ -17,19 +17,19 @@ pub enum Step {
     InsideChannel,
 }
 
-pub struct Channel<'a, A>
+pub struct Channel<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    title: Option<Cow<'a, [u8], &'a A>>,
+    title: Option<Cow<'src, [u8], &'alloc A>>,
 }
 
-impl<'a, A> xml::Parser<'a, A> for Step
+impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
-    A: Allocator + ?Sized + 'a,
+    A: Allocator + ?Sized + 'alloc,
 {
-    type State = Channel<'a, A>;
-    fn try_from_root(tag: BytesStart<'a>) -> Result<Self, BytesStart<'a>> {
+    type State = Channel<'alloc, 'src, A>;
+    fn try_from_root(tag: BytesStart<'src>) -> Result<Self, BytesStart<'src>> {
         if tag.name().0 == b"rss" {
             Ok(Self::OutsideChannel)
         } else {
@@ -38,10 +38,10 @@ where
     }
     fn handle_event(
         self,
-        reader: &mut NsReader<&'a [u8]>,
-        event: Event<'a>,
-        state: &mut Channel<'a, A>,
-        alloc: &'a A,
+        reader: &mut NsReader<&'src [u8]>,
+        event: Event<'src>,
+        state: &mut Channel<'alloc, 'src, A>,
+        alloc: &'alloc A,
     ) -> Result<Self, ParserError> {
         match (self, event) {
             (Step::OutsideChannel, Event::Start(tag)) if tag.name().0 == b"channel" => {
@@ -52,14 +52,7 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"title" => {
-                // state.title = Option::han;
-                // Option::<>::handle_element(&mut state.title, reader, tag.name(), alloc)?;
-                // Option::<Cow<'a, [u8], &'a A>>::handle_element(
-                //     &mut state.title,
-                //     reader,
-                //     tag.name(),
-                //     alloc,
-                // )?;
+                Option::<_>::handle_element(&mut state.title, reader, tag.name(), alloc)?;
                 Ok(step)
             }
             (step, _) => Ok(step),
