@@ -39,16 +39,6 @@ pub struct Cache {
     period: Option<Period>,
 }
 
-#[derive(Default)]
-pub struct PartialFeed<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    pub title: Option<Cow<'src, [u8], &'alloc A>>,
-    pub link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    pub cache: Cache,
-    pub last_update: Option<Timestamp>,
-}
 #[derive(Debug, PartialEq)]
 pub struct Feed<'alloc, 'src, A>
 where
@@ -59,26 +49,6 @@ where
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub cache: Cache,
     pub last_update: Option<Timestamp>,
-}
-impl<'alloc, 'src, A> Feed<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    pub fn from_partial(
-        PartialFeed {
-            title,
-            link,
-            cache,
-            last_update,
-        }: PartialFeed<'alloc, 'src, A>,
-    ) -> Option<Self> {
-        Some(Self {
-            title: title?,
-            link: link.map(Replaceable::into_inner),
-            cache,
-            last_update,
-        })
-    }
 }
 
 /// Text content that may come from multiple sources, with differing
@@ -93,65 +63,6 @@ pub struct Replaceable<T> {
     data: T,
     replaceable: bool,
 }
-// impl<'a> Replaceable<'a> {
-//     pub const fn strong(text: Cow<'a, [u8], A>) -> Self {
-//         Self {
-//             text,
-//             authority: Authority::Strong,
-//         }
-//     }
-//     pub const fn weak(text: Cow<'a, [u8], A>) -> Self {
-//         Self {
-//             text,
-//             authority: Authority::Weak,
-//         }
-//     }
-
-//     fn should_replace(old: &Option<Self>, authority: Authority) -> bool {
-//         old.is_none() || old.as_ref().is_some_and(|old| authority > old.authority)
-//     }
-//     pub fn replace_with_text_or_skip(
-//         text: &mut Option<Self>,
-//         tag: &str,
-//         reader: &mut NsReader<'a>,
-//         authority: Authority,
-//     ) -> Result<(), ParserError> {
-//         if Self::should_replace(text, authority) {
-//             *text = Some(Self {
-//                 text: decode_text_to_end(reader, tag)?,
-//                 authority,
-//             });
-//             Ok(())
-//         } else {
-//             reader
-//                 .read_to_end(tag)
-//                 .map(|_| ())
-//                 .map_err(ParserError::Xml)
-//         }
-//     }
-//     pub fn replace_text(old: &mut Option<Self>, new: Self) {
-//         if Self::should_replace(old, new.authority) {
-//             *old = Some(new);
-//         }
-//     }
-// }
-impl<T> Replaceable<T> {
-    fn into_inner(Replaceable { data, .. }: Self) -> T {
-        data
-    }
-}
-
-#[derive(Default)]
-pub struct PartialEntry<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    pub title: Option<Cow<'src, [u8], &'alloc A>>,
-    pub link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    pub description: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
-}
 
 #[derive(Debug, PartialEq)]
 pub struct Entry<'alloc, 'src, A>
@@ -163,28 +74,6 @@ where
     pub description: Option<Cow<'src, [u8], &'alloc A>>,
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
-}
-impl<'alloc, 'src, A> From<PartialEntry<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    fn from(
-        PartialEntry {
-            title,
-            link,
-            description,
-            pub_date,
-            enclosures,
-        }: PartialEntry<'alloc, 'src, A>,
-    ) -> Self {
-        Self {
-            title,
-            link: link.map(Replaceable::into_inner),
-            description: description.map(Replaceable::into_inner),
-            pub_date,
-            enclosures,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq)]
