@@ -9,7 +9,7 @@ use {
 };
 
 #[test]
-fn test_parser_try_from_root() -> Result<(), TestParserError<'static>> {
+fn test_parser() -> Result<(), TestParserError<'static>> {
     let mut arena = Arena::new();
 
     test_parser::<Step, _>(
