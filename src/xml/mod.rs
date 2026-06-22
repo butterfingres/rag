@@ -144,6 +144,19 @@ where
         _: &mut Self::State,
         _: &'alloc A,
     ) -> Result<Self, ParserError>;
+    fn handle_events(
+        mut self,
+        reader: &mut NsReader<&'src [u8]>,
+        state: &mut Self::State,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        loop {
+            match reader.read_event()? {
+                Event::Eof => break Ok(()),
+                event => self = self.handle_event(reader, event, state, alloc)?,
+            }
+        }
+    }
 }
 
 fn read_to_end<'alloc, 'src, A>(
