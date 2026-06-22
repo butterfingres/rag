@@ -2,7 +2,10 @@ pub mod rss_2_0;
 
 use {
     crate::{borrow::Cow, num::ParseIntError},
-    allocator_api2::{alloc::Allocator, collections::TryReserveError},
+    allocator_api2::{
+        alloc::{AllocError, Allocator},
+        collections::TryReserveError,
+    },
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, fmt::rfc2822},
     quick_xml::{
@@ -95,6 +98,7 @@ where
 
 #[derive(Debug)]
 pub enum ParserError {
+    Alloc(AllocError),
     MissingRoot,
     ParseInt(ParseIntError),
     ParseTimestamp(jiff::Error),
@@ -104,6 +108,7 @@ pub enum ParserError {
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
+            Self::Alloc(e) => e.fmt(f),
             Self::MissingRoot => f.write_str("failed to get root element"),
             Self::ParseInt(e) => e.fmt(f),
             Self::ParseTimestamp(e) => e.fmt(f),
@@ -113,6 +118,16 @@ impl Display for ParserError {
     }
 }
 impl Error for ParserError {}
+impl From<AllocError> for ParserError {
+    fn from(e: AllocError) -> Self {
+        Self::Alloc(e)
+    }
+}
+impl From<bump_scope::alloc::AllocError> for ParserError {
+    fn from(_: bump_scope::alloc::AllocError) -> Self {
+        Self::Alloc(AllocError)
+    }
+}
 impl From<jiff::Error> for ParserError {
     fn from(e: jiff::Error) -> Self {
         Self::ParseTimestamp(e)
@@ -359,8 +374,9 @@ mod tests {
     use {
         super::*,
         crate::alloc,
+        allocator_api2::alloc::Global,
+        bump_scope::Bump,
         std::{assert_matches, fmt::Debug},
-        stumpalo::Arena,
     };
 
     #[derive(Debug)]
@@ -441,21 +457,20 @@ mod tests {
 
     #[test]
     fn read_to_end_owned() -> Result<(), ParserError> {
-        let mut alloc = Arena::new();
+        let mut alloc = Bump::<Global>::try_new()?;
 
         test_read_to_end(
             "<p>&lt;b&gt;hello world&lt;/b&gt;</p>",
             &alloc,
             |val| assert_matches!(val, Cow::Owned(val) if val == b"<b>hello world</b>"),
         )?;
-        alloc.clear();
+        alloc.reset();
 
         test_read_to_end(
             "<p>&lt;b&gt;hello world<![CDATA[ goodbye world]]>&lt;/b&gt;</p>",
             &alloc,
             |val| assert_matches!(val, Cow::Owned(val) if val == b"<b>hello world goodbye world</b>"),
         )?;
-        alloc.clear();
 
         Ok(())
     }

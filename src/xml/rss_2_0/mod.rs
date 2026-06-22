@@ -72,7 +72,6 @@ pub enum Step {
     InsideChannel,
 }
 
-#[derive(Default)]
 pub struct Channel<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
@@ -92,6 +91,19 @@ where
             .field("link", &self.link)
             .field("modify_date", &self.modify_date)
             .finish()
+    }
+}
+impl<'alloc, 'src, A> Default for Channel<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn default() -> Self {
+        Self {
+            title: None,
+            link: None,
+            modify_date: None,
+            skip_hours: Default::default(),
+        }
     }
 }
 impl<'alloc, 'src, A> PartialEq for Channel<'alloc, 'src, A>

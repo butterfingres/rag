@@ -1,16 +1,15 @@
 use {
     super::*,
     crate::{
-        tz,
+        alloc, tz,
         xml::tests::{TestParserError, test_parser},
     },
     jiff::civil::datetime,
-    stumpalo::Arena,
 };
 
 #[test]
 fn test_rss_parser() -> Result<(), TestParserError<'static>> {
-    let mut arena = Arena::new();
+    // the examples don't need allocations
 
     test_parser::<Step, _>(
         include_str!("./1.xml"),
@@ -31,9 +30,8 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
                 hours
             },
         },
-        &arena,
+        &alloc::Dummy,
     )?;
-    arena.clear();
 
     test_parser::<Step, _>(
         include_str!("./2.xml"),
@@ -49,7 +47,7 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
             }),
             skip_hours: RssSkipHours::default(),
         },
-        &arena,
+        &alloc::Dummy,
     )?;
 
     Ok(())

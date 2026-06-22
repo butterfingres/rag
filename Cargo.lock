@@ -4,6 +4,18 @@ version = 4
 
 [[package]]
 name = "allocator-api2"
+version = "0.2.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
+
+[[package]]
+name = "allocator-api2"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c583acf993cf4245c4acb0a2cc2ab1f9cc097de73411bb6d3647ff6af2b1013d"
+
+[[package]]
+name = "allocator-api2"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c880a97d28a3681c0267bd29cff89621202715b065127cd445fa0f0fe0aa2880"
@@ -24,6 +36,17 @@ dependencies = [
  "radium",
  "tap",
  "wyz",
+]
+
+[[package]]
+name = "bump-scope"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75c92107a87c788fc556501c24f53a8d9c2b1aefefe4a6e4af1e5804e80cb3a8"
+dependencies = [
+ "allocator-api2 0.2.21",
+ "allocator-api2 0.3.1",
+ "allocator-api2 0.4.0",
 ]
 
 [[package]]
@@ -83,7 +106,7 @@ dependencies = [
  "emacs_module",
  "libc",
  "once_cell",
- "rustc_version 0.2.3",
+ "rustc_version",
  "thiserror",
 ]
 
@@ -215,19 +238,13 @@ checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
 name = "rag-core"
 version = "0.1.0"
 dependencies = [
- "allocator-api2",
+ "allocator-api2 0.4.0",
  "bitvec",
+ "bump-scope",
  "emacs",
  "jiff",
  "quick-xml",
- "stumpalo",
 ]
-
-[[package]]
-name = "readme-rustdocifier"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08ad765b21a08b1a8e5cdce052719188a23772bcbefb3c439f0baaf62c56ceac"
 
 [[package]]
 name = "rustc_version"
@@ -235,16 +252,7 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
- "semver 0.9.0",
-]
-
-[[package]]
-name = "rustc_version"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
-dependencies = [
- "semver 1.0.28",
+ "semver",
 ]
 
 [[package]]
@@ -257,12 +265,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "semver"
-version = "1.0.28"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
-
-[[package]]
 name = "semver-parser"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -273,17 +275,6 @@ name = "strsim"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6446ced80d6c486436db5c078dde11a9f73d42b57fb273121e160b84f63d894c"
-
-[[package]]
-name = "stumpalo"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd4fa66d5ecd840ccd544aeddcb68172bb374d6cc7edce7efda7f348dca7f0ed"
-dependencies = [
- "allocator-api2",
- "readme-rustdocifier",
- "rustc_version 0.4.1",
-]
 
 [[package]]
 name = "syn"
