@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use {
     crate::{
         borrow::Cow,
@@ -109,6 +112,3 @@ where
         }
     }
 }
-
-#[cfg(test)]
-mod tests;
