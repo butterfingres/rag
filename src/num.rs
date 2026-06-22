@@ -24,7 +24,7 @@ impl UnsignedInteger for u32 {
     const TEN: Self = 10;
 
     fn checked_add(self, r: Self) -> Option<Self> {
-        self.checked_mul(r)
+        self.checked_add(r)
     }
     fn checked_mul(self, r: Self) -> Option<Self> {
         self.checked_mul(r)
@@ -46,11 +46,16 @@ impl Display for ParseIntError {
 }
 pub fn parse<T>(bytes: &[u8]) -> Result<T, ParseIntError>
 where
-    T: UnsignedInteger,
+    T: std::fmt::Debug + UnsignedInteger,
 {
     let mut num = T::ZERO;
 
-    for digit in bytes.iter().map(|b| b.wrapping_sub(b'0')).map(T::from) {
+    for digit in bytes
+        .iter()
+        .map(|b| b.wrapping_sub(b'0'))
+        .map(T::from)
+        .skip_while(|digit| *digit == T::ZERO)
+    {
         if digit > T::from(9) {
             return Err(ParseIntError::UnknownDigit);
         }
@@ -71,6 +76,7 @@ mod tests {
     fn test_parse() {
         assert_matches!(parse::<u8>(b"10"), Ok(10));
         assert_matches!(parse::<u8>(b"1000"), Err(ParseIntError::Overflow));
+        assert_matches!(parse::<u32>(b"123456789"), Ok(123456789));
         assert_matches!(parse::<u8>(b"asdf"), Err(ParseIntError::UnknownDigit));
     }
 }

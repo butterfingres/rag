@@ -5,5 +5,10 @@
     <link>https://example.com/rss</link>
     <pubDate>Tue, 10 Jun 2003 04:00:00 GMT</pubDate>
     <lastBuildDate>Fri, 21 Jul 2023 09:04 EDT</lastBuildDate>
+    <skipHours>
+      <hour>1</hour>
+      <hour>2</hour>
+      <hour>3</hour>
+    </skipHours>
   </channel>
 </rss>

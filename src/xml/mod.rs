@@ -1,10 +1,7 @@
 pub mod rss_2_0;
 
 use {
-    crate::{
-        borrow::Cow,
-        num::{self, ParseIntError},
-    },
+    crate::{borrow::Cow, num::ParseIntError},
     allocator_api2::{alloc::Allocator, collections::TryReserveError},
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, fmt::rfc2822},
@@ -354,49 +351,6 @@ where
 impl From<Timestamp> for Rfc2822Timestamp {
     fn from(ts: Timestamp) -> Self {
         Self(ts)
-    }
-}
-
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for SkipHours
-where
-    A: Allocator,
-{
-    fn handle_element_into(
-        hours: &mut SkipHours,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        let mut buffer = Cow::Borrowed(&b""[..]);
-
-        loop {
-            match reader.read_event()? {
-                Event::Start(tag) if tag.name().0 == b"hour" => {
-                    read_to_end_in(reader, tag.name(), &mut buffer, alloc)?;
-                    let hour = usize::from(num::parse::<u8>(tag.as_ref())?);
-                    hours.0.set(hour, true);
-                }
-
-                Event::Start(tag) => {
-                    reader.read_to_end(tag.name())?;
-                }
-
-                Event::End(tag) if tag.name() == name => break,
-                Event::Eof => break,
-
-                _ => {}
-            }
-
-            buffer = match buffer {
-                Cow::Borrowed(_) => Cow::Borrowed(b""),
-                Cow::Owned(mut buf) => {
-                    buf.clear();
-                    Cow::Owned(buf)
-                }
-            };
-        }
-
-        Ok(())
     }
 }
 
