@@ -2,7 +2,7 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, HandleElementInto, ParserError, Replaceable, ReplaceableHandler,
+            self, HandleBridge, HandleElementInto, ParserError, Replaceable, ReplaceableHandler,
             Rfc2822Timestamp, TryFromRootError,
         },
     },
@@ -75,14 +75,14 @@ where
                     .map(|_| step)
             }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
-                // Option::<ReplaceableHandler<true, Rfc2822Timestamp>>::handle_element_into(
+                todo!()
+                // Option::<HandleBridge<ReplaceableHandler<true, HandleBridge<Rfc2822Timestamp>>>>::handle_element_into(
                 //     &mut state.modify_date,
                 //     reader,
                 //     tag.name(),
                 //     alloc,
                 // )
                 // .map(|_| step)
-                todo!()
             }
             (step, _) => Ok(step),
         }

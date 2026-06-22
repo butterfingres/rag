@@ -201,7 +201,7 @@ where
     Ok(output)
 }
 
-pub trait HandleElement<'alloc, 'src, A>
+pub trait HandleElement<'alloc, 'src, A, S = Self>
 where
     Self: Sized,
     A: Allocator + ?Sized,
@@ -210,7 +210,7 @@ where
         _: &mut NsReader<&'src [u8]>,
         _: QName<'_>,
         _: &'alloc A,
-    ) -> Result<Self, ParserError>;
+    ) -> Result<S, ParserError>;
 }
 
 pub trait HandleElementInto<'alloc, 'src, A, S = Self>
@@ -223,6 +223,40 @@ where
         _: QName<'_>,
         _: &'alloc A,
     ) -> Result<(), ParserError>;
+}
+
+pub struct HandleBridge<T> {
+    _marker: PhantomData<T>,
+}
+impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A, T> for HandleBridge<T>
+where
+    T: HandleElement<'alloc, 'src, A>,
+    A: Allocator + ?Sized,
+{
+    fn handle_element_into(
+        data: &mut T,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        *data = T::handle_element(reader, name, alloc)?;
+        Ok(())
+    }
+}
+impl<'alloc, 'src, T, A> HandleElement<'alloc, 'src, A, T> for HandleBridge<T>
+where
+    T: Default + HandleElementInto<'alloc, 'src, A>,
+    A: Allocator + ?Sized,
+{
+    fn handle_element(
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<T, ParserError> {
+        let mut data = T::default();
+        T::handle_element_into(&mut data, reader, name, alloc)?;
+        Ok(data)
+    }
 }
 
 pub struct ReplaceableHandler<const REPLACEABLE: bool, T> {
