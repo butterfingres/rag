@@ -52,8 +52,8 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"title" => {
-                Option::<_>::handle_element(&mut state.title, reader, tag.name(), alloc)?;
-                Ok(step)
+                Option::<_>::handle_element(&mut state.title, reader, tag.name(), alloc)
+                    .map(|_| step)
             }
             (step, _) => Ok(step),
         }
