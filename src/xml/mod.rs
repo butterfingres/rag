@@ -16,14 +16,12 @@ use {
         reader::NsReader,
     },
     std::{
-        any::Any,
         error::Error,
         fmt::{self, Display, Formatter},
         marker::PhantomData,
         num::NonZeroU16,
         str,
     },
-    stumpalo::Arena,
 };
 
 #[derive(Debug, Default, PartialEq)]
@@ -358,7 +356,7 @@ impl From<Timestamp> for Rfc2822Timestamp {
 
 impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for SkipHours
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element(
         reader: &mut NsReader<&'src [u8]>,
@@ -394,8 +392,7 @@ where
                 }
             };
         }
-
-        todo!()
+        Ok(hours)
     }
 }
 
