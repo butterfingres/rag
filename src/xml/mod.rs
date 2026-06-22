@@ -454,7 +454,9 @@ mod tests {
 
     #[test]
     fn read_to_end_owned() -> Result<(), ParserError> {
-        let mut alloc = Bump::<Global>::try_new()?;
+        const LONGEST: &[u8] = b"<b>hello world goodbye world</b>";
+
+        let mut alloc = Bump::<Global>::try_with_size(LONGEST.len())?;
 
         test_read_to_end(
             "<p>&lt;b&gt;hello world&lt;/b&gt;</p>",
@@ -466,7 +468,7 @@ mod tests {
         test_read_to_end(
             "<p>&lt;b&gt;hello world<![CDATA[ goodbye world]]>&lt;/b&gt;</p>",
             &alloc,
-            |val| assert_matches!(val, Cow::Owned(val) if val == b"<b>hello world goodbye world</b>"),
+            |val| assert_matches!(val, Cow::Owned(val) if val == LONGEST),
         )?;
 
         Ok(())

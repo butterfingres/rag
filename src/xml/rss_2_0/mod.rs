@@ -10,7 +10,7 @@ use {
             Rfc2822Timestamp, SkipHours, TryFromRootError, read_to_end_in,
         },
     },
-    allocator_api2::alloc::{Allocator, Global},
+    allocator_api2::alloc::Allocator,
     bump_scope::Bump,
     quick_xml::{
         events::{BytesStart, Event},
@@ -73,7 +73,7 @@ where
             Ok(())
         }
 
-        if let Some(bump) = (alloc as &dyn Any).downcast_ref::<Bump<Global>>() {
+        if let Some(bump) = (alloc as &dyn Any).downcast_ref::<Bump>() {
             bump.claim().scoped(|alloc| {
                 handle_element_into_generic(hours, reader, name, alloc, |_| Cow::Borrowed(b""))
             })
