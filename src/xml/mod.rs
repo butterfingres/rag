@@ -4,7 +4,7 @@ use {
     crate::borrow::Cow,
     allocator_api2::{alloc::Allocator, collections::TryReserveError},
     bitvec::BitArr,
-    jiff::{SpanFieldwise, Timestamp},
+    jiff::{SpanFieldwise, Timestamp, fmt::rfc2822},
     quick_xml::{
         escape::resolve_xml_entity,
         events::attributes::AttrError,
@@ -88,6 +88,7 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     MissingRoot,
+    ParseTimestamp(jiff::Error),
     TryReserve(TryReserveError),
     Xml(quick_xml::Error),
 }
@@ -95,12 +96,18 @@ impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::MissingRoot => f.write_str("failed to get root element"),
+            Self::ParseTimestamp(e) => e.fmt(f),
             Self::TryReserve(e) => e.fmt(f),
             Self::Xml(e) => e.fmt(f),
         }
     }
 }
 impl Error for ParserError {}
+impl From<jiff::Error> for ParserError {
+    fn from(e: jiff::Error) -> Self {
+        Self::ParseTimestamp(e)
+    }
+}
 impl From<TryReserveError> for ParserError {
     fn from(e: TryReserveError) -> Self {
         Self::TryReserve(e)
@@ -270,6 +277,26 @@ where
             reader.read_to_end(name)?;
             Ok(())
         }
+    }
+}
+
+#[derive(Default)]
+pub struct Rfc2822Timestamp(Timestamp);
+impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for Rfc2822Timestamp
+where
+    A: Allocator + ?Sized,
+{
+    fn handle_element(
+        timestamp: &mut Rfc2822Timestamp,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        let new_timestamp = read_to_end(reader, name, alloc)?;
+        let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
+        *timestamp = Rfc2822Timestamp(new_timestamp);
+
+        Ok(())
     }
 }
 
