@@ -12,13 +12,13 @@ include Makefile.in
 all: ${ELCS}
 check: all
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests -l ert -f ert-run-tests-batch-and-exit
-	${CARGO} ${CARGOFLAGS} test
+	${CARGO} ${CARGOFLAGS} test ${CARGOTESTFLAGS}
 clean:
 	-rm ${ELCS}
-	-${CARGO} ${CARGOFLAGS} clean
+	-${CARGO} ${CARGOFLAGS} clean ${CARGOCLEANFLAGS}
 
 target/debug/${LIB}: Cargo.toml src/buffer.rs src/lib.rs src/sym.rs
-	${CARGO} ${CARGOFLAGS} build
+	${CARGO} ${CARGOFLAGS} build ${CARGOBUILDFLAGS}
 target/debug/rag-core.${SO}: target/debug/librag_core.${SO}
 	ln -sf $$(realpath $<) $@
 
