@@ -1,6 +1,7 @@
 pub mod alloc;
 pub mod borrow;
 pub mod buffer;
+mod num;
 mod sym;
 pub mod tz;
 pub mod xml;

@@ -1,0 +1,66 @@
+pub trait UnsignedInteger: From<u8> + PartialOrd {
+    const ZERO: Self;
+    const TEN: Self;
+
+    fn checked_add(self, r: Self) -> Option<Self>;
+    fn checked_mul(self, r: Self) -> Option<Self>;
+}
+
+impl UnsignedInteger for u8 {
+    const ZERO: Self = 0;
+    const TEN: Self = 10;
+
+    fn checked_add(self, r: Self) -> Option<Self> {
+        self.checked_add(r)
+    }
+    fn checked_mul(self, r: Self) -> Option<Self> {
+        self.checked_mul(r)
+    }
+}
+impl UnsignedInteger for u32 {
+    const ZERO: Self = 0;
+    const TEN: Self = 10;
+
+    fn checked_add(self, r: Self) -> Option<Self> {
+        self.checked_mul(r)
+    }
+    fn checked_mul(self, r: Self) -> Option<Self> {
+        self.checked_mul(r)
+    }
+}
+
+#[derive(Debug)]
+pub enum ParseIntError {
+    UnknownDigit,
+    Overflow,
+}
+pub fn parse<T>(bytes: &[u8]) -> Result<T, ParseIntError>
+where
+    T: UnsignedInteger,
+{
+    let mut num = T::ZERO;
+
+    for digit in bytes.iter().map(|b| b.wrapping_sub(b'0')).map(T::from) {
+        if digit > T::from(9) {
+            return Err(ParseIntError::UnknownDigit);
+        }
+        num = num
+            .checked_mul(T::TEN)
+            .and_then(|num| num.checked_add(digit))
+            .ok_or(ParseIntError::Overflow)?;
+    }
+
+    Ok(num)
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, std::assert_matches};
+
+    #[test]
+    fn test_parse() {
+        assert_matches!(parse::<u8>(b"10"), Ok(10));
+        assert_matches!(parse::<u8>(b"1000"), Err(ParseIntError::Overflow));
+        assert_matches!(parse::<u8>(b"asdf"), Err(ParseIntError::UnknownDigit));
+    }
+}

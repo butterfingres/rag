@@ -13,16 +13,20 @@ use {
         reader::NsReader,
     },
     std::{
+        any::Any,
         error::Error,
         fmt::{self, Display, Formatter},
         marker::PhantomData,
         num::NonZeroU16,
         str,
     },
+    stumpalo::Arena,
 };
 
-pub type SkipWeekdays = BitArr![for 7, in u8];
-pub type SkipHours = BitArr![for 24, in u32];
+#[derive(Debug, Default, PartialEq)]
+pub struct SkipWeekdays(BitArr![for 7, in u8]);
+#[derive(Debug, Default, PartialEq)]
+pub struct SkipHours(BitArr![for 24, in u32]);
 
 #[derive(Debug, PartialEq)]
 pub struct Period {
@@ -178,12 +182,24 @@ where
     A: Allocator + ?Sized,
 {
     let mut output = Cow::Borrowed(&b""[..]);
+    read_to_end_in(reader, name, &mut output, alloc)?;
+    Ok(output)
+}
 
+fn read_to_end_in<'alloc, 'src, A>(
+    reader: &mut NsReader<&'src [u8]>,
+    name: QName<'_>,
+    output: &mut Cow<'src, [u8], &'alloc A>,
+    alloc: &'alloc A,
+) -> Result<(), ParserError>
+where
+    A: Allocator + ?Sized,
+{
     loop {
         match reader.read_event()? {
             Event::Text(text) => match output {
                 Cow::Borrowed(b"") => {
-                    output = Cow::try_from_global_in(text.into_inner(), alloc)?;
+                    *output = Cow::try_from_global_in(text.into_inner(), alloc)?;
                 }
                 _ => {
                     output.try_to_mut_in(alloc)?.extend(text.iter());
@@ -191,7 +207,7 @@ where
             },
             Event::CData(text) => match output {
                 Cow::Borrowed(b"") => {
-                    output = Cow::try_from_global_in(text.into_inner(), alloc)?;
+                    *output = Cow::try_from_global_in(text.into_inner(), alloc)?;
                 }
                 _ => {
                     output.try_to_mut_in(alloc)?.extend(text.iter());
@@ -221,7 +237,7 @@ where
         }
     }
 
-    Ok(output)
+    Ok(())
 }
 
 pub trait HandleElement<'alloc, 'src, A, S = Self>
@@ -327,6 +343,50 @@ where
 impl From<Timestamp> for Rfc2822Timestamp {
     fn from(ts: Timestamp) -> Self {
         Self(ts)
+    }
+}
+
+impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for SkipHours
+where
+    A: Allocator + ?Sized,
+{
+    fn handle_element(
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<SkipHours, ParserError> {
+        let mut buffer = Cow::Borrowed(&b""[..]);
+        let hours = SkipHours::default();
+
+        loop {
+            match reader.read_event()? {
+                Event::Start(tag) if tag.name().0 == b"hour" => {
+                    read_to_end_in(reader, tag.name(), &mut buffer, alloc)?;
+                    // str::from_utf8(buffer.as_ref())?;
+
+                    todo!()
+                }
+
+                Event::Start(tag) => {
+                    reader.read_to_end(tag.name())?;
+                }
+
+                Event::End(tag) if tag.name() == name => break,
+                Event::Eof => break,
+
+                _ => {}
+            }
+
+            buffer = match buffer {
+                Cow::Borrowed(_) => Cow::Borrowed(b""),
+                Cow::Owned(mut buf) => {
+                    buf.clear();
+                    Cow::Owned(buf)
+                }
+            };
+        }
+
+        todo!()
     }
 }
 
