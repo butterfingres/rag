@@ -250,7 +250,7 @@ where
     }
 }
 
-impl<'alloc, 'src, 'c, T, A> HandleElement<'alloc, 'src, A> for Option<T>
+impl<'alloc, 'src, T, A> HandleElement<'alloc, 'src, A> for Option<T>
 where
     T: Default + HandleElement<'alloc, 'src, A>,
     A: Allocator + ?Sized,
