@@ -1,6 +1,7 @@
 use {
     allocator_api2::{
         alloc::{Allocator, Global},
+        boxed::Box,
         collections::TryReserveError,
         vec::Vec,
     },
@@ -96,6 +97,15 @@ where
         }
     }
 }
+impl<'a, T, A> Default for Cow<'a, [T], A>
+where
+    [T]: ToOwnedIn<A>,
+    A: Allocator,
+{
+    fn default() -> Self {
+        Self::Borrowed(&[])
+    }
+}
 impl<'a, T, A1, A2> PartialEq<Cow<'a, T, A2>> for Cow<'a, T, A1>
 where
     T: ToOwnedIn<A1> + ToOwnedIn<A2> + PartialEq + ?Sized + 'a,
@@ -107,4 +117,13 @@ where
     fn eq(&self, r: &Cow<'a, T, A2>) -> bool {
         self.as_ref() == r.as_ref()
     }
+}
+
+pub enum MaybeOwned<'a, T, A = Global>
+where
+    T: ?Sized,
+    A: Allocator,
+{
+    Borrow(&'a T),
+    Owned(Box<T, A>),
 }

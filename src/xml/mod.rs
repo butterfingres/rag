@@ -1,3 +1,5 @@
+pub mod rss_2_0;
+
 use {
     crate::borrow::Cow,
     allocator_api2::{alloc::Allocator, collections::TryReserveError},
@@ -226,48 +228,50 @@ impl From<quick_xml::Error> for ParserError {
     }
 }
 
-pub trait XmlParser<'a>: Sized {
+pub trait Parser<'a, A>: Sized
+where
+    Self: Sized,
+    A: Allocator + ?Sized,
+{
     type State;
 
     fn try_from_root(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>>;
-    fn handle_event<A>(
+    fn handle_event(
         self,
         _: &mut NsReader<&'a [u8]>,
         _: Event<'a>,
         _: &mut Self::State,
         _: &'a A,
-    ) -> Result<Self, ParserError>
-    where
-        A: Allocator + ?Sized;
+    ) -> Result<Self, ParserError>;
 }
-macro_rules! xml_parser {
-    (
-        $ident:ident {
-            $($var:ident),* $(,)?
-        },
-        [$($pat:pat => $expr:expr),* $(,)?]
-    ) => {
-        pub struct $ident;
+// macro_rules! xml_parser {
+//     (
+//         $ident:ident {
+//             $($var:ident),* $(,)?
+//         },
+//         [$($pat:pat => $expr:expr),* $(,)?]
+//     ) => {
+//         pub struct $ident;
 
-        impl $crate::xml::XmlParser for $ident {
-            fn try_from_root(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>> {
-                todo!()
-            }
-            fn handle_event<A>(
-                self,
-                _: &mut NsReader<&'a [u8]>,
-                _: Event<'a>,
-                _: &mut Self::State,
-                _: &'a A,
-            ) -> Result<Self, ParserError>
-            where
-                A: Allocator + ?Sized,
-            {
-                todo!()
-            }
-        }
-    };
-}
+//         impl $crate::xml::XmlParser for $ident {
+//             fn try_from_root(_: BytesStart<'a>) -> Result<Self, BytesStart<'a>> {
+//                 todo!()
+//             }
+//             fn handle_event<A>(
+//                 self,
+//                 _: &mut NsReader<&'a [u8]>,
+//                 _: Event<'a>,
+//                 _: &mut Self::State,
+//                 _: &'a A,
+//             ) -> Result<Self, ParserError>
+//             where
+//                 A: Allocator + ?Sized,
+//             {
+//                 todo!()
+//             }
+//         }
+//     };
+// }
 
 fn read_to_end<'a, A>(
     reader: &mut NsReader<&'a [u8]>,
@@ -324,14 +328,12 @@ where
     Ok(output)
 }
 
-pub trait HandleElement<'a, A>
+pub trait HandleElement<'a, A, S = Self>
 where
     A: Allocator + ?Sized,
 {
-    type State;
-
     fn handle_element(
-        _: &mut Self::State,
+        _: &mut S,
         _: &mut NsReader<&'a [u8]>,
         _: QName<'a>,
         _: &'a A,
@@ -357,13 +359,11 @@ where
 {
     _marker: PhantomData<T>,
 }
-impl<'a, T, A> HandleElement<'a, A> for ReplaceableTextHandler<T>
+impl<'a, T, A> HandleElement<'a, A, ReplaceableText<'a, A>> for ReplaceableTextHandler<T>
 where
     T: IsReplaceable,
     A: Allocator + ?Sized + 'a,
 {
-    type State = ReplaceableText<'a, A>;
-
     fn handle_element(
         text: &mut ReplaceableText<'a, A>,
         reader: &mut NsReader<&'a [u8]>,
@@ -385,13 +385,10 @@ where
     }
 }
 
-struct StringHandler;
-impl<'a, A> HandleElement<'a, A> for StringHandler
+impl<'a, A> HandleElement<'a, A> for Cow<'a, [u8], &'a A>
 where
     A: Allocator + ?Sized + 'a,
 {
-    type State = Cow<'a, [u8], &'a A>;
-
     fn handle_element(
         text: &mut Cow<'a, [u8], &'a A>,
         reader: &mut NsReader<&'a [u8]>,
@@ -403,26 +400,20 @@ where
     }
 }
 
-struct OptionalHandler<H> {
-    _marker: PhantomData<H>,
-}
-impl<'a, H, A> HandleElement<'a, A> for OptionalHandler<H>
+impl<'a, T, A> HandleElement<'a, A> for Option<T>
 where
-    H: HandleElement<'a, A>,
-    H::State: Default,
-    A: Allocator,
+    T: Default + HandleElement<'a, A>,
+    A: Allocator + ?Sized,
 {
-    type State = Option<H::State>;
-
     fn handle_element(
-        option: &mut Self::State,
+        option: &mut Option<T>,
         reader: &mut NsReader<&'a [u8]>,
         name: QName<'a>,
         alloc: &'a A,
     ) -> Result<(), ParserError> {
         if option.is_none() {
             let mut val = Default::default();
-            H::handle_element(&mut val, reader, name, alloc)?;
+            T::handle_element(&mut val, reader, name, alloc)?;
             *option = Some(val);
             Ok(())
         } else {
