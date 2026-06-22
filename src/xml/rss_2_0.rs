@@ -1,7 +1,7 @@
 use {
     crate::{
         borrow::Cow,
-        xml::{self, HandleElement, ParserError},
+        xml::{self, HandleElement, ParserError, TryFromRootError},
     },
     allocator_api2::alloc::Allocator,
     quick_xml::{
@@ -29,11 +29,21 @@ where
     A: Allocator + ?Sized + 'alloc,
 {
     type State = Channel<'alloc, 'src, A>;
-    fn try_from_root(tag: BytesStart<'src>) -> Result<Self, BytesStart<'src>> {
-        if tag.name().0 == b"rss" {
+    fn try_from_root(tag: BytesStart<'src>) -> Result<Self, TryFromRootError<'src>> {
+        if tag.name().0 == b"rss" && {
+            let mut found = false;
+            for attr in tag.attributes() {
+                let attr = attr?;
+                if attr.key.0 == b"version" && *attr.value == *b"2.0" {
+                    found = true;
+                    break;
+                }
+            }
+            found
+        } {
             Ok(Self::OutsideChannel)
         } else {
-            Err(tag)
+            Err(TryFromRootError::UnknownRoot(tag))
         }
     }
     fn handle_event(

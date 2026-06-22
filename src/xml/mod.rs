@@ -7,6 +7,7 @@ use {
     jiff::{SpanFieldwise, Timestamp},
     quick_xml::{
         escape::resolve_xml_entity,
+        events::attributes::AttrError,
         events::{BytesStart, Event},
         name::QName,
         reader::NsReader,
@@ -230,6 +231,16 @@ impl From<quick_xml::Error> for ParserError {
     }
 }
 
+pub enum TryFromRootError<'src> {
+    Attr(AttrError),
+    UnknownRoot(BytesStart<'src>),
+}
+impl From<AttrError> for TryFromRootError<'_> {
+    fn from(e: AttrError) -> Self {
+        Self::Attr(e)
+    }
+}
+
 pub trait Parser<'alloc, 'src, A>: Sized
 where
     Self: Sized,
@@ -237,7 +248,7 @@ where
 {
     type State;
 
-    fn try_from_root(_: BytesStart<'src>) -> Result<Self, BytesStart<'src>>;
+    fn try_from_root(_: BytesStart<'src>) -> Result<Self, TryFromRootError<'src>>;
     fn handle_event(
         self,
         _: &mut NsReader<&'src [u8]>,
