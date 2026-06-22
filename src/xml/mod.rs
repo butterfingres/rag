@@ -119,6 +119,7 @@ impl From<quick_xml::Error> for ParserError {
     }
 }
 
+#[derive(Debug)]
 pub enum TryFromRootError<'src> {
     Attr(AttrError),
     UnknownRoot(BytesStart<'src>),
@@ -147,13 +148,16 @@ where
     fn handle_events(
         mut self,
         reader: &mut NsReader<&'src [u8]>,
-        state: &mut Self::State,
         alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
+    ) -> Result<Self::State, ParserError>
+    where
+        Self::State: Default,
+    {
+        let mut state = Default::default();
         loop {
             match reader.read_event()? {
-                Event::Eof => break Ok(()),
-                event => self = self.handle_event(reader, event, state, alloc)?,
+                Event::Eof => break Ok(state),
+                event => self = self.handle_event(reader, event, &mut state, alloc)?,
             }
         }
     }
@@ -322,7 +326,58 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::alloc, std::assert_matches, stumpalo::Arena};
+    use {
+        super::*,
+        crate::alloc,
+        std::{assert_matches, fmt::Debug},
+        stumpalo::Arena,
+    };
+
+    #[derive(Debug)]
+    enum TestParserError<'a> {
+        Parser(ParserError),
+        TryFromRoot(TryFromRootError<'a>),
+    }
+    impl From<quick_xml::Error> for TestParserError<'_> {
+        fn from(e: quick_xml::Error) -> Self {
+            Self::Parser(ParserError::Xml(e))
+        }
+    }
+    impl From<ParserError> for TestParserError<'_> {
+        fn from(e: ParserError) -> Self {
+            Self::Parser(e)
+        }
+    }
+    impl<'a> From<TryFromRootError<'a>> for TestParserError<'a> {
+        fn from(e: TryFromRootError<'a>) -> Self {
+            Self::TryFromRoot(e)
+        }
+    }
+    fn test_parser<'alloc, 'src, T, A>(
+        input: &'src str,
+        output: T::State,
+        alloc: &'alloc A,
+    ) -> Result<(), TestParserError<'src>>
+    where
+        T: Parser<'alloc, 'src, A>,
+        T::State: Debug + Default + PartialEq,
+        A: Allocator + ?Sized,
+    {
+        let mut reader = NsReader::from_str(input);
+        let root = loop {
+            match reader.read_event()? {
+                Event::Start(root) => break root,
+                Event::Eof => return Err(TestParserError::Parser(ParserError::MissingRoot)),
+                _ => {}
+            }
+        };
+
+        let parser = T::try_from_root(root)?;
+        let state = parser.handle_events(&mut reader, alloc)?;
+        assert_eq!(state, output);
+
+        Ok(())
+    }
 
     fn test_read_to_end<A, F>(input: &str, alloc: &A, f: F) -> Result<(), ParserError>
     where
