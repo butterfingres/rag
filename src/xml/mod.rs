@@ -203,6 +203,11 @@ fn read_to_end_in<'alloc, 'src, A>(
 where
     A: Allocator + ?Sized,
 {
+    match output {
+        Cow::Borrowed(_) => *output = Cow::Borrowed(b""),
+        Cow::Owned(buf) => buf.clear(),
+    }
+
     loop {
         match reader.read_event()? {
             Event::Text(text) => match output {
@@ -248,18 +253,6 @@ where
     Ok(())
 }
 
-pub trait HandleElement<'alloc, 'src, A, S = Self>
-where
-    Self: Sized,
-    A: Allocator + ?Sized,
-{
-    fn handle_element(
-        _: &mut NsReader<&'src [u8]>,
-        _: QName<'_>,
-        _: &'alloc A,
-    ) -> Result<S, ParserError>;
-}
-
 pub trait HandleElementInto<'alloc, 'src, A, S = Self>
 where
     A: Allocator + ?Sized,
@@ -302,50 +295,60 @@ where
     }
 }
 
-impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for Cow<'src, [u8], &'alloc A>
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Cow<'src, [u8], &'alloc A>
 where
-    A: Allocator + ?Sized,
-{
-    fn handle_element(
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        alloc: &'alloc A,
-    ) -> Result<Cow<'src, [u8], &'alloc A>, ParserError> {
-        read_to_end(reader, name, alloc)
-    }
-}
-
-impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A> for Option<T>
-where
-    T: HandleElement<'alloc, 'src, A>,
     A: Allocator + ?Sized,
 {
     fn handle_element_into(
-        option: &mut Option<T>,
+        into: &mut Cow<'src, [u8], &'alloc A>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        let val = T::handle_element(reader, name, alloc)?;
-        *option = Some(val);
-        Ok(())
+        read_to_end_in(reader, name, into, alloc)
+    }
+}
+
+impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Option<U>> for Option<T>
+where
+    T: HandleElementInto<'alloc, 'src, A, U>,
+    U: Default,
+    A: Allocator + ?Sized,
+{
+    fn handle_element_into(
+        option: &mut Option<U>,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        if let Some(val) = option {
+            T::handle_element_into(val, reader, name, alloc)?;
+            Ok(())
+        } else {
+            let mut val = U::default();
+            T::handle_element_into(&mut val, reader, name, alloc)?;
+            *option = Some(val);
+            Ok(())
+        }
     }
 }
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Rfc2822Timestamp(Timestamp);
-impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for Rfc2822Timestamp
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Rfc2822Timestamp
 where
     A: Allocator + ?Sized,
 {
-    fn handle_element(
+    fn handle_element_into(
+        timestamp: &mut Rfc2822Timestamp,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
-    ) -> Result<Rfc2822Timestamp, ParserError> {
+    ) -> Result<(), ParserError> {
         let new_timestamp = read_to_end(reader, name, alloc)?;
         let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
-        Ok(Rfc2822Timestamp(new_timestamp))
+        *timestamp = Rfc2822Timestamp(new_timestamp);
+        Ok(())
     }
 }
 impl From<Timestamp> for Rfc2822Timestamp {
@@ -354,17 +357,17 @@ impl From<Timestamp> for Rfc2822Timestamp {
     }
 }
 
-impl<'alloc, 'src, A> HandleElement<'alloc, 'src, A> for SkipHours
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for SkipHours
 where
     A: Allocator,
 {
-    fn handle_element(
+    fn handle_element_into(
+        hours: &mut SkipHours,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
-    ) -> Result<SkipHours, ParserError> {
+    ) -> Result<(), ParserError> {
         let mut buffer = Cow::Borrowed(&b""[..]);
-        let mut hours = SkipHours::default();
 
         loop {
             match reader.read_event()? {
@@ -392,7 +395,8 @@ where
                 }
             };
         }
-        Ok(hours)
+
+        Ok(())
     }
 }
 

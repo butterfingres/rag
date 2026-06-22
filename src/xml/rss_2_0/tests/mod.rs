@@ -17,15 +17,13 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
         Channel {
             title: Some(Cow::Borrowed(b"example feed")),
             link: Some(Cow::Borrowed(b"https://example.com/rss")),
-            modify_date: Replaceable {
-                data: Some(
-                    datetime(2023, 07, 21, 09, 04, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                ),
+            modify_date: Some(Replaceable {
+                data: datetime(2023, 07, 21, 09, 04, 00, 00)
+                    .to_zoned(tz::EDT)?
+                    .timestamp()
+                    .into(),
                 replaceable: false,
-            },
+            }),
         },
         &arena,
     )?;
@@ -36,15 +34,13 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
         Channel {
             title: Some(Cow::Borrowed(b"example feed")),
             link: Some(Cow::Borrowed(b"https://example.com/rss")),
-            modify_date: Replaceable {
-                data: Some(
-                    datetime(2023, 07, 21, 09, 04, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                ),
+            modify_date: Some(Replaceable {
+                data: datetime(2023, 07, 21, 09, 04, 00, 00)
+                    .to_zoned(tz::EDT)?
+                    .timestamp()
+                    .into(),
                 replaceable: false,
-            },
+            }),
         },
         &arena,
     )?;

@@ -31,7 +31,7 @@ where
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
-    modify_date: Replaceable<Option<Rfc2822Timestamp>>,
+    modify_date: Option<Replaceable<Rfc2822Timestamp>>,
 }
 impl<A> Debug for Channel<'_, '_, A>
 where
@@ -94,16 +94,26 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"title" => {
-                Option::<_>::handle_element_into(&mut state.title, reader, tag.name(), alloc)
-                    .map(|_| step)
+                Option::<Cow<'_, [u8], &A>>::handle_element_into(
+                    &mut state.title,
+                    reader,
+                    tag.name(),
+                    alloc,
+                )
+                .map(|_| step)
             }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"link" => {
-                Option::<_>::handle_element_into(&mut state.link, reader, tag.name(), alloc)
-                    .map(|_| step)
+                Option::<Cow<'_, [u8], &A>>::handle_element_into(
+                    &mut state.link,
+                    reader,
+                    tag.name(),
+                    alloc,
+                )
+                .map(|_| step)
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
-                ReplaceableHandler::<true, _>::handle_element_into(
+                Option::<ReplaceableHandler<true, _>>::handle_element_into(
                     &mut state.modify_date,
                     reader,
                     tag.name(),
@@ -112,7 +122,7 @@ where
                 .map(|_| step)
             }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"lastBuildDate" => {
-                ReplaceableHandler::<false, _>::handle_element_into(
+                Option::<ReplaceableHandler<false, _>>::handle_element_into(
                     &mut state.modify_date,
                     reader,
                     tag.name(),
