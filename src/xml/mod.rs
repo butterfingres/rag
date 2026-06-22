@@ -201,11 +201,23 @@ where
     Ok(output)
 }
 
-pub trait HandleElement<'alloc, 'src, A, S = Self>
+pub trait HandleElement<'alloc, 'src, A>
 where
+    Self: Sized,
     A: Allocator + ?Sized,
 {
     fn handle_element(
+        _: &mut NsReader<&'src [u8]>,
+        _: QName<'_>,
+        _: &'alloc A,
+    ) -> Result<Self, ParserError>;
+}
+
+pub trait HandleElementInto<'alloc, 'src, A, S = Self>
+where
+    A: Allocator + ?Sized,
+{
+    fn handle_element_into(
         _: &mut S,
         _: &mut NsReader<&'src [u8]>,
         _: QName<'_>,
@@ -216,13 +228,13 @@ where
 pub struct ReplaceableHandler<const REPLACEABLE: bool, T> {
     _marker: PhantomData<T>,
 }
-impl<'alloc, 'src, const REPLACEABLE: bool, T, A> HandleElement<'alloc, 'src, A, Replaceable<T>>
+impl<'alloc, 'src, const REPLACEABLE: bool, T, A> HandleElementInto<'alloc, 'src, A, Replaceable<T>>
     for ReplaceableHandler<REPLACEABLE, T>
 where
-    T: HandleElement<'alloc, 'src, A, T>,
+    T: HandleElementInto<'alloc, 'src, A>,
     A: Allocator + ?Sized,
 {
-    fn handle_element(
+    fn handle_element_into(
         replaceable: &mut Replaceable<T>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
@@ -233,7 +245,7 @@ where
             data,
         } = replaceable
         {
-            T::handle_element(data, reader, name, alloc)?;
+            T::handle_element_into(data, reader, name, alloc)?;
             *replaceable = REPLACEABLE;
             Ok(())
         } else {
@@ -247,30 +259,27 @@ where
     A: Allocator + ?Sized,
 {
     fn handle_element(
-        text: &mut Cow<'src, [u8], &'alloc A>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        *text = read_to_end(reader, name, alloc)?;
-        Ok(())
+    ) -> Result<Cow<'src, [u8], &'alloc A>, ParserError> {
+        read_to_end(reader, name, alloc)
     }
 }
 
-impl<'alloc, 'src, T, A> HandleElement<'alloc, 'src, A> for Option<T>
+impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A> for Option<T>
 where
-    T: Default + HandleElement<'alloc, 'src, A>,
+    T: HandleElement<'alloc, 'src, A>,
     A: Allocator + ?Sized,
 {
-    fn handle_element(
+    fn handle_element_into(
         option: &mut Option<T>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         if option.is_none() {
-            let mut val = Default::default();
-            T::handle_element(&mut val, reader, name, alloc)?;
+            let val = T::handle_element(reader, name, alloc)?;
             *option = Some(val);
             Ok(())
         } else {
@@ -287,16 +296,13 @@ where
     A: Allocator + ?Sized,
 {
     fn handle_element(
-        timestamp: &mut Rfc2822Timestamp,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
+    ) -> Result<Rfc2822Timestamp, ParserError> {
         let new_timestamp = read_to_end(reader, name, alloc)?;
         let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
-        *timestamp = Rfc2822Timestamp(new_timestamp);
-
-        Ok(())
+        Ok(Rfc2822Timestamp(new_timestamp))
     }
 }
 

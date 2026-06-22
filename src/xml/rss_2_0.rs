@@ -1,7 +1,10 @@
 use {
     crate::{
         borrow::Cow,
-        xml::{self, HandleElement, ParserError, TryFromRootError},
+        xml::{
+            self, HandleElementInto, ParserError, Replaceable, ReplaceableHandler,
+            Rfc2822Timestamp, TryFromRootError,
+        },
     },
     allocator_api2::alloc::Allocator,
     quick_xml::{
@@ -23,7 +26,7 @@ where
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
-    // modify_date: Option<>,
+    modify_date: Option<Replaceable<Rfc2822Timestamp>>,
 }
 
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
@@ -64,14 +67,23 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"title" => {
-                Option::<_>::handle_element(&mut state.title, reader, tag.name(), alloc)
+                Option::<_>::handle_element_into(&mut state.title, reader, tag.name(), alloc)
                     .map(|_| step)
             }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"link" => {
-                Option::<_>::handle_element(&mut state.link, reader, tag.name(), alloc)
+                Option::<_>::handle_element_into(&mut state.link, reader, tag.name(), alloc)
                     .map(|_| step)
             }
-
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
+                // Option::<ReplaceableHandler<true, Rfc2822Timestamp>>::handle_element_into(
+                //     &mut state.modify_date,
+                //     reader,
+                //     tag.name(),
+                //     alloc,
+                // )
+                // .map(|_| step)
+                todo!()
+            }
             (step, _) => Ok(step),
         }
     }
