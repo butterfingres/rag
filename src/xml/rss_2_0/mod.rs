@@ -121,6 +121,11 @@ where
                 .map(|_| step)
             }
 
+            (step, Event::Start(tag)) => {
+                reader.read_to_end(tag.name())?;
+                Ok(step)
+            }
+
             (step, _) => Ok(step),
         }
     }
