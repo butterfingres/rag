@@ -1,6 +1,11 @@
 use {
     allocator_api2::alloc::{AllocError, Allocator},
-    std::{alloc::Layout, cell::Cell, ptr::NonNull},
+    std::{
+        alloc::Layout,
+        cell::Cell,
+        ops::{Deref, DerefMut},
+        ptr::NonNull,
+    },
 };
 
 /// Allocator that never allocates.
@@ -21,7 +26,24 @@ where
     A: Allocator,
 {
     alloc: A,
-    allocated: Cell<bool>,
+    pub allocated: Cell<bool>,
+}
+impl<A> Deref for Tracking<A>
+where
+    A: Allocator,
+{
+    type Target = A;
+    fn deref(&self) -> &Self::Target {
+        &self.alloc
+    }
+}
+impl<A> DerefMut for Tracking<A>
+where
+    A: Allocator,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.alloc
+    }
 }
 impl<A> From<A> for Tracking<A>
 where
@@ -50,22 +72,12 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use {
         super::*,
         allocator_api2::{alloc::Global, vec::Vec},
         std::alloc::LayoutError,
     };
-
-    fn must_allocate<A, F>(alloc: A, f: F)
-    where
-        A: Allocator,
-        F: FnOnce(&Tracking<A>),
-    {
-        let alloc = Tracking::from(alloc);
-        f(&alloc);
-        assert!(alloc.allocated.get());
-    }
 
     #[test]
     fn failing_allocator() -> Result<(), LayoutError> {
@@ -88,25 +100,9 @@ mod tests {
         assert_eq!(alloc.allocated.get(), false);
 
         let alloc = Tracking::from(Global);
-        {
-            let mut vec = Vec::<u8, _>::new_in(&alloc);
-            vec.push(0);
-        }
+        let mut vec = Vec::<u8, _>::new_in(&alloc);
+        vec.push(0);
 
         assert_eq!(alloc.allocated.get(), true);
-    }
-
-    #[should_panic]
-    #[test]
-    fn test_must_allocate_panic() {
-        must_allocate(Dummy, |_| {});
-    }
-
-    #[test]
-    fn test_must_allocate_allocated() {
-        must_allocate(Global, |alloc| {
-            let mut vec = Vec::<u8, _>::new_in(alloc);
-            vec.push(0);
-        });
     }
 }

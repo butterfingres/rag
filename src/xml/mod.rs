@@ -193,6 +193,16 @@ where
     }
 }
 
+fn get_root<'src>(reader: &mut NsReader<&'src [u8]>) -> Result<BytesStart<'src>, ParserError> {
+    loop {
+        match reader.read_event()? {
+            Event::Start(tag) => break Ok(tag),
+            Event::Eof => break Err(ParserError::MissingRoot),
+            _ => {}
+        }
+    }
+}
+
 fn read_to_end<'alloc, 'src, A>(
     reader: &mut NsReader<&'src [u8]>,
     name: QName<'_>,
@@ -408,13 +418,7 @@ mod tests {
         A: Allocator + ?Sized,
     {
         let mut reader = NsReader::from_str(input);
-        let root = loop {
-            match reader.read_event()? {
-                Event::Start(root) => break root,
-                Event::Eof => return Err(TestParserError::Parser(ParserError::MissingRoot)),
-                _ => {}
-            }
-        };
+        let root = get_root(&mut reader)?;
 
         let parser = T::try_from_root(root)?;
         let state = parser.handle_events(&mut reader, alloc)?;
@@ -429,16 +433,9 @@ mod tests {
         F: FnOnce(Cow<'_, [u8], &A>),
     {
         let mut reader = NsReader::from_str(input);
-        loop {
-            match reader.read_event()? {
-                Event::Start(tag) => {
-                    f(read_to_end(&mut reader, tag.name(), alloc)?);
-                    return Ok(());
-                }
-                Event::Eof => return Err(ParserError::MissingRoot),
-                _ => {}
-            }
-        }
+        let root = get_root(&mut reader)?;
+        f(read_to_end(&mut reader, root.name(), alloc)?);
+        Ok(())
     }
 
     #[test]
