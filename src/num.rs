@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 pub trait UnsignedInteger: From<u8> + PartialOrd {
     const ZERO: Self;
     const TEN: Self;
@@ -33,6 +35,14 @@ impl UnsignedInteger for u32 {
 pub enum ParseIntError {
     UnknownDigit,
     Overflow,
+}
+impl Display for ParseIntError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Self::UnknownDigit => f.write_str("number was not in base 10"),
+            Self::Overflow => f.write_str("number was too large"),
+        }
+    }
 }
 pub fn parse<T>(bytes: &[u8]) -> Result<T, ParseIntError>
 where

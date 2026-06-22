@@ -1,7 +1,10 @@
 pub mod rss_2_0;
 
 use {
-    crate::borrow::Cow,
+    crate::{
+        borrow::Cow,
+        num::{self, ParseIntError},
+    },
     allocator_api2::{alloc::Allocator, collections::TryReserveError},
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, fmt::rfc2822},
@@ -98,6 +101,7 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     MissingRoot,
+    ParseInt(ParseIntError),
     ParseTimestamp(jiff::Error),
     TryReserve(TryReserveError),
     Xml(quick_xml::Error),
@@ -106,6 +110,7 @@ impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::MissingRoot => f.write_str("failed to get root element"),
+            Self::ParseInt(e) => e.fmt(f),
             Self::ParseTimestamp(e) => e.fmt(f),
             Self::TryReserve(e) => e.fmt(f),
             Self::Xml(e) => e.fmt(f),
@@ -116,6 +121,11 @@ impl Error for ParserError {}
 impl From<jiff::Error> for ParserError {
     fn from(e: jiff::Error) -> Self {
         Self::ParseTimestamp(e)
+    }
+}
+impl From<ParseIntError> for ParserError {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseInt(e)
     }
 }
 impl From<TryReserveError> for ParserError {
@@ -356,15 +366,14 @@ where
         alloc: &'alloc A,
     ) -> Result<SkipHours, ParserError> {
         let mut buffer = Cow::Borrowed(&b""[..]);
-        let hours = SkipHours::default();
+        let mut hours = SkipHours::default();
 
         loop {
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == b"hour" => {
                     read_to_end_in(reader, tag.name(), &mut buffer, alloc)?;
-                    // str::from_utf8(buffer.as_ref())?;
-
-                    todo!()
+                    let hour = usize::from(num::parse::<u8>(tag.as_ref())?);
+                    hours.0.set(hour, true);
                 }
 
                 Event::Start(tag) => {
