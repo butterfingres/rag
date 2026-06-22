@@ -14,6 +14,7 @@ use {
         events::{BytesStart, Event},
         reader::NsReader,
     },
+    std::fmt::{self, Debug, Formatter},
 };
 
 #[derive(Default)]
@@ -23,7 +24,7 @@ pub enum Step {
     InsideChannel,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Channel<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
@@ -31,6 +32,18 @@ where
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
     modify_date: Replaceable<Option<Rfc2822Timestamp>>,
+}
+impl<A> Debug for Channel<'_, '_, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("channel")
+            .field("title", &self.title)
+            .field("link", &self.link)
+            .field("modify_date", &self.modify_date)
+            .finish()
+    }
 }
 impl<'alloc, 'src, A> PartialEq for Channel<'alloc, 'src, A>
 where
