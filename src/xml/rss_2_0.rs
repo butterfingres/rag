@@ -2,7 +2,7 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, HandleBridge, HandleElementInto, ParserError, Replaceable, ReplaceableHandler,
+            self, HandleElementInto, ParserError, Replaceable, ReplaceableHandler,
             Rfc2822Timestamp, TryFromRootError,
         },
     },
@@ -26,7 +26,7 @@ where
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
-    modify_date: Option<Replaceable<Rfc2822Timestamp>>,
+    modify_date: Replaceable<Option<Rfc2822Timestamp>>,
 }
 
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
@@ -74,16 +74,26 @@ where
                 Option::<_>::handle_element_into(&mut state.link, reader, tag.name(), alloc)
                     .map(|_| step)
             }
+
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
-                todo!()
-                // Option::<HandleBridge<ReplaceableHandler<true, HandleBridge<Rfc2822Timestamp>>>>::handle_element_into(
-                //     &mut state.modify_date,
-                //     reader,
-                //     tag.name(),
-                //     alloc,
-                // )
-                // .map(|_| step)
+                ReplaceableHandler::<true, _>::handle_element_into(
+                    &mut state.modify_date,
+                    reader,
+                    tag.name(),
+                    alloc,
+                )
+                .map(|_| step)
             }
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"lastBuildDate" => {
+                ReplaceableHandler::<false, _>::handle_element_into(
+                    &mut state.modify_date,
+                    reader,
+                    tag.name(),
+                    alloc,
+                )
+                .map(|_| step)
+            }
+
             (step, _) => Ok(step),
         }
     }
