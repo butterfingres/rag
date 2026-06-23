@@ -247,6 +247,14 @@ where
                 .map(|_| step)
             }
 
+            (Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"ttl" => {
+                todo!()
+            }
+
+            (Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"entry" => {
+                todo!()
+            }
+
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
                 Ok(step)
