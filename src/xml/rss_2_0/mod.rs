@@ -170,6 +170,7 @@ where
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
+    description: Option<Cow<'src, [u8], &'alloc A>>,
 }
 impl<A> Default for Item<'_, '_, A>
 where
@@ -179,6 +180,7 @@ where
         Self {
             title: None,
             link: None,
+            description: None,
         }
     }
 }
@@ -186,10 +188,17 @@ impl<'alloc, 'src, A> From<Item<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    fn from(Item { title, link }: Item<'alloc, 'src, A>) -> Entry<'alloc, 'src, A> {
+    fn from(
+        Item {
+            title,
+            link,
+            description,
+        }: Item<'alloc, 'src, A>,
+    ) -> Entry<'alloc, 'src, A> {
         Entry {
             title,
             link,
+            description,
             ..Default::default()
         }
     }
@@ -220,6 +229,14 @@ where
                 Event::Start(tag) if tag.name().0 == b"link" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut item.link,
+                        reader,
+                        tag.name(),
+                        alloc,
+                    )?;
+                }
+                Event::Start(tag) if tag.name().0 == b"description" => {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut item.description,
                         reader,
                         tag.name(),
                         alloc,

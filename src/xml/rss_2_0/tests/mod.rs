@@ -34,6 +34,7 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
         [Entry {
             title: Some(Cow::Borrowed(b"entry 1")),
             link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
+            description: Some(Cow::Borrowed(b"the first entry")),
             ..Entry::default()
         }],
         &alloc::Dummy,

@@ -22,6 +22,7 @@
     <item>
       <title>entry 1</title>
       <link>https://example.com/entry_1</link>
+      <description>the first entry</description>
     </item>
   </channel>
 </rss>
