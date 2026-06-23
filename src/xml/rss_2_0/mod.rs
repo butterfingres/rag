@@ -351,13 +351,12 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"item" => {
-                Item::handle_element_into(&mut cb, reader, tag.name(), alloc)?;
-                Ok(step)
+                Item::handle_element_into(&mut cb, reader, tag.name(), alloc).map(|_| step)
             }
-            (step, Event::Start(tag)) => {
-                reader.read_to_end(tag.name())?;
-                Ok(step)
-            }
+            (step, Event::Start(tag)) => reader
+                .read_to_end(tag.name())
+                .map_err(ParserError::Xml)
+                .map(|_| step),
 
             (step, _) => Ok(step),
         }
