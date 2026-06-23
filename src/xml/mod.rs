@@ -18,7 +18,7 @@ use {
     },
     std::{
         error::Error,
-        fmt::{self, Display, Formatter},
+        fmt::{self, Debug, Display, Formatter},
         marker::PhantomData,
         num::NonZeroU16,
         str,
@@ -74,7 +74,6 @@ where
     }
 }
 
-#[derive(Debug, PartialEq)]
 pub struct Entry<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
@@ -84,6 +83,20 @@ where
     pub description: Option<Cow<'src, [u8], &'alloc A>>,
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
+}
+impl<'alloc, 'src, A> Debug for Entry<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("Entry")
+            .field("title", &self.title)
+            .field("link", &self.link)
+            .field("description", &self.description)
+            .field("pub_date", &self.pub_date)
+            .field("enclosures", &self.enclosures)
+            .finish()
+    }
 }
 impl<'alloc, 'src, A> Default for Entry<'alloc, 'src, A>
 where
@@ -97,6 +110,28 @@ where
             pub_date: None,
             enclosures: Vec::new(),
         }
+    }
+}
+impl<A, B> PartialEq<Entry<'_, '_, B>> for Entry<'_, '_, A>
+where
+    A: Allocator + ?Sized,
+    B: Allocator + ?Sized,
+{
+    fn eq(
+        &self,
+        Entry {
+            title,
+            link,
+            description,
+            pub_date,
+            enclosures,
+        }: &Entry<'_, '_, B>,
+    ) -> bool {
+        self.title.as_deref() == title.as_deref()
+            && self.link.as_deref() == link.as_deref()
+            && self.description.as_deref() == description.as_deref()
+            && self.pub_date == *pub_date
+            && self.enclosures == *enclosures
     }
 }
 
@@ -125,13 +160,13 @@ impl ParserError {
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            Self::Alloc(e) => e.fmt(f),
+            Self::Alloc(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::ParseTimestamp(e) => e.fmt(f),
-            Self::TryReserve(e) => e.fmt(f),
+            Self::ParseInt(e) => Display::fmt(e, f),
+            Self::ParseTimestamp(e) => Display::fmt(e, f),
+            Self::TryReserve(e) => Display::fmt(e, f),
             Self::UnknownWeekday => f.write_str("unknown weekday"),
-            Self::Xml(e) => e.fmt(f),
+            Self::Xml(e) => Display::fmt(e, f),
         }
     }
 }
@@ -458,8 +493,8 @@ mod tests {
     }
     pub fn test_parser<'alloc, 'src, const N: usize, T, A>(
         input: &'src str,
-        output: T::State,
-        entries: [Entry<'alloc, 'src, A>; N],
+        output_state: T::State,
+        output_entries: [Entry<'alloc, 'src, A>; N],
         alloc: &'alloc A,
     ) -> Result<(), TestParserError<'src>>
     where
@@ -470,9 +505,20 @@ mod tests {
         let mut reader = NsReader::from_str(input);
         let root = get_root(&mut reader)?;
 
+        let mut items = 0;
+
         let parser = T::try_from_root(root)?;
-        let state = parser.handle_events(&mut reader, |_| unreachable!(), alloc)?;
-        assert_eq!(state, output);
+        let state = parser.handle_events(
+            &mut reader,
+            |entry| {
+                assert_eq!(entry, output_entries[items]);
+                items += 1;
+                Ok(())
+            },
+            alloc,
+        )?;
+        assert_eq!(state, output_state);
+        assert_eq!(N, items);
 
         Ok(())
     }

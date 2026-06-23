@@ -31,7 +31,10 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
             },
             skip_days: SkipDays::new([0b0000_0111]),
         },
-        [],
+        [Entry {
+            title: Some(Cow::Borrowed(b"entry 1")),
+            ..Entry::default()
+        }],
         &alloc::Dummy,
     )?;
 

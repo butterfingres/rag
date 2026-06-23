@@ -19,5 +19,8 @@
       <day>Saturday</day>
       <day>Sunday</day>
     </skipDays>
+    <item>
+      <title>entry 1</title>
+    </item>
   </channel>
 </rss>

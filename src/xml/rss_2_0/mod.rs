@@ -189,9 +189,10 @@ where
         }
     }
 }
-impl<'alloc, 'src, F, A> HandleElementInto<'alloc, 'src, A, F> for Item<'alloc, 'src, A>
+impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for Item<'alloc, 'src, A>
 where
-    F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T,
+    T: Into<Result<(), ParserError>>,
     A: Allocator + ?Sized,
 {
     fn handle_element_into(
@@ -204,14 +205,19 @@ where
         loop {
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == b"title" => {
-                    OptionHandler::<_>::handle_element_into(&mut item.title, reader, name, alloc)?;
+                    OptionHandler::<_>::handle_element_into(
+                        &mut item.title,
+                        reader,
+                        tag.name(),
+                        alloc,
+                    )?;
                 }
                 Event::Start(tag) => {
                     reader.read_to_end(tag.name())?;
                 }
 
                 Event::End(tag) if tag.name() == name => {
-                    cb(item.into())?;
+                    cb(item.into()).into()?;
                     return Ok(());
                 }
                 Event::Eof => return Err(ParserError::UNCLOSED_TAG),

@@ -5,7 +5,7 @@ use {
         collections::TryReserveError,
         vec::Vec,
     },
-    std::{borrow::Borrow, fmt},
+    std::{borrow::Borrow, fmt, ops::Deref},
 };
 
 pub trait ToOwnedIn<A>
@@ -80,6 +80,18 @@ where
             Self::Borrowed(val) => val,
             Self::Owned(val) => val.as_ref(),
         }
+    }
+}
+impl<'a, T, A> Deref for Cow<'a, T, A>
+where
+    T: ToOwnedIn<A> + PartialEq + ?Sized + 'a,
+    T::Owned: AsRef<T>,
+    A: Allocator,
+{
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        self.as_ref()
     }
 }
 impl<T, A> fmt::Debug for Cow<'_, T, A>
