@@ -169,22 +169,27 @@ where
     A: Allocator + ?Sized,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
+    link: Option<Cow<'src, [u8], &'alloc A>>,
 }
 impl<A> Default for Item<'_, '_, A>
 where
     A: Allocator + ?Sized,
 {
     fn default() -> Self {
-        Self { title: None }
+        Self {
+            title: None,
+            link: None,
+        }
     }
 }
 impl<'alloc, 'src, A> From<Item<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    fn from(Item { title }: Item<'alloc, 'src, A>) -> Entry<'alloc, 'src, A> {
+    fn from(Item { title, link }: Item<'alloc, 'src, A>) -> Entry<'alloc, 'src, A> {
         Entry {
             title,
+            link,
             ..Default::default()
         }
     }
@@ -212,6 +217,15 @@ where
                         alloc,
                     )?;
                 }
+                Event::Start(tag) if tag.name().0 == b"link" => {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut item.link,
+                        reader,
+                        tag.name(),
+                        alloc,
+                    )?;
+                }
+
                 Event::Start(tag) => {
                     reader.read_to_end(tag.name())?;
                 }
@@ -324,7 +338,6 @@ where
                 Item::handle_element_into(&mut cb, reader, tag.name(), alloc)?;
                 Ok(step)
             }
-
             (step, Event::Start(tag)) => {
                 reader.read_to_end(tag.name())?;
                 Ok(step)
