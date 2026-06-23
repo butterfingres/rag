@@ -4,7 +4,7 @@ use {
         alloc, tz,
         xml::tests::{TestParserError, test_parser},
     },
-    jiff::civil::datetime,
+    jiff::{civil::datetime, tz::TimeZone},
 };
 
 #[test]
@@ -28,6 +28,11 @@ fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
             title: Some(Cow::Borrowed(b"entry 1")),
             link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
             description: Some(Cow::Borrowed(b"the first entry")),
+            // Tue, 20 Jun 2003 09:00:00 GMT
+            pub_date: datetime(2003, 06, 20, 09, 00, 00, 00)
+                .to_zoned(TimeZone::UTC)?
+                .timestamp()
+                .into(),
             ..Entry::default()
         }],
         &alloc::Dummy,

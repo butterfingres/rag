@@ -431,6 +431,11 @@ where
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Rfc2822Timestamp(Timestamp);
+impl From<Rfc2822Timestamp> for Timestamp {
+    fn from(Rfc2822Timestamp(ts): Rfc2822Timestamp) -> Self {
+        ts
+    }
+}
 impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Rfc2822Timestamp
 where
     A: Allocator + ?Sized,

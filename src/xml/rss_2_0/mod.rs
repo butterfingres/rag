@@ -17,6 +17,7 @@ use {
         order::{BitOrder, Lsb0},
         view::BitViewSized,
     },
+    jiff::Timestamp,
     quick_xml::{
         events::{BytesStart, Event},
         name::QName,
@@ -164,6 +165,7 @@ where
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
     description: Option<Cow<'src, [u8], &'alloc A>>,
+    pub_date: Option<Rfc2822Timestamp>,
 }
 impl<A> Default for Item<'_, '_, A>
 where
@@ -174,6 +176,7 @@ where
             title: None,
             link: None,
             description: None,
+            pub_date: None,
         }
     }
 }
@@ -186,12 +189,14 @@ where
             title,
             link,
             description,
+            pub_date,
         }: Item<'alloc, 'src, A>,
     ) -> Entry<'alloc, 'src, A> {
         Entry {
             title,
             link,
             description,
+            pub_date: pub_date.map(Timestamp::from),
             ..Default::default()
         }
     }
@@ -230,6 +235,14 @@ where
                 Event::Start(tag) if tag.name().0 == b"description" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut item.description,
+                        reader,
+                        tag.name(),
+                        alloc,
+                    )?;
+                }
+                Event::Start(tag) if tag.name().0 == b"pubDate" => {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut item.pub_date,
                         reader,
                         tag.name(),
                         alloc,
