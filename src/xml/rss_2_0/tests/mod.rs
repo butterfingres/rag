@@ -21,13 +21,8 @@ fn test_rss_parser_1() -> Result<(), TestParserError<'static>> {
                     .into(),
                 replaceable: false,
             }),
-            skip_hours: {
-                let mut hours = SkipHours::default();
-                (1..=3).for_each(|i| hours.set(i, true));
-
-                hours
-            },
-            skip_days: SkipDays::new([0b0000_0111]),
+            skip_hours: SkipHours::new([0b0111]),
+            skip_days: SkipDays::new([0b0111]),
         },
         [Entry {
             title: Some(Cow::Borrowed(b"entry 1")),
