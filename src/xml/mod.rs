@@ -193,16 +193,6 @@ where
     }
 }
 
-fn get_root<'src>(reader: &mut NsReader<&'src [u8]>) -> Result<BytesStart<'src>, ParserError> {
-    loop {
-        match reader.read_event()? {
-            Event::Start(tag) => break Ok(tag),
-            Event::Eof => break Err(ParserError::MissingRoot),
-            _ => {}
-        }
-    }
-}
-
 fn read_to_end<'alloc, 'src, A>(
     reader: &mut NsReader<&'src [u8]>,
     name: QName<'_>,
@@ -413,6 +403,16 @@ mod tests {
         bump_scope::Bump,
         std::{assert_matches, fmt::Debug},
     };
+
+    fn get_root<'src>(reader: &mut NsReader<&'src [u8]>) -> Result<BytesStart<'src>, ParserError> {
+        loop {
+            match reader.read_event()? {
+                Event::Start(tag) => break Ok(tag),
+                Event::Eof => break Err(ParserError::MissingRoot),
+                _ => {}
+            }
+        }
+    }
 
     #[derive(Debug)]
     pub enum TestParserError<'a> {
