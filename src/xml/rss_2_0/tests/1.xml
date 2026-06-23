@@ -14,6 +14,10 @@
       <day>Monday</day>
       <day>Tuesday</day>
       <day>Wednesday</day>
+      <day>Thursday</day>
+      <day>Friday</day>
+      <day>Saturday</day>
+      <day>Sunday</day>
     </skipDays>
   </channel>
 </rss>

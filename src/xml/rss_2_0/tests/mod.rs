@@ -47,7 +47,7 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
                 replaceable: false,
             }),
             skip_hours: SkipHours::default(),
-            skip_days: SkipDays::new([0b0000_0111]),
+            skip_days: SkipDays::new([0b0111_1111]),
         },
         &alloc::Dummy,
     )?;
