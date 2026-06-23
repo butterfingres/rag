@@ -281,10 +281,9 @@ where
 }
 
 pub struct CallbackHandler<F, T, U> {
-    closure: F,
-    _marker: PhantomData<(T, U)>,
+    _marker: PhantomData<(F, T, U)>,
 }
-impl<'alloc, 'src, F, T, U, A> HandleElementInto<'alloc, 'src, A> for CallbackHandler<F, T, U>
+impl<'alloc, 'src, F, T, U, A> HandleElementInto<'alloc, 'src, A, F> for CallbackHandler<F, T, U>
 where
     F: FnMut(U) -> Result<(), ParserError>,
     T: HandleElementInto<'alloc, 'src, A, U>,
@@ -292,7 +291,7 @@ where
     A: Allocator + ?Sized,
 {
     fn handle_element_into(
-        Self { closure, .. }: &mut Self,
+        closure: &mut F,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
