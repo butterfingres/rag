@@ -215,27 +215,30 @@ fn read_to_end_in<'alloc, 'src, A>(
 where
     A: Allocator + ?Sized,
 {
-    match output {
-        Cow::Borrowed(_) => *output = Cow::Borrowed(b""),
-        Cow::Owned(buf) => buf.clear(),
-    }
+    *output = Cow::Borrowed(b"");
 
     loop {
         match reader.read_event()? {
-            Event::Text(text) => match output {
-                Cow::Borrowed(b"") => {
-                    *output = Cow::try_from_global_in(text.into_inner(), alloc)?;
-                }
-                _ => {
-                    output.try_to_mut_in(alloc)?.extend(text.iter());
-                }
-            },
+            Event::Text(text) => {
+                match output {
+                    Cow::Borrowed(b"") => {
+                        *output = Cow::try_from_in(text.into_inner(), alloc)?;
+                    }
+                    _ => {
+                        output
+                            .try_to_mut_in(alloc)?
+                            .extend_from_slice(text.as_ref());
+                    }
+                };
+            }
             Event::CData(text) => match output {
                 Cow::Borrowed(b"") => {
-                    *output = Cow::try_from_global_in(text.into_inner(), alloc)?;
+                    *output = Cow::try_from_in(text.into_inner(), alloc)?;
                 }
                 _ => {
-                    output.try_to_mut_in(alloc)?.extend(text.iter());
+                    output
+                        .try_to_mut_in(alloc)?
+                        .extend_from_slice(text.as_ref());
                 }
             },
             Event::GeneralRef(ch) => {
@@ -253,7 +256,6 @@ where
             }
             Event::Start(start) => {
                 reader.read_to_end(start.name())?;
-                output.try_to_mut_in(alloc)?;
             }
             Event::End(end) if end.name() == name => break,
             _ => {
