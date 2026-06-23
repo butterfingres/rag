@@ -6,7 +6,7 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, HandleElementInto, ParserError, Replaceable, ReplaceableHandler,
+            self, HandleElementInto, OptionHandler, ParserError, Replaceable, ReplaceableHandler,
             Rfc2822Timestamp, SkipHours, TryFromRootError, read_to_end_in,
         },
     },
@@ -179,26 +179,16 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"title" => {
-                Option::<Cow<'_, [u8], &A>>::handle_element_into(
-                    &mut state.title,
-                    reader,
-                    tag.name(),
-                    alloc,
-                )
-                .map(|_| step)
+                OptionHandler::<_>::handle_element_into(&mut state.title, reader, tag.name(), alloc)
+                    .map(|_| step)
             }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"link" => {
-                Option::<Cow<'_, [u8], &A>>::handle_element_into(
-                    &mut state.link,
-                    reader,
-                    tag.name(),
-                    alloc,
-                )
-                .map(|_| step)
+                OptionHandler::<_>::handle_element_into(&mut state.link, reader, tag.name(), alloc)
+                    .map(|_| step)
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
-                Option::<ReplaceableHandler<true, _>>::handle_element_into(
+                OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
                     &mut state.modify_date,
                     reader,
                     tag.name(),
@@ -207,7 +197,7 @@ where
                 .map(|_| step)
             }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"lastBuildDate" => {
-                Option::<ReplaceableHandler<false, _>>::handle_element_into(
+                OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
                     &mut state.modify_date,
                     reader,
                     tag.name(),

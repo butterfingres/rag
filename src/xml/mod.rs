@@ -302,17 +302,17 @@ where
     }
 }
 
-pub struct ReplaceableHandler<const REPLACEABLE: bool, T> {
-    _marker: PhantomData<T>,
+pub struct ReplaceableHandler<const REPLACEABLE: bool, T, U = T> {
+    _marker: PhantomData<(T, U)>,
 }
-impl<'alloc, 'src, const REPLACEABLE: bool, T, A> HandleElementInto<'alloc, 'src, A, Replaceable<T>>
-    for ReplaceableHandler<REPLACEABLE, T>
+impl<'alloc, 'src, const REPLACEABLE: bool, T, U, A>
+    HandleElementInto<'alloc, 'src, A, Replaceable<U>> for ReplaceableHandler<REPLACEABLE, T, U>
 where
-    T: HandleElementInto<'alloc, 'src, A>,
+    T: HandleElementInto<'alloc, 'src, A, U>,
     A: Allocator + ?Sized,
 {
     fn handle_element_into(
-        replaceable: &mut Replaceable<T>,
+        replaceable: &mut Replaceable<U>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
@@ -346,7 +346,10 @@ where
     }
 }
 
-impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Option<U>> for Option<T>
+pub struct OptionHandler<T, U = T> {
+    _marker: PhantomData<(T, U)>,
+}
+impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Option<U>> for OptionHandler<T, U>
 where
     T: HandleElementInto<'alloc, 'src, A, U>,
     U: Default,
