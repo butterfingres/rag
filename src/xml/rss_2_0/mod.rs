@@ -17,7 +17,6 @@ use {
         order::{BitOrder, Lsb0},
         view::BitViewSized,
     },
-    memchr::memrchr,
     quick_xml::{
         events::{BytesStart, Event},
         name::QName,
@@ -26,7 +25,6 @@ use {
     std::{
         fmt::{self, Debug, Formatter},
         marker::PhantomData,
-        ops::{Range, RangeTo},
     },
 };
 
@@ -156,61 +154,6 @@ where
         self.title.as_ref() == r.title.as_ref()
             && self.link.as_ref() == r.link.as_ref()
             && self.modify_date == r.modify_date
-    }
-}
-
-pub struct Author<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    text: Cow<'src, [u8], &'alloc A>,
-    email: RangeTo<usize>,
-    name: Option<Range<usize>>,
-}
-impl<'alloc, 'src, A> Author<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    fn email(&self) -> &[u8] {
-        &self.text[self.email]
-    }
-    fn name(&self) -> Option<&[u8]> {
-        self.name
-            .as_ref()
-            .map(|name| &self.text[name.start..name.end])
-    }
-}
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Author<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    fn handle_element_into(
-        author: &mut Author<'alloc, 'src, A>,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        *author = read_to_end(reader, name, alloc)?.into();
-        Ok(())
-    }
-}
-impl<'alloc, 'src, A> From<Cow<'src, [u8], &'alloc A>> for Author<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    fn from(text: Cow<'src, [u8], &'alloc A>) -> Self {
-        let (email, name) = (|| {
-            let rparen = memrchr(b')', text.as_ref())?;
-            let lparen = memrchr(b'(', &text[..rparen])?;
-            if text[lparen - 1] != b' ' {
-                return None;
-            }
-
-            Some((..lparen - 1, Some(lparen + 1..rparen)))
-        })()
-        .unwrap_or((..text.len(), None));
-
-        Self { text, email, name }
     }
 }
 

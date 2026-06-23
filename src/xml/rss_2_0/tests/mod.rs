@@ -8,20 +8,6 @@ use {
 };
 
 #[test]
-fn test_parse_author() {
-    let author = Author::<alloc::Dummy>::from(Cow::Borrowed(&b"foo@example.com"[..]));
-    assert_eq!(author.email(), b"foo@example.com");
-    assert_eq!(author.name(), None);
-}
-
-#[test]
-fn test_parse_author_with_name() {
-    let author = Author::<alloc::Dummy>::from(Cow::Borrowed(&b"foo@example.com (Bar Baz)"[..]));
-    assert_eq!(author.email(), b"foo@example.com");
-    assert_eq!(author.name(), Some(&b"Bar Baz"[..]));
-}
-
-#[test]
 fn test_rss_parser_1() -> Result<(), TestParserError<'static>> {
     test_parser::<_, Step, _>(
         include_str!("./1.xml"),
