@@ -85,6 +85,20 @@ where
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
 }
+impl<'alloc, 'src, A> Default for Entry<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn default() -> Self {
+        Self {
+            title: None,
+            link: None,
+            description: None,
+            pub_date: None,
+            enclosures: Vec::new(),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct ParsedFeed<'alloc, 'src, A>
@@ -172,26 +186,31 @@ where
     type State;
 
     fn try_from_root(_: BytesStart<'src>) -> Result<Self, TryFromRootError<'src>>;
-    fn handle_event(
+    fn handle_event<F>(
         self,
         _: &mut NsReader<&'src [u8]>,
         _: Event<'src>,
         _: &mut Self::State,
+        _: F,
         _: &'alloc A,
-    ) -> Result<Self, ParserError>;
-    fn handle_events(
+    ) -> Result<Self, ParserError>
+    where
+        F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>;
+    fn handle_events<F>(
         mut self,
         reader: &mut NsReader<&'src [u8]>,
+        mut cb: F,
         alloc: &'alloc A,
     ) -> Result<Self::State, ParserError>
     where
         Self::State: Default,
+        F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
         let mut state = Default::default();
         loop {
             match reader.read_event()? {
                 Event::Eof => break Ok(state),
-                event => self = self.handle_event(reader, event, &mut state, alloc)?,
+                event => self = self.handle_event(reader, event, &mut state, &mut cb, alloc)?,
             }
         }
     }
@@ -437,9 +456,10 @@ mod tests {
             Self::TryFromRoot(e)
         }
     }
-    pub fn test_parser<'alloc, 'src, T, A>(
+    pub fn test_parser<'alloc, 'src, const N: usize, T, A>(
         input: &'src str,
         output: T::State,
+        entries: [Entry<'alloc, 'src, A>; N],
         alloc: &'alloc A,
     ) -> Result<(), TestParserError<'src>>
     where
@@ -451,7 +471,7 @@ mod tests {
         let root = get_root(&mut reader)?;
 
         let parser = T::try_from_root(root)?;
-        let state = parser.handle_events(&mut reader, alloc)?;
+        let state = parser.handle_events(&mut reader, |_| unreachable!(), alloc)?;
         assert_eq!(state, output);
 
         Ok(())

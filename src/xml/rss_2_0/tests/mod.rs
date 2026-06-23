@@ -11,7 +11,7 @@ use {
 fn test_rss_parser() -> Result<(), TestParserError<'static>> {
     // the tests don't need allocations
 
-    test_parser::<Step, _>(
+    test_parser::<_, Step, _>(
         include_str!("./1.xml"),
         Channel {
             title: Some(Cow::Borrowed(b"example feed")),
@@ -31,10 +31,11 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
             },
             skip_days: SkipDays::new([0b0000_0111]),
         },
+        [],
         &alloc::Dummy,
     )?;
 
-    test_parser::<Step, _>(
+    test_parser::<_, Step, _>(
         include_str!("./2.xml"),
         Channel {
             title: Some(Cow::Borrowed(b"example feed")),
@@ -49,6 +50,7 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
             skip_hours: SkipHours::default(),
             skip_days: SkipDays::new([0b0111_1111]),
         },
+        [],
         &alloc::Dummy,
     )?;
 

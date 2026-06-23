@@ -6,8 +6,9 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, HandleElementInto, OptionHandler, ParserError, Replaceable, ReplaceableHandler,
-            Rfc2822Timestamp, SkipDays, SkipHours, TryFromRootError, read_to_end,
+            self, Entry, HandleElementInto, OptionHandler, ParserError, Replaceable,
+            ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours, TryFromRootError,
+            read_to_end,
         },
     },
     allocator_api2::alloc::Allocator,
@@ -163,6 +164,64 @@ where
     }
 }
 
+pub struct Item<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    title: Option<Cow<'src, [u8], &'alloc A>>,
+}
+impl<A> Default for Item<'_, '_, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn default() -> Self {
+        Self { title: None }
+    }
+}
+impl<'alloc, 'src, A> From<Item<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn from(Item { title }: Item<'alloc, 'src, A>) -> Entry<'alloc, 'src, A> {
+        Entry {
+            title,
+            ..Default::default()
+        }
+    }
+}
+impl<'alloc, 'src, F, A> HandleElementInto<'alloc, 'src, A, F> for Item<'alloc, 'src, A>
+where
+    F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+    A: Allocator + ?Sized,
+{
+    fn handle_element_into(
+        cb: &mut F,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        let mut item = Item::default();
+        loop {
+            match reader.read_event()? {
+                Event::Start(tag) if tag.name().0 == b"title" => {
+                    OptionHandler::<_>::handle_element_into(&mut item.title, reader, name, alloc)?;
+                }
+                Event::Start(tag) => {
+                    reader.read_to_end(tag.name())?;
+                }
+
+                Event::End(tag) if tag.name() == name => {
+                    cb(item.into())?;
+                    return Ok(());
+                }
+                Event::Eof => return Err(ParserError::UNCLOSED_TAG),
+
+                _ => {}
+            }
+        }
+    }
+}
+
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
     A: Allocator + 'static,
@@ -185,13 +244,17 @@ where
             Err(TryFromRootError::UnknownRoot(tag))
         }
     }
-    fn handle_event(
+    fn handle_event<F>(
         self,
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut Channel<'alloc, 'src, A>,
+        mut cb: F,
         alloc: &'alloc A,
-    ) -> Result<Self, ParserError> {
+    ) -> Result<Self, ParserError>
+    where
+        F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+    {
         match (self, event) {
             (Step::OutsideChannel, Event::Start(tag)) if tag.name().0 == b"channel" => {
                 Ok(Self::InsideChannel)
@@ -251,8 +314,9 @@ where
                 todo!()
             }
 
-            (Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"entry" => {
-                todo!()
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"item" => {
+                Item::handle_element_into(&mut cb, reader, tag.name(), alloc)?;
+                Ok(step)
             }
 
             (step, Event::Start(tag)) => {
