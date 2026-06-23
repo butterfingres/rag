@@ -23,6 +23,7 @@
       <title>entry 1</title>
       <link>https://example.com/entry_1</link>
       <description>the first entry</description>
+      <author>foo@example.com (Bar Baz)</author>
     </item>
   </channel>
 </rss>
