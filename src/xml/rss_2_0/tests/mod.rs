@@ -50,7 +50,5 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
         &alloc::Dummy,
     )?;
 
-    // TODO: test that skipHours' memory is scoped in Bump
-
     Ok(())
 }

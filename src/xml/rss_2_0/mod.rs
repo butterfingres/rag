@@ -11,16 +11,12 @@ use {
         },
     },
     allocator_api2::alloc::Allocator,
-    bump_scope::Bump,
     quick_xml::{
         events::{BytesStart, Event},
         name::QName,
         reader::NsReader,
     },
-    std::{
-        any::Any,
-        fmt::{self, Debug, Formatter},
-    },
+    std::fmt::{self, Debug, Formatter},
 };
 
 #[derive(Debug, Default, PartialEq)]
@@ -28,7 +24,7 @@ pub struct RssSkipHours(SkipHours);
 
 impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for RssSkipHours
 where
-    A: Allocator + 'static,
+    A: Allocator + ?Sized,
 {
     fn handle_element_into(
         hours: &mut RssSkipHours,
@@ -36,56 +32,27 @@ where
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        fn handle_element_into_generic<'alloc, 'src, A, F>(
-            hours: &mut RssSkipHours,
-            reader: &mut NsReader<&'src [u8]>,
-            name: QName<'_>,
-            alloc: &'alloc A,
-            reset: F,
-        ) -> Result<(), ParserError>
-        where
-            A: Allocator + ?Sized,
-            F: Fn(Cow<'src, [u8], &'alloc A>) -> Cow<'src, [u8], &'alloc A>,
-        {
+        loop {
             let mut buffer = Cow::Borrowed(&b""[..]);
-
-            loop {
-                match reader.read_event()? {
-                    Event::Start(tag) if tag.name().0 == b"hour" => {
-                        read_to_end_in(reader, tag.name(), &mut buffer, alloc)?;
-                        let hour = usize::from(num::parse::<u8>(buffer.as_ref())?);
-                        hours.0.0.set(hour, true);
-                    }
-
-                    Event::Start(tag) => {
-                        reader.read_to_end(tag.name())?;
-                    }
-
-                    Event::End(tag) if tag.name() == name => break,
-                    Event::Eof => break,
-
-                    _ => {}
+            match reader.read_event()? {
+                Event::Start(tag) if tag.name().0 == b"hour" => {
+                    read_to_end_in(reader, tag.name(), &mut buffer, alloc)?;
+                    let hour = usize::from(num::parse::<u8>(buffer.as_ref())?);
+                    hours.0.0.set(hour, true);
                 }
 
-                buffer = reset(buffer);
+                Event::Start(tag) => {
+                    reader.read_to_end(tag.name())?;
+                }
+
+                Event::End(tag) if tag.name() == name => break,
+                Event::Eof => break,
+
+                _ => {}
             }
-
-            Ok(())
         }
 
-        if let Some(bump) = (alloc as &dyn Any).downcast_ref::<Bump>() {
-            bump.claim().scoped(|alloc| {
-                handle_element_into_generic(hours, reader, name, alloc, |_| Cow::Borrowed(b""))
-            })
-        } else {
-            handle_element_into_generic(hours, reader, name, alloc, |buf| match buf {
-                Cow::Borrowed(_) => Cow::Borrowed(b""),
-                Cow::Owned(mut buf) => {
-                    buf.clear();
-                    Cow::Owned(buf)
-                }
-            })
-        }
+        Ok(())
     }
 }
 
