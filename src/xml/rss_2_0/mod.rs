@@ -110,13 +110,6 @@ where
     }
 }
 
-#[derive(Default)]
-pub enum Step {
-    #[default]
-    OutsideChannel,
-    InsideChannel,
-}
-
 pub struct Channel<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
@@ -259,6 +252,12 @@ where
     }
 }
 
+#[derive(Default)]
+pub enum Step {
+    #[default]
+    OutsideChannel,
+    InsideChannel,
+}
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
     A: Allocator + 'static,
