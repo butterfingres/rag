@@ -9,6 +9,7 @@ use {
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, fmt::rfc2822},
     quick_xml::{
+        errors::SyntaxError,
         escape::resolve_xml_entity,
         events::attributes::AttrError,
         events::{BytesStart, Event},
@@ -24,10 +25,8 @@ use {
     },
 };
 
-#[derive(Debug, Default, PartialEq)]
-pub struct SkipWeekdays(BitArr![for 7, in u8]);
-#[derive(Debug, Default, PartialEq)]
-pub struct SkipHours(BitArr![for 24, in u32]);
+pub type SkipDays = BitArr![for 7, in u8];
+pub type SkipHours = BitArr![for 24, in u32];
 
 #[derive(Debug, PartialEq)]
 pub struct Period {
@@ -45,7 +44,7 @@ where
     pub title: Cow<'src, [u8], &'alloc A>,
     // The link is optional in atom.
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
-    pub skip_weekdays: SkipWeekdays,
+    pub skip_days: SkipDays,
     pub skip_hours: SkipHours,
     pub period: Option<Period>,
     pub last_update: Option<Timestamp>,
@@ -103,7 +102,11 @@ pub enum ParserError {
     ParseInt(ParseIntError),
     ParseTimestamp(jiff::Error),
     TryReserve(TryReserveError),
+    UnknownWeekday,
     Xml(quick_xml::Error),
+}
+impl ParserError {
+    const UNCLOSED_TAG: Self = Self::Xml(quick_xml::Error::Syntax(SyntaxError::UnclosedTag));
 }
 impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
@@ -113,6 +116,7 @@ impl Display for ParserError {
             Self::ParseInt(e) => e.fmt(f),
             Self::ParseTimestamp(e) => e.fmt(f),
             Self::TryReserve(e) => e.fmt(f),
+            Self::UnknownWeekday => f.write_str("unknown weekday"),
             Self::Xml(e) => e.fmt(f),
         }
     }
@@ -215,27 +219,30 @@ fn read_to_end_in<'alloc, 'src, A>(
 where
     A: Allocator + ?Sized,
 {
-    match output {
-        Cow::Borrowed(_) => *output = Cow::Borrowed(b""),
-        Cow::Owned(buf) => buf.clear(),
-    }
+    *output = Cow::Borrowed(b"");
 
     loop {
         match reader.read_event()? {
-            Event::Text(text) => match output {
-                Cow::Borrowed(b"") => {
-                    *output = Cow::try_from_global_in(text.into_inner(), alloc)?;
-                }
-                _ => {
-                    output.try_to_mut_in(alloc)?.extend(text.iter());
-                }
-            },
+            Event::Text(text) => {
+                match output {
+                    Cow::Borrowed(b"") => {
+                        *output = Cow::try_from_in(text.into_inner(), alloc)?;
+                    }
+                    _ => {
+                        output
+                            .try_to_mut_in(alloc)?
+                            .extend_from_slice(text.as_ref());
+                    }
+                };
+            }
             Event::CData(text) => match output {
                 Cow::Borrowed(b"") => {
-                    *output = Cow::try_from_global_in(text.into_inner(), alloc)?;
+                    *output = Cow::try_from_in(text.into_inner(), alloc)?;
                 }
                 _ => {
-                    output.try_to_mut_in(alloc)?.extend(text.iter());
+                    output
+                        .try_to_mut_in(alloc)?
+                        .extend_from_slice(text.as_ref());
                 }
             },
             Event::GeneralRef(ch) => {
@@ -253,16 +260,12 @@ where
             }
             Event::Start(start) => {
                 reader.read_to_end(start.name())?;
-                output.try_to_mut_in(alloc)?;
             }
-            Event::End(end) if end.name() == name => break,
-            _ => {
-                output.try_to_mut_in(alloc)?;
-            }
+            Event::End(end) if end.name() == name => return Ok(()),
+            Event::Eof => return Err(ParserError::UNCLOSED_TAG),
+            _ => {}
         }
     }
-
-    Ok(())
 }
 
 pub trait HandleElementInto<'alloc, 'src, A, S = Self>

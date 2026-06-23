@@ -10,5 +10,10 @@
       <hour>2</hour>
       <hour>3</hour>
     </skipHours>
+    <skipDays>
+      <day>Monday</day>
+      <day>Tuesday</day>
+      <day>Wednesday</day>
+    </skipDays>
   </channel>
 </rss>

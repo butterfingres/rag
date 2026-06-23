@@ -7,52 +7,105 @@ use {
         num,
         xml::{
             self, HandleElementInto, OptionHandler, ParserError, Replaceable, ReplaceableHandler,
-            Rfc2822Timestamp, SkipHours, TryFromRootError, read_to_end_in,
+            Rfc2822Timestamp, SkipDays, SkipHours, TryFromRootError, read_to_end,
         },
     },
     allocator_api2::alloc::Allocator,
+    bitvec::{
+        array::BitArray,
+        order::{BitOrder, Lsb0},
+        view::BitViewSized,
+    },
     quick_xml::{
         events::{BytesStart, Event},
         name::QName,
         reader::NsReader,
     },
-    std::fmt::{self, Debug, Formatter},
+    std::{
+        fmt::{self, Debug, Formatter},
+        marker::PhantomData,
+    },
 };
 
-#[derive(Debug, Default, PartialEq)]
-pub struct RssSkipHours(SkipHours);
+trait RssSkip {
+    const TAG: &str;
 
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for RssSkipHours
+    type Order: BitOrder;
+    type View: BitViewSized;
+    type Index: Into<usize>;
+
+    fn parse_index(_: &[u8]) -> Result<Self::Index, ParserError>;
+}
+
+struct RssSkipHour;
+impl RssSkip for RssSkipHour {
+    const TAG: &str = "hour";
+
+    type Order = Lsb0;
+    type View = [u32; 1];
+    type Index = u8;
+
+    fn parse_index(index: &[u8]) -> Result<Self::Index, ParserError> {
+        num::parse(index).map_err(ParserError::ParseInt)
+    }
+}
+
+struct RssSkipDay;
+impl RssSkip for RssSkipDay {
+    const TAG: &str = "day";
+
+    type Order = Lsb0;
+    type View = [u8; 1];
+    type Index = u8;
+
+    fn parse_index(index: &[u8]) -> Result<Self::Index, ParserError> {
+        match index {
+            b"Monday" => Ok(0),
+            b"Tuesday" => Ok(1),
+            b"Wednesday" => Ok(2),
+            b"Thursday" => Ok(3),
+            b"Friday" => Ok(4),
+            b"Saturday" => Ok(5),
+            b"Sunday" => Ok(6),
+            _ => Err(ParserError::UnknownWeekday),
+        }
+    }
+}
+
+struct RssSkipHandler<T> {
+    _marker: PhantomData<T>,
+}
+impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A, BitArray<T::View, T::Order>>
+    for RssSkipHandler<T>
 where
     A: Allocator + ?Sized,
+    T: RssSkip,
 {
     fn handle_element_into(
-        hours: &mut RssSkipHours,
+        bitvec: &mut BitArray<T::View, T::Order>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         loop {
-            let mut buffer = Cow::Borrowed(&b""[..]);
             match reader.read_event()? {
-                Event::Start(tag) if tag.name().0 == b"hour" => {
-                    read_to_end_in(reader, tag.name(), &mut buffer, alloc)?;
-                    let hour = usize::from(num::parse::<u8>(buffer.as_ref())?);
-                    hours.0.0.set(hour, true);
+                Event::Start(tag) if tag.name().0 == T::TAG.as_bytes() => {
+                    let index = read_to_end(reader, tag.name(), alloc)?;
+                    let index: usize = T::parse_index(index.as_ref())?.into();
+                    bitvec.set(index, true);
                 }
-
                 Event::Start(tag) => {
                     reader.read_to_end(tag.name())?;
                 }
 
-                Event::End(tag) if tag.name() == name => break,
-                Event::Eof => break,
+                Event::End(tag) if tag.name() == name => return Ok(()),
+                Event::Eof => {
+                    return Err(ParserError::UNCLOSED_TAG);
+                }
 
                 _ => {}
             }
         }
-
-        Ok(())
     }
 }
 
@@ -70,7 +123,8 @@ where
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
     modify_date: Option<Replaceable<Rfc2822Timestamp>>,
-    skip_hours: RssSkipHours,
+    skip_hours: SkipHours,
+    skip_days: SkipDays,
 }
 impl<A> Debug for Channel<'_, '_, A>
 where
@@ -93,7 +147,8 @@ where
             title: None,
             link: None,
             modify_date: None,
-            skip_hours: Default::default(),
+            skip_hours: SkipHours::default(),
+            skip_days: SkipDays::default(),
         }
     }
 }
@@ -174,8 +229,22 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"skipHours" => {
-                RssSkipHours::handle_element_into(&mut state.skip_hours, reader, tag.name(), alloc)
-                    .map(|_| step)
+                RssSkipHandler::<RssSkipHour>::handle_element_into(
+                    &mut state.skip_hours,
+                    reader,
+                    tag.name(),
+                    alloc,
+                )
+                .map(|_| step)
+            }
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"skipDays" => {
+                RssSkipHandler::<RssSkipDay>::handle_element_into(
+                    &mut state.skip_days,
+                    reader,
+                    tag.name(),
+                    alloc,
+                )
+                .map(|_| step)
             }
 
             (step, Event::Start(tag)) => {

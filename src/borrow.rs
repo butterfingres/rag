@@ -46,10 +46,7 @@ where
     T: ToOwnedIn<A> + ?Sized,
     A: Allocator,
 {
-    pub fn try_from_global_in(
-        cow: std::borrow::Cow<'a, T>,
-        alloc: A,
-    ) -> Result<Self, TryReserveError>
+    pub fn try_from_in(cow: std::borrow::Cow<'a, T>, alloc: A) -> Result<Self, TryReserveError>
     where
         T: ToOwned,
         <T as ToOwned>::Owned: Borrow<T>,
