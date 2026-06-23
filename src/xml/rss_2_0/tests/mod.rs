@@ -8,9 +8,9 @@ use {
 };
 
 #[test]
-fn test_rss_parser_1() -> Result<(), TestParserError<'static>> {
+fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
     test_parser::<_, Step, _>(
-        include_str!("./1.xml"),
+        include_str!("./all.xml"),
         Channel {
             title: Some(Cow::Borrowed(b"example feed")),
             link: Some(Cow::Borrowed(b"https://example.com/rss")),
@@ -35,9 +35,9 @@ fn test_rss_parser_1() -> Result<(), TestParserError<'static>> {
 }
 
 #[test]
-fn test_rss_parser_2() -> Result<(), TestParserError<'static>> {
+fn test_rss_parser_alt() -> Result<(), TestParserError<'static>> {
     test_parser::<_, Step, _>(
-        include_str!("./2.xml"),
+        include_str!("./alt.xml"),
         Channel {
             title: Some(Cow::Borrowed(b"example feed")),
             link: Some(Cow::Borrowed(b"https://example.com/rss")),
