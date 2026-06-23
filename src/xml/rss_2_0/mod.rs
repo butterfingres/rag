@@ -11,6 +11,7 @@ use {
         },
     },
     allocator_api2::alloc::Allocator,
+    bitvec::{order::BitOrder, slice::BitSlice, view::BitViewSized},
     bump_scope::Bump,
     quick_xml::{
         events::{BytesStart, Event},
@@ -20,24 +21,38 @@ use {
     std::{
         any::Any,
         fmt::{self, Debug, Formatter},
+        marker::PhantomData,
+        ops::DerefMut,
     },
 };
 
-#[derive(Debug, Default, PartialEq)]
-pub struct RssSkipHours(SkipHours);
+pub struct RssSkipHours;
 
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for RssSkipHours
+trait BitArrElem {
+    const LIST_TAG: &[u8];
+}
+impl BitArrElem for RssSkipHours {
+    const LIST_TAG: &[u8] = b"hour";
+}
+struct RssBitArr<T, U, V, W> {
+    _marker: PhantomData<(T, U, V, W)>,
+}
+impl<'alloc, 'src, T, U, V, W, A> HandleElementInto<'alloc, 'src, A, T> for RssBitArr<T, U, V, W>
 where
+    T: DerefMut<Target = BitSlice<V::Store, W>>,
+    U: BitArrElem,
+    V: BitViewSized,
+    W: BitOrder,
     A: Allocator + 'static,
 {
     fn handle_element_into(
-        hours: &mut RssSkipHours,
+        vec: &mut T,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        fn handle_element_into_generic<'alloc, 'src, A, F>(
-            hours: &mut RssSkipHours,
+        fn handle_element_into_generic<'alloc, 'src, F, T, U, V, W, A>(
+            vec: &mut T,
             reader: &mut NsReader<&'src [u8]>,
             name: QName<'_>,
             alloc: &'alloc A,
@@ -46,15 +61,19 @@ where
         where
             A: Allocator + ?Sized,
             F: Fn(Cow<'src, [u8], &'alloc A>) -> Cow<'src, [u8], &'alloc A>,
+            T: DerefMut<Target = BitSlice<V::Store, W>>,
+            U: BitArrElem,
+            V: BitViewSized,
+            W: BitOrder,
         {
             let mut buffer = Cow::Borrowed(&b""[..]);
 
             loop {
                 match reader.read_event()? {
-                    Event::Start(tag) if tag.name().0 == b"hour" => {
+                    Event::Start(tag) if tag.name().0 == U::LIST_TAG => {
                         read_to_end_in(reader, tag.name(), &mut buffer, alloc)?;
                         let hour = usize::from(num::parse::<u8>(buffer.as_ref())?);
-                        hours.0.0.set(hour, true);
+                        vec.set(hour, true);
                     }
 
                     Event::Start(tag) => {
@@ -75,14 +94,18 @@ where
 
         if let Some(bump) = (alloc as &dyn Any).downcast_ref::<Bump>() {
             bump.claim().scoped(|alloc| {
-                handle_element_into_generic(hours, reader, name, alloc, |_| Cow::Borrowed(b""))
+                handle_element_into_generic::<_, T, U, V, W, _>(vec, reader, name, alloc, |_| {
+                    Cow::Borrowed(b"")
+                })
             })
         } else {
-            handle_element_into_generic(hours, reader, name, alloc, |buf| match buf {
-                Cow::Borrowed(_) => Cow::Borrowed(b""),
-                Cow::Owned(mut buf) => {
-                    buf.clear();
-                    Cow::Owned(buf)
+            handle_element_into_generic::<_, T, U, V, W, A>(vec, reader, name, alloc, |buf| {
+                match buf {
+                    Cow::Borrowed(_) => Cow::Borrowed(b""),
+                    Cow::Owned(mut buf) => {
+                        buf.clear();
+                        Cow::Owned(buf)
+                    }
                 }
             })
         }
@@ -103,7 +126,7 @@ where
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
     modify_date: Option<Replaceable<Rfc2822Timestamp>>,
-    skip_hours: RssSkipHours,
+    skip_hours: SkipHours,
 }
 impl<A> Debug for Channel<'_, '_, A>
 where
@@ -207,8 +230,13 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"skipHours" => {
-                RssSkipHours::handle_element_into(&mut state.skip_hours, reader, tag.name(), alloc)
-                    .map(|_| step)
+                RssBitArr::<SkipHours, RssSkipHours, [u32; 1], _>::handle_element_into(
+                    &mut state.skip_hours,
+                    reader,
+                    tag.name(),
+                    alloc,
+                )
+                .map(|_| step)
             }
 
             (step, Event::Start(tag)) => {

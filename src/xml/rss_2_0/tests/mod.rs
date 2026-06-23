@@ -24,8 +24,8 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
                 replaceable: false,
             }),
             skip_hours: {
-                let mut hours = RssSkipHours::default();
-                (1..=3).for_each(|i| hours.0.0.set(i, true));
+                let mut hours = SkipHours::default();
+                (1..=3).for_each(|i| hours.set(i, true));
 
                 hours
             },
@@ -45,7 +45,7 @@ fn test_rss_parser() -> Result<(), TestParserError<'static>> {
                     .into(),
                 replaceable: false,
             }),
-            skip_hours: RssSkipHours::default(),
+            skip_hours: SkipHours::default(),
         },
         &alloc::Dummy,
     )?;

@@ -24,10 +24,8 @@ use {
     },
 };
 
-#[derive(Debug, Default, PartialEq)]
-pub struct SkipWeekdays(BitArr![for 7, in u8]);
-#[derive(Debug, Default, PartialEq)]
-pub struct SkipHours(BitArr![for 24, in u32]);
+pub type SkipWeekdays = BitArr![for 7, in u8];
+pub type SkipHours = BitArr![for 24, in u32];
 
 #[derive(Debug, PartialEq)]
 pub struct Period {
