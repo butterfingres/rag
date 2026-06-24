@@ -8,7 +8,7 @@ use {
         vec::Vec,
     },
     bitvec::BitArr,
-    jiff::{SpanFieldwise, Timestamp, fmt::rfc2822},
+    jiff::{Timestamp, fmt::rfc2822},
     quick_xml::{
         errors::SyntaxError,
         escape::resolve_xml_entity,
@@ -21,7 +21,6 @@ use {
         error::Error,
         fmt::{self, Debug, Display, Formatter},
         marker::PhantomData,
-        num::NonZeroU16,
         ops::Range,
         str,
     },
@@ -35,7 +34,7 @@ pub struct Feed<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    pub title: Cow<'src, [u8], &'alloc A>,
+    pub title: Option<Cow<'src, [u8], &'alloc A>>,
     // The link is optional in atom.
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub skip_days: SkipDays,
@@ -64,6 +63,11 @@ where
             data: T::default(),
             replaceable: true,
         }
+    }
+}
+impl<T> Replaceable<T> {
+    fn into_inner(Replaceable { data, .. }: Replaceable<T>) -> T {
+        data
     }
 }
 
@@ -418,6 +422,11 @@ where
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Rfc2822Timestamp(Timestamp);
+impl From<Timestamp> for Rfc2822Timestamp {
+    fn from(ts: Timestamp) -> Self {
+        Self(ts)
+    }
+}
 impl From<Rfc2822Timestamp> for Timestamp {
     fn from(Rfc2822Timestamp(ts): Rfc2822Timestamp) -> Self {
         ts
@@ -437,11 +446,6 @@ where
         let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
         *timestamp = Rfc2822Timestamp(new_timestamp);
         Ok(())
-    }
-}
-impl From<Timestamp> for Rfc2822Timestamp {
-    fn from(ts: Timestamp) -> Self {
-        Self(ts)
     }
 }
 

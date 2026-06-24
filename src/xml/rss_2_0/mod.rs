@@ -6,9 +6,9 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, Enclosure, Entry, HandleElementInto, OptionHandler, ParserError, Replaceable,
-            ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours, TryFromRootError,
-            read_to_end,
+            self, Enclosure, Entry, Feed, HandleElementInto, OptionHandler, ParserError,
+            Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
+            TryFromRootError, read_to_end,
         },
     },
     allocator_api2::{alloc::Allocator, vec::Vec},
@@ -146,6 +146,30 @@ where
             modify_date: None,
             skip_hours: SkipHours::default(),
             skip_days: SkipDays::default(),
+        }
+    }
+}
+impl<'alloc, 'src, A> From<Channel<'alloc, 'src, A>> for Feed<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn from(
+        Channel {
+            title,
+            link,
+            modify_date,
+            skip_hours,
+            skip_days,
+        }: Channel<'alloc, 'src, A>,
+    ) -> Feed<'alloc, 'src, A> {
+        Feed {
+            title,
+            link,
+            skip_days,
+            skip_hours,
+            last_update: modify_date
+                .map(Replaceable::into_inner)
+                .map(Timestamp::from),
         }
     }
 }
