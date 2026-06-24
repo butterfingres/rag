@@ -1,3 +1,4 @@
+pub mod atom;
 pub mod rss_2_0;
 
 use {
@@ -240,7 +241,8 @@ where
     type Reader: ParserReader<'src>;
     type State;
 
-    fn try_from_root(_: BytesStart<'src>) -> Result<Self, TryFromRootError<'src>>;
+    fn try_from_root(_: BytesStart<'src>, _: &Self::Reader)
+    -> Result<Self, TryFromRootError<'src>>;
     fn handle_event<F>(
         self,
         _: &mut Self::Reader,
@@ -545,7 +547,7 @@ mod tests {
 
         let mut items = 0;
 
-        let parser = T::try_from_root(root)?;
+        let parser = T::try_from_root(root, &reader)?;
         let state = parser.handle_events(
             &mut reader,
             |entry| {

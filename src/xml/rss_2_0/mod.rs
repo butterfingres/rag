@@ -352,7 +352,10 @@ where
     type Reader = Reader<&'src [u8]>;
     type State = Channel<'alloc, 'src, A>;
 
-    fn try_from_root(tag: BytesStart<'src>) -> Result<Self, TryFromRootError<'src>> {
+    fn try_from_root(
+        tag: BytesStart<'src>,
+        _: &Self::Reader,
+    ) -> Result<Self, TryFromRootError<'src>> {
         if tag.name().0 == b"rss" && {
             let mut found = false;
             for attr in tag.attributes() {
