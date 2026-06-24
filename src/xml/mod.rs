@@ -419,15 +419,14 @@ where
 pub struct VecHandler<T, U = T> {
     _marker: PhantomData<(T, U)>,
 }
-impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Vec<U, &'alloc A>>
-    for VecHandler<T, U>
+impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Vec<U>> for VecHandler<T, U>
 where
     T: HandleElementInto<'alloc, 'src, A, U>,
     U: Default,
     A: Allocator + ?Sized,
 {
     fn handle_element_into(
-        vec: &mut Vec<U, &'alloc A>,
+        vec: &mut Vec<U>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         alloc: &'alloc A,
