@@ -35,7 +35,7 @@ fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
                 .into(),
             enclosures: vec![in &Global; Enclosure {
                 tag: BytesStart::from_content(r#"enclosure url="https://example.com/entry_1.mp3""#, "enclosure".len()),
-                enclosure: 15..46,
+                enclosure: r#"enclosure url=""#.len()..r#"enclosure url="https://example.com/entry_1.mp3"#.len(),
             }],
         }],
         &Global,
