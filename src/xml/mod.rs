@@ -513,6 +513,10 @@ mod tests {
         }
     }
 
+    #[expect(
+        dead_code,
+        reason = "the data is used by the [Debug] implementation which is printed on error cases"
+    )]
     #[derive(Debug)]
     pub enum TestParserError<'a> {
         Parser(ParserError),
