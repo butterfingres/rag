@@ -416,6 +416,29 @@ where
     }
 }
 
+pub struct VecHandler<T, U = T> {
+    _marker: PhantomData<(T, U)>,
+}
+impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Vec<U>> for VecHandler<T, U>
+where
+    T: HandleElementInto<'alloc, 'src, A, U>,
+    U: Default,
+    A: Allocator + ?Sized,
+{
+    fn handle_element_into(
+        vec: &mut Vec<U>,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        let mut val = U::default();
+        T::handle_element_into(&mut val, reader, name, alloc)?;
+        vec.push(val);
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Default, PartialEq)]
 pub struct Rfc2822Timestamp(Timestamp);
 impl From<Rfc2822Timestamp> for Timestamp {
