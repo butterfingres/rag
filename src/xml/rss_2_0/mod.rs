@@ -4,7 +4,7 @@ use {
         num,
         xml::{
             self, Enclosure, Entry, Feed, HandleElementInto, OptionHandler, ParserError,
-            Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
+            ParserReader, Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
             TryFromRootError, read_to_end,
         },
     },
@@ -18,7 +18,7 @@ use {
     quick_xml::{
         events::{BytesStart, Event, attributes::Attribute},
         name::QName,
-        reader::NsReader,
+        reader::Reader,
     },
     std::{
         fmt::{self, Debug, Formatter},
@@ -76,15 +76,16 @@ impl RssSkip for RssSkipDay {
 struct RssSkipHandler<T> {
     _marker: PhantomData<T>,
 }
-impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A, BitArray<T::View, T::Order>>
+impl<'alloc, 'src, T, R, A> HandleElementInto<'alloc, 'src, R, A, BitArray<T::View, T::Order>>
     for RssSkipHandler<T>
 where
-    A: Allocator + ?Sized,
     T: RssSkip,
+    R: ParserReader<'src>,
+    A: Allocator + ?Sized,
 {
     fn handle_element_into(
         bitvec: &mut BitArray<T::View, T::Order>,
-        reader: &mut NsReader<&'src [u8]>,
+        reader: &mut R,
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -266,15 +267,16 @@ where
         Ok(())
     }
 }
-impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for Item<'alloc, 'src, A>
+impl<'alloc, 'src, F, T, R, A> HandleElementInto<'alloc, 'src, R, A, F> for Item<'alloc, 'src, A>
 where
     F: FnMut(Entry<'alloc, 'src, A>) -> T,
+    R: ParserReader<'src>,
     T: Into<Result<(), ParserError>>,
     A: Allocator + ?Sized,
 {
     fn handle_element_into(
         cb: &mut F,
-        reader: &mut NsReader<&'src [u8]>,
+        reader: &mut R,
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -345,9 +347,11 @@ pub enum Step {
 }
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
-    A: Allocator + 'static,
+    A: Allocator + ?Sized + 'alloc,
 {
+    type Reader = Reader<&'src [u8]>;
     type State = Channel<'alloc, 'src, A>;
+
     fn try_from_root(tag: BytesStart<'src>) -> Result<Self, TryFromRootError<'src>> {
         if tag.name().0 == b"rss" && {
             let mut found = false;
@@ -367,7 +371,7 @@ where
     }
     fn handle_event<F>(
         self,
-        reader: &mut NsReader<&'src [u8]>,
+        reader: &mut Self::Reader,
         event: Event<'src>,
         state: &mut Channel<'alloc, 'src, A>,
         mut cb: F,
