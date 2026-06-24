@@ -31,14 +31,6 @@ pub type SkipDays = BitArr![for 7, in u8];
 pub type SkipHours = BitArr![for 24, in u32];
 
 #[derive(Debug, PartialEq)]
-pub struct Period {
-    interval: SpanFieldwise,
-    base: Option<Timestamp>,
-    // A frequency of 0 means nothing.
-    frequency: NonZeroU16,
-}
-
-#[derive(Debug, PartialEq)]
 pub struct Feed<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
@@ -48,7 +40,6 @@ where
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub skip_days: SkipDays,
     pub skip_hours: SkipHours,
-    pub period: Option<Period>,
     pub last_update: Option<Timestamp>,
 }
 
