@@ -11,7 +11,7 @@ use {
             read_to_end,
         },
     },
-    allocator_api2::alloc::Allocator,
+    allocator_api2::{alloc::Allocator, vec::Vec},
     bitvec::{
         array::BitArray,
         order::{BitOrder, Lsb0},
@@ -166,17 +166,19 @@ where
     link: Option<Cow<'src, [u8], &'alloc A>>,
     description: Option<Cow<'src, [u8], &'alloc A>>,
     pub_date: Option<Rfc2822Timestamp>,
+    enclosures: Vec<Cow<'src, [u8], &'alloc A>, &'alloc A>,
 }
-impl<A> Default for Item<'_, '_, A>
+impl<'alloc, 'src, A> Item<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
 {
-    fn default() -> Self {
+    fn new_in(alloc: &'alloc A) -> Self {
         Self {
             title: None,
             link: None,
             description: None,
             pub_date: None,
+            enclosures: Vec::new_in(alloc),
         }
     }
 }
@@ -190,6 +192,7 @@ where
             link,
             description,
             pub_date,
+            enclosures,
         }: Item<'alloc, 'src, A>,
     ) -> Entry<'alloc, 'src, A> {
         Entry {
@@ -197,7 +200,7 @@ where
             link,
             description,
             pub_date: pub_date.map(Timestamp::from),
-            ..Default::default()
+            enclosures,
         }
     }
 }
@@ -213,7 +216,7 @@ where
         name: QName<'_>,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        let mut item = Item::default();
+        let mut item = Item::new_in(alloc);
         loop {
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == b"title" => {

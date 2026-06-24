@@ -23,7 +23,6 @@
       <title>entry 1</title>
       <link>https://example.com/entry_1</link>
       <description>the first entry</description>
-      <author>foo@example.com (Bar Baz)</author>
       <pubDate>Fri, 20 Jun 2003 09:00:00 GMT</pubDate>
     </item>
   </channel>

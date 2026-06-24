@@ -5,6 +5,7 @@ use {
     allocator_api2::{
         alloc::{AllocError, Allocator},
         collections::TryReserveError,
+        vec::Vec,
     },
     bitvec::BitArr,
     jiff::{SpanFieldwise, Timestamp, fmt::rfc2822},
@@ -82,7 +83,7 @@ where
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub description: Option<Cow<'src, [u8], &'alloc A>>,
     pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Cow<'src, [u8], &'alloc A>>,
+    pub enclosures: Vec<Cow<'src, [u8], &'alloc A>, &'alloc A>,
 }
 impl<'alloc, 'src, A> Debug for Entry<'alloc, 'src, A>
 where
@@ -96,20 +97,6 @@ where
             .field("pub_date", &self.pub_date)
             .field("enclosures", &self.enclosures)
             .finish()
-    }
-}
-impl<'alloc, 'src, A> Default for Entry<'alloc, 'src, A>
-where
-    A: Allocator + ?Sized,
-{
-    fn default() -> Self {
-        Self {
-            title: None,
-            link: None,
-            description: None,
-            pub_date: None,
-            enclosures: Vec::new(),
-        }
     }
 }
 impl<A, B> PartialEq<Entry<'_, '_, B>> for Entry<'_, '_, A>
