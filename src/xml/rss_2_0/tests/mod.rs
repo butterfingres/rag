@@ -4,6 +4,7 @@ use {
         alloc, tz,
         xml::tests::{TestParserError, test_parser},
     },
+    allocator_api2::{alloc::Global, vec},
     jiff::{civil::datetime, tz::TimeZone},
 };
 
@@ -32,9 +33,12 @@ fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
                 .to_zoned(TimeZone::UTC)?
                 .timestamp()
                 .into(),
-            enclosures: Vec::new_in(&alloc::Dummy),
+            enclosures: vec![in &Global; Enclosure {
+                tag: BytesStart::from_content(r#"enclosure url="https://example.com/entry_1.mp3""#, "enclosure".len()),
+                enclosure: 15..46,
+            }],
         }],
-        &alloc::Dummy,
+        &Global,
     )
 }
 

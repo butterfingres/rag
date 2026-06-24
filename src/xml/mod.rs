@@ -22,6 +22,7 @@ use {
         fmt::{self, Debug, Display, Formatter},
         marker::PhantomData,
         num::NonZeroU16,
+        ops::Range,
         str,
     },
 };
@@ -75,6 +76,12 @@ where
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct Enclosure<'src> {
+    tag: BytesStart<'src>,
+    enclosure: Range<usize>,
+}
+
 pub struct Entry<'alloc, 'src, A>
 where
     A: Allocator + ?Sized,
@@ -83,7 +90,7 @@ where
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub description: Option<Cow<'src, [u8], &'alloc A>>,
     pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Cow<'src, [u8], &'alloc A>, &'alloc A>,
+    pub enclosures: Vec<Enclosure<'src>, &'alloc A>,
 }
 impl<'alloc, 'src, A> Debug for Entry<'alloc, 'src, A>
 where
@@ -135,6 +142,7 @@ where
 pub enum ParserError {
     Alloc(AllocError),
     MissingRoot,
+    NotUtf8,
     ParseInt(ParseIntError),
     ParseTimestamp(jiff::Error),
     TryReserve(TryReserveError),
@@ -149,6 +157,7 @@ impl Display for ParserError {
         match self {
             Self::Alloc(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),
+            Self::NotUtf8 => f.write_str("input is not utf8"),
             Self::ParseInt(e) => Display::fmt(e, f),
             Self::ParseTimestamp(e) => Display::fmt(e, f),
             Self::TryReserve(e) => Display::fmt(e, f),

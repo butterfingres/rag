@@ -24,6 +24,7 @@
       <link>https://example.com/entry_1</link>
       <description>the first entry</description>
       <pubDate>Fri, 20 Jun 2003 09:00:00 GMT</pubDate>
+      <enclosure url="https://example.com/entry_1.mp3"/>
     </item>
   </channel>
 </rss>

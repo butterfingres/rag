@@ -6,7 +6,7 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, Entry, HandleElementInto, OptionHandler, ParserError, Replaceable,
+            self, Enclosure, Entry, HandleElementInto, OptionHandler, ParserError, Replaceable,
             ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours, TryFromRootError,
             read_to_end,
         },
@@ -19,13 +19,15 @@ use {
     },
     jiff::Timestamp,
     quick_xml::{
-        events::{BytesStart, Event},
+        events::{BytesStart, Event, attributes::Attribute},
         name::QName,
         reader::NsReader,
     },
     std::{
         fmt::{self, Debug, Formatter},
         marker::PhantomData,
+        ops::Deref,
+        ptr,
     },
 };
 
@@ -166,7 +168,7 @@ where
     link: Option<Cow<'src, [u8], &'alloc A>>,
     description: Option<Cow<'src, [u8], &'alloc A>>,
     pub_date: Option<Rfc2822Timestamp>,
-    enclosures: Vec<Cow<'src, [u8], &'alloc A>, &'alloc A>,
+    enclosures: Vec<Enclosure<'src>, &'alloc A>,
 }
 impl<'alloc, 'src, A> Item<'alloc, 'src, A>
 where
@@ -202,6 +204,43 @@ where
             pub_date: pub_date.map(Timestamp::from),
             enclosures,
         }
+    }
+}
+impl<'alloc, 'src, A> Item<'alloc, 'src, A>
+where
+    A: Allocator + ?Sized,
+{
+    fn handle_enclosure(&mut self, enclosure: BytesStart<'src>) -> Result<(), ParserError> {
+        // HACK: we use pointer arithmetic and rely on the attribute
+        // parser because we cannot borrow `enclosure` for 'src as
+        // required by the signature of [BytesStart::attributes]. This
+        // should be fine since our inputs must always be utf8 so
+        // everything just be borrowing from the same slice.
+
+        let attrs_start = ptr::from_ref(enclosure.deref()).addr();
+
+        for attr in enclosure.attributes() {
+            let Attribute {
+                key: QName(key),
+                value,
+            } = attr.map_err(quick_xml::Error::InvalidAttr)?;
+            if key == b"url" {
+                let std::borrow::Cow::Borrowed(value) = value else {
+                    return Err(ParserError::NotUtf8);
+                };
+
+                let url_start = ptr::from_ref(value).addr() - attrs_start;
+                let url_end = url_start + value.len();
+
+                self.enclosures.push(Enclosure {
+                    tag: enclosure,
+                    enclosure: url_start..url_end,
+                });
+                break;
+            }
+        }
+
+        Ok(())
     }
 }
 impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for Item<'alloc, 'src, A>
@@ -250,6 +289,13 @@ where
                         tag.name(),
                         alloc,
                     )?;
+                }
+                Event::Start(tag) if tag.name().0 == b"enclosure" => {
+                    reader.read_to_end(tag.name())?;
+                    item.handle_enclosure(tag)?;
+                }
+                Event::Empty(tag) if tag.name().0 == b"enclosure" => {
+                    item.handle_enclosure(tag)?;
                 }
 
                 Event::Start(tag) => {
