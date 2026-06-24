@@ -464,7 +464,7 @@ mod tests {
             xml::tests::{TestParserError, test_parser},
         },
         allocator_api2::{alloc::Global, vec},
-        jiff::{civil::datetime, tz::TimeZone},
+        jiff::civil::datetime,
     };
 
     #[test]
@@ -475,6 +475,7 @@ mod tests {
                 title: Some(Cow::Borrowed(b"example feed")),
                 link: Some(Cow::Borrowed(b"https://example.com/rss")),
                 modify_date: Some(Replaceable {
+                    // Fri, 21 Jul 2023 09:04 EDT
                     data: datetime(2023, 07, 21, 09, 04, 00, 00)
                         .to_zoned(tz::EDT)?
                         .timestamp()
@@ -488,8 +489,9 @@ mod tests {
                 title: Some(Cow::Borrowed(b"entry 1")),
                 link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
                 description: Some(Cow::Borrowed(b"the first entry")),
+                // Fri, 20 Jun 2003 09:00:00 GMT
                 pub_date: datetime(2003, 06, 20, 09, 00, 00, 00)
-                    .to_zoned(TimeZone::UTC)?
+                    .to_zoned(tz::GMT)?
                     .timestamp()
                     .into(),
                 enclosures: vec![in &Global; Enclosure {
@@ -509,6 +511,7 @@ mod tests {
                 title: Some(Cow::Borrowed(b"example feed")),
                 link: Some(Cow::Borrowed(b"https://example.com/rss")),
                 modify_date: Some(Replaceable {
+                    // Fri, 21 Jul 2023 09:04 EDT
                     data: datetime(2023, 07, 21, 09, 04, 00, 00)
                         .to_zoned(tz::EDT)?
                         .timestamp()

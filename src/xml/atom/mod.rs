@@ -119,13 +119,10 @@ mod tests {
     use {
         super::*,
         crate::{
-            alloc,
+            alloc, tz,
             xml::tests::{TestParserError, test_parser},
         },
-        jiff::{
-            civil::datetime,
-            tz::{TimeZone, offset},
-        },
+        jiff::civil::datetime,
     };
 
     #[test]
@@ -137,7 +134,7 @@ mod tests {
                 // 2003-12-13T18:30:02Z
                 update: Some(
                     datetime(2003, 12, 13, 18, 30, 02, 00)
-                        .to_zoned(TimeZone::fixed(offset(0)))?
+                        .to_zoned(tz::Z)?
                         .timestamp()
                         .into(),
                 ),
