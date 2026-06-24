@@ -189,6 +189,7 @@ where
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
     description: Option<Cow<'src, [u8], &'alloc A>>,
+    id: Option<Cow<'src, [u8], &'alloc A>>,
     pub_date: Option<Rfc2822Timestamp>,
     enclosures: Vec<Enclosure<'src>, &'alloc A>,
 }
@@ -201,6 +202,7 @@ where
             title: None,
             link: None,
             description: None,
+            id: None,
             pub_date: None,
             enclosures: Vec::new_in(alloc),
         }
@@ -215,6 +217,7 @@ where
             title,
             link,
             description,
+            id,
             pub_date,
             enclosures,
         }: Item<'alloc, 'src, A>,
@@ -223,6 +226,7 @@ where
             title,
             link,
             description,
+            id,
             pub_date: pub_date.map(Timestamp::from),
             enclosures,
         }
@@ -302,6 +306,14 @@ where
                 Event::Start(tag) if tag.name().0 == b"description" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut item.description,
+                        reader,
+                        tag.name(),
+                        alloc,
+                    )?;
+                }
+                Event::Start(tag) if tag.name().0 == b"guid" => {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut item.id,
                         reader,
                         tag.name(),
                         alloc,
@@ -489,6 +501,7 @@ mod tests {
                 title: Some(Cow::Borrowed(b"entry 1")),
                 link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
                 description: Some(Cow::Borrowed(b"the first entry")),
+                id: Some(Cow::Borrowed(b"1")),
                 // Fri, 20 Jun 2003 09:00:00 GMT
                 pub_date: datetime(2003, 06, 20, 09, 00, 00, 00)
                     .to_zoned(tz::GMT)?

@@ -87,6 +87,7 @@ where
     pub title: Option<Cow<'src, [u8], &'alloc A>>,
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub description: Option<Cow<'src, [u8], &'alloc A>>,
+    pub id: Option<Cow<'src, [u8], &'alloc A>>,
     pub pub_date: Option<Timestamp>,
     pub enclosures: Vec<Enclosure<'src>, &'alloc A>,
 }
@@ -115,6 +116,7 @@ where
             title,
             link,
             description,
+            id,
             pub_date,
             enclosures,
         }: &Entry<'_, '_, B>,
@@ -122,6 +124,7 @@ where
         self.title.as_deref() == title.as_deref()
             && self.link.as_deref() == link.as_deref()
             && self.description.as_deref() == description.as_deref()
+            && self.id.as_deref() == id.as_deref()
             && self.pub_date == *pub_date
             && self.enclosures == *enclosures
     }
