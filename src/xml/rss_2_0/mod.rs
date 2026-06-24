@@ -224,6 +224,8 @@ where
                 key: QName(key),
                 value,
             } = attr.map_err(quick_xml::Error::InvalidAttr)?;
+            // We don't need to escape the url because that would make
+            // the url invalid.
             if key == b"url" {
                 let std::borrow::Cow::Borrowed(value) = value else {
                     return Err(ParserError::NotUtf8);
