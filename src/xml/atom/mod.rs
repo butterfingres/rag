@@ -1,7 +1,10 @@
 use {
     crate::{
         borrow::Cow,
-        xml::{self, Entry, HandleElementInto, OptionHandler, ParserError, TryFromRootError},
+        xml::{
+            self, Entry, HandleElementInto, OptionHandler, ParserError, Rfc3339Timestamp,
+            TryFromRootError,
+        },
     },
     allocator_api2::alloc::Allocator,
     quick_xml::{
@@ -19,6 +22,7 @@ where
     A: Allocator + ?Sized,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
+    update: Option<Rfc3339Timestamp>,
 }
 impl<A> Debug for Feed<'_, '_, A>
 where
@@ -33,7 +37,10 @@ where
     A: Allocator + ?Sized,
 {
     fn default() -> Self {
-        Self { title: None }
+        Self {
+            title: None,
+            update: None,
+        }
     }
 }
 impl<A1, A2> PartialEq<Feed<'_, '_, A2>> for Feed<'_, '_, A1>
@@ -88,6 +95,14 @@ where
                         alloc,
                     )?;
                 }
+                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"updated" => {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut state.update,
+                        reader,
+                        tag.name(),
+                        alloc,
+                    )?;
+                }
                 _ => {
                     reader.read_to_end(tag.name())?;
                 }
@@ -107,6 +122,10 @@ mod tests {
             alloc,
             xml::tests::{TestParserError, test_parser},
         },
+        jiff::{
+            civil::datetime,
+            tz::{TimeZone, offset},
+        },
     };
 
     #[test]
@@ -115,6 +134,13 @@ mod tests {
             include_str!("./all.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"test feed")),
+                // 2003-12-13T18:30:02Z
+                update: Some(
+                    datetime(2003, 12, 13, 18, 30, 02, 00)
+                        .to_zoned(TimeZone::fixed(offset(0)))?
+                        .timestamp()
+                        .into(),
+                ),
             },
             [],
             &alloc::Dummy,

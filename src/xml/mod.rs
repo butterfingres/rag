@@ -9,7 +9,10 @@ use {
         vec::Vec,
     },
     bitvec::BitArr,
-    jiff::{Timestamp, fmt::rfc2822},
+    jiff::{
+        Timestamp,
+        fmt::{rfc2822, temporal},
+    },
     quick_xml::{
         errors::SyntaxError,
         escape::resolve_xml_entity,
@@ -486,6 +489,36 @@ where
         let new_timestamp = read_to_end(reader, name, alloc)?;
         let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
         *timestamp = Rfc2822Timestamp(new_timestamp);
+        Ok(())
+    }
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct Rfc3339Timestamp(Timestamp);
+impl From<Timestamp> for Rfc3339Timestamp {
+    fn from(ts: Timestamp) -> Self {
+        Self(ts)
+    }
+}
+impl From<Rfc3339Timestamp> for Timestamp {
+    fn from(Rfc3339Timestamp(ts): Rfc3339Timestamp) -> Self {
+        ts
+    }
+}
+impl<'alloc, 'src, R, A> HandleElementInto<'alloc, 'src, R, A> for Rfc3339Timestamp
+where
+    R: ParserReader<'src>,
+    A: Allocator + ?Sized,
+{
+    fn handle_element_into(
+        timestamp: &mut Rfc3339Timestamp,
+        reader: &mut R,
+        name: QName<'_>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        let new_timestamp = read_to_end(reader, name, alloc)?;
+        let new_timestamp = temporal::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
+        *timestamp = Rfc3339Timestamp(new_timestamp);
         Ok(())
     }
 }
