@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<rss version="2.0">
+  <channel>
+    <title>example feed</title>
+    <link>https://example.com/rss</link>
+    <pubDate>Tue, 10 Jun 2003 04:00:00 GMT</pubDate>
+    <lastBuildDate>Fri, 21 Jul 2023 09:04 EDT</lastBuildDate>
+    <skipHours>
+      <hour>1</hour>
+      <hour>2</hour>
+      <hour>3</hour>
+    </skipHours>
+    <skipDays>
+      <day>Monday</day>
+      <day>Tuesday</day>
+      <day>Wednesday</day>
+      <day>Thursday</day>
+      <day>Friday</day>
+      <day>Saturday</day>
+      <day>Sunday</day>
+    </skipDays>
+    <item>
+      <title>entry 1</title>
+      <link>https://example.com/entry_1</link>
+      <description>the first entry</description>
+      <guid>1</guid>
+      <pubDate>Fri, 20 Jun 2003 09:00:00 GMT</pubDate>
+      <enclosure url="https://example.com/entry_1.mp3"/>
+    </item>
+  </channel>
+</rss>
