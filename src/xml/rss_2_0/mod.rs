@@ -5,7 +5,7 @@ use {
         xml::{
             self, Entry, Feed, HandleElementInto, OptionHandler, ParserError, ParserReader,
             Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
-            TryFromRootError, read_to_end,
+            TryFromRootError, get_attribute_when, read_to_end,
         },
     },
     allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
@@ -24,7 +24,6 @@ use {
     std::{
         fmt::{self, Debug, Formatter},
         marker::PhantomData,
-        ptr,
     },
 };
 
@@ -243,25 +242,10 @@ where
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        if let Some(url) = enclosure.try_get_attribute("url")? {
-            let url = url.normalized_value(version)?;
-            if self.enclosures.capacity() == 0 {
-                self.enclosures.reserve(8);
-            }
-
-            let mut buf = Box::<[u8], _>::try_new_uninit_slice_in(url.len(), alloc)?;
-
-            let url_ptr = url.as_ref().as_ptr();
-            let buf_ptr = buf.as_mut_ptr().cast::<u8>();
-            let url_len = url.len();
-            // SAFETY: `buf` is a slice with size `len` and is guaranteed to be unique.
-            unsafe {
-                ptr::copy_nonoverlapping(url_ptr, buf_ptr, url_len);
-            }
-
-            // SAFETY: copying the buffer should initialize the bytes
-            let buf = unsafe { buf.assume_init() };
-            self.enclosures.push(buf);
+        if let Some(enclosure) =
+            get_attribute_when(&enclosure, |_| true, QName(b"url"), version, alloc)?
+        {
+            self.enclosures.push(enclosure);
         }
 
         Ok(())

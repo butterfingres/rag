@@ -18,7 +18,10 @@ use {
         XmlVersion,
         errors::SyntaxError,
         escape::resolve_xml_entity,
-        events::{BytesStart, Event, attributes::AttrError},
+        events::{
+            BytesStart, Event,
+            attributes::{AttrError, Attribute},
+        },
         name::QName,
         reader::{NsReader, Reader, Span},
     },
@@ -27,7 +30,7 @@ use {
         fmt::{self, Debug, Display, Formatter},
         marker::PhantomData,
         ops::Range,
-        str,
+        ptr, str,
     },
 };
 
@@ -292,6 +295,52 @@ where
             }
         }
     }
+}
+
+fn get_attribute_when<'alloc, 'src, F, A>(
+    tag: &'src BytesStart<'src>,
+    mut when: F,
+    attr_name: QName<'_>,
+    version: XmlVersion,
+    alloc: &'alloc A,
+) -> Result<Option<Box<[u8], &'alloc A>>, ParserError>
+where
+    F: FnMut(&Attribute<'src>) -> bool,
+    A: Allocator,
+{
+    let mut value = None;
+    let mut ok = false;
+    for attr in tag.attributes() {
+        let attr = attr?;
+        if !ok {
+            ok = when(&attr);
+        }
+        if attr.key == attr_name && value.is_none() {
+            value = Some(attr.normalized_value(version)?);
+        }
+
+        if value.is_some() && ok {
+            break;
+        }
+    }
+
+    let Some(value) = value.filter(|_| ok) else {
+        return Ok(None);
+    };
+
+    let mut buf = Box::<[u8], _>::try_new_uninit_slice_in(value.len(), alloc)?;
+
+    let value_ptr = value.as_ref().as_ptr();
+    let buf_ptr = buf.as_mut_ptr().cast::<u8>();
+    let value_len = value.len();
+    // SAFETY: `buf` is a slice with size `len` and is guaranteed to be unique.
+    unsafe {
+        ptr::copy_nonoverlapping(value_ptr, buf_ptr, value_len);
+    }
+
+    // SAFETY: copying the buffer should initialize the bytes
+    let buf = unsafe { buf.assume_init() };
+    Ok(Some(buf))
 }
 
 fn read_to_end<'alloc, 'src, R, A>(
