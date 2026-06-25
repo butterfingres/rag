@@ -2,8 +2,8 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, HandleElementInto, OptionHandler, ParserError, Replaceable, Rfc3339Timestamp,
-            TryFromRootError, get_attribute_when,
+            self, HandleElementInto, OptionHandler, ParserError, Replaceable, ReplaceableHandler,
+            Rfc3339Timestamp, TryFromRootError, get_attribute_when,
         },
     },
     allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
@@ -25,7 +25,7 @@ where
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
-    content: Option<Cow<'src, [u8], &'alloc A>>,
+    content: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
     updated: Option<Rfc3339Timestamp>,
     enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
@@ -62,7 +62,7 @@ where
         xml::Entry {
             title,
             link,
-            description: content,
+            description: content.map(Replaceable::into_inner),
             id,
             pub_date: updated.map(Timestamp::from),
             enclosures,
@@ -102,6 +102,28 @@ where
                 {
                     OptionHandler::<_>::handle_element_into(
                         &mut entry.title,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
+                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
+                    if tag.local_name().as_ref() == b"content" =>
+                {
+                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
+                        &mut entry.content,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
+                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
+                    if tag.local_name().as_ref() == b"description" =>
+                {
+                    OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
+                        &mut entry.content,
                         reader,
                         tag.name(),
                         version,
@@ -318,7 +340,7 @@ mod tests {
             [xml::Entry {
                 title: Some(Cow::Borrowed(b"first entry")),
                 link: None,
-                description: None,
+                description: Some(Cow::Borrowed(b"contents of entry number 1")),
                 id: Some(Cow::Borrowed(b"1")),
                 pub_date: None,
                 enclosures: Vec::new_in(&alloc),

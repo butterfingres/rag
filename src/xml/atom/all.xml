@@ -7,5 +7,7 @@
   <entry>
     <title>first entry</title>
     <id>1</id>
+    <description>entry number 1</description>
+    <content>contents of entry number 1</content>
   </entry>
 </feed>
