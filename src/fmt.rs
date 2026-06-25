@@ -6,7 +6,9 @@ where
 {
     f.write_str("b\"")?;
     for chunk in bytes.as_ref().utf8_chunks() {
-        f.write_str(chunk.valid())?;
+        for ch in chunk.valid().chars() {
+            Display::fmt(&ch.escape_debug(), f)?;
+        }
         for byte in chunk.invalid() {
             Display::fmt(&byte.escape_ascii(), f)?;
         }
@@ -66,6 +68,50 @@ mod tests {
         write!(buf, "{}", fmt::from_fn(move |f| format(input(), f)))?;
         assert_eq!(buf.as_str(), output);
         Ok(())
+    }
+
+    #[test]
+    fn test_debug_bytes_empty() -> Result<(), fmt::Error> {
+        const OUTPUT: &str = r#"b"""#;
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(debug_bytes, || b"", OUTPUT)
+    }
+
+    #[test]
+    fn test_debug_bytes_unescaped() -> Result<(), fmt::Error> {
+        const OUTPUT: &str = r#"b"hello""#;
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(debug_bytes, || b"hello", OUTPUT)
+    }
+
+    #[test]
+    fn test_debug_bytes_escape_ascii() -> Result<(), fmt::Error> {
+        const OUTPUT: &str = r#"b"\x9d""#;
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(debug_bytes, || b"\x9d", OUTPUT)
+    }
+
+    #[test]
+    fn test_debug_bytes_escape_debug() -> Result<(), fmt::Error> {
+        const OUTPUT: &str = r#"b"\n""#;
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(debug_bytes, || b"\n", OUTPUT)
+    }
+
+    #[test]
+    fn test_debug_optional_bytes_some() -> Result<(), fmt::Error> {
+        const OUTPUT: &str = r#"Some(b"hello")"#;
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(
+            debug_optional_bytes,
+            || &Some(b"hello"),
+            OUTPUT,
+        )
+    }
+
+    #[test]
+    fn test_debug_optional_bytes_none() -> Result<(), fmt::Error> {
+        const OUTPUT: &str = r#"None"#;
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(
+            debug_optional_bytes,
+            || -> &Option<&[u8]> { &None },
+            OUTPUT,
+        )
     }
 
     #[test]
