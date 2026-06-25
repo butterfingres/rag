@@ -3,7 +3,7 @@
   <title>test feed</title>
   <updated>2003-12-13T18:30:02Z</updated>
   <link rel="self" href="https://example.com/atom"/>
-  <link rel="alternate" href="https://example.com"/>
+  <link href="https://example.com" rel="alternate"/>
   <entry>
     <title>first entry</title>
     <id>1</id>

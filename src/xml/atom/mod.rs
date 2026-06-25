@@ -207,6 +207,7 @@ where
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         let mut replaceable = true;
+        let mut found_rel = false;
         if let Some(Replaceable {
             replaceable: true, ..
         })
@@ -219,10 +220,11 @@ where
                         && name.as_ref() == b"rel"
                         && *attr.value == *b"alternate"
                     {
+                        found_rel = true;
                         replaceable = false;
                     }
 
-                    true
+                    found_rel
                 },
                 |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"href"),
                 version,
