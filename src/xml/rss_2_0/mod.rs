@@ -126,10 +126,12 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_struct("channel")
+        f.debug_struct("Channel")
             .field("title", &self.title)
             .field("link", &self.link)
             .field("modify_date", &self.modify_date)
+            .field("skip_hours", &self.skip_hours)
+            .field("skip_days", &self.skip_days)
             .finish()
     }
 }
@@ -175,10 +177,21 @@ impl<'alloc, 'src, A> PartialEq for Channel<'alloc, 'src, A>
 where
     A: Allocator,
 {
-    fn eq(&self, r: &Self) -> bool {
-        self.title.as_ref() == r.title.as_ref()
-            && self.link.as_ref() == r.link.as_ref()
-            && self.modify_date == r.modify_date
+    fn eq(
+        &self,
+        Self {
+            title,
+            link,
+            modify_date,
+            skip_hours,
+            skip_days,
+        }: &Self,
+    ) -> bool {
+        self.title.as_ref() == title.as_ref()
+            && self.link.as_ref() == link.as_ref()
+            && self.modify_date == *modify_date
+            && self.skip_hours == *skip_hours
+            && self.skip_days == *skip_days
     }
 }
 
@@ -503,8 +516,8 @@ mod tests {
                         .into(),
                     replaceable: false,
                 }),
-                skip_hours: SkipHours::new([0b0111]),
-                skip_days: SkipDays::new([0b0111]),
+                skip_hours: SkipHours::new([0b1110]),
+                skip_days: SkipDays::new([0b0111_1111]),
             },
             [Entry {
                 title: Some(Cow::Borrowed(b"entry 1")),
@@ -541,7 +554,7 @@ mod tests {
                     replaceable: false,
                 }),
                 skip_hours: SkipHours::default(),
-                skip_days: SkipDays::new([0b0111_1111]),
+                skip_days: SkipDays::default(),
             },
             [],
             &alloc::Dummy,

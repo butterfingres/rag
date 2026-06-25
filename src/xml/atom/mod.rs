@@ -260,9 +260,18 @@ impl<A1, A2> PartialEq<Feed<'_, '_, A2>> for Feed<'_, '_, A1>
 where
     A1: Allocator,
     A2: Allocator,
+    for<'a> Option<Replaceable<Box<[u8], &'a A1>>>:
+        PartialEq<Option<Replaceable<Box<[u8], &'a A2>>>>,
 {
-    fn eq(&self, r: &Feed<'_, '_, A2>) -> bool {
-        self.title.as_deref() == r.title.as_deref()
+    fn eq(
+        &self,
+        Feed {
+            title,
+            link,
+            update,
+        }: &Feed<'_, '_, A2>,
+    ) -> bool {
+        self.title.as_deref() == title.as_deref() && self.link == *link && self.update == *update
     }
 }
 impl<'alloc, 'src, A> Feed<'alloc, 'src, A>
@@ -394,7 +403,7 @@ mod tests {
             tz,
             xml::tests::{TestParserError, test_parser},
         },
-        allocator_api2::alloc::Global,
+        allocator_api2::{alloc::Global, vec},
         bump_scope::Bump,
         jiff::civil::datetime,
     };
@@ -408,7 +417,7 @@ mod tests {
                 title: Some(Cow::Borrowed(b"test feed")),
                 link: Some(Replaceable {
                     replaceable: false,
-                    data: Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc)),
+                    data: Box::slice(Box::new_in(*b"https://example.com", &alloc)),
                 }),
                 // 2003-12-13T18:30:02Z
                 update: Some(
@@ -430,7 +439,9 @@ mod tests {
                         .timestamp()
                         .into(),
                 ),
-                enclosures: Vec::new_in(&alloc),
+                enclosures: vec![in &alloc;
+                   Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc))
+                ],
             }],
             &alloc,
         )
