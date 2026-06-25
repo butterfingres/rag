@@ -2,21 +2,117 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, Entry, HandleElementInto, OptionHandler, ParserError, Replaceable,
-            Rfc3339Timestamp, TryFromRootError, get_attribute_when,
+            self, HandleElementInto, OptionHandler, ParserError, Replaceable, Rfc3339Timestamp,
+            TryFromRootError, get_attribute_when,
         },
     },
-    allocator_api2::{alloc::Allocator, boxed::Box},
+    allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
+    jiff::Timestamp,
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
-        name::{Namespace, ResolveResult},
+        name::{Namespace, QName, ResolveResult},
         reader::NsReader,
     },
     std::fmt::{self, Debug, Formatter},
 };
 
 const NS: &[u8] = b"http://www.w3.org/2005/Atom";
+
+pub struct Entry<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    title: Option<Cow<'src, [u8], &'alloc A>>,
+    link: Option<Cow<'src, [u8], &'alloc A>>,
+    content: Option<Cow<'src, [u8], &'alloc A>>,
+    id: Option<Cow<'src, [u8], &'alloc A>>,
+    updated: Option<Rfc3339Timestamp>,
+    enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
+}
+impl<'alloc, 'src, A> Entry<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn new_in(alloc: &'alloc A) -> Self {
+        Self {
+            title: None,
+            link: None,
+            content: None,
+            id: None,
+            updated: None,
+            enclosures: Vec::new_in(alloc),
+        }
+    }
+}
+impl<'alloc, 'src, A> From<Entry<'alloc, 'src, A>> for xml::Entry<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn from(
+        Entry {
+            title,
+            link,
+            content,
+            id,
+            updated,
+            enclosures,
+        }: Entry<'alloc, 'src, A>,
+    ) -> xml::Entry<'alloc, 'src, A> {
+        xml::Entry {
+            title,
+            link,
+            description: content,
+            id,
+            pub_date: updated.map(Timestamp::from),
+            enclosures,
+        }
+    }
+}
+impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, NsReader<&'src [u8]>, A, F>
+    for Entry<'alloc, 'src, A>
+where
+    F: FnMut(xml::Entry<'alloc, 'src, A>) -> T,
+    T: Into<Result<(), ParserError>>,
+    A: Allocator,
+{
+    fn handle_element_into(
+        cb: &mut F,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        version: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        let mut entry = Entry::new_in(alloc);
+        loop {
+            match reader.read_resolved_event()? {
+                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
+                    if tag.local_name().as_ref() == b"id" =>
+                {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut entry.id,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
+
+                (_, Event::Start(tag)) => {
+                    reader.read_to_end(tag.name())?;
+                }
+
+                (_, Event::End(tag)) if tag.name() == name => {
+                    cb(entry.into()).into()?;
+                    return Ok(());
+                }
+                (_, Event::Eof) => return Err(ParserError::UNCLOSED_TAG),
+
+                _ => {}
+            }
+        }
+    }
+}
 
 pub struct Feed<'alloc, 'src, A>
 where
@@ -124,12 +220,12 @@ where
         reader: &mut Self::Reader,
         event: Event<'src>,
         state: &mut Self::State,
-        _: F,
+        mut cb: F,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<Self, ParserError>
     where
-        F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+        F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
         match event {
             Event::Start(tag) => match reader.resolver().resolve_element(tag.name()) {
@@ -154,6 +250,10 @@ where
                 (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"link" => {
                     state.handle_link(&tag, reader, version, alloc)?;
                     reader.read_to_end(tag.name())?;
+                }
+
+                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"entry" => {
+                    Entry::handle_element_into(&mut cb, reader, tag.name(), version, alloc)?;
                 }
                 _ => {
                     reader.read_to_end(tag.name())?;
@@ -204,7 +304,14 @@ mod tests {
                         .into(),
                 ),
             },
-            [],
+            [xml::Entry {
+                title: None,
+                link: None,
+                description: None,
+                id: Some(Cow::Borrowed(b"1")),
+                pub_date: None,
+                enclosures: Vec::new_in(&alloc),
+            }],
             &alloc,
         )
     }
