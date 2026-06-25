@@ -1,5 +1,5 @@
 pub mod atom;
-pub mod rss_2_0;
+pub mod rss;
 
 use {
     crate::{
