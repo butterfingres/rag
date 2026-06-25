@@ -526,7 +526,10 @@ mod tests {
                     .to_zoned(tz::GMT)?
                     .timestamp()
                     .into(),
-                enclosures: vec![in &Global; Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &Global))],
+                enclosures: vec![in &Global;
+                    Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &Global)),
+                    Box::slice(Box::new_in(*b"", &Global))
+                ],
             }],
             &Global,
         )

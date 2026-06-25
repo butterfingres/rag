@@ -26,6 +26,7 @@
       <guid>1</guid>
       <pubDate>Fri, 20 Jun 2003 09:00:00 GMT</pubDate>
       <enclosure url="https://example.com/entry_1.mp3"/>
+      <enclosure url=""/>
     </item>
   </channel>
 </rss>
