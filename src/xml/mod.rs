@@ -36,7 +36,7 @@ pub type SkipHours = BitArr![for 24, in u32];
 #[derive(Debug, PartialEq)]
 pub struct Feed<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     pub title: Option<Cow<'src, [u8], &'alloc A>>,
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
@@ -82,7 +82,7 @@ pub struct Enclosure<'src> {
 
 pub struct Entry<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     pub title: Option<Cow<'src, [u8], &'alloc A>>,
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
@@ -93,7 +93,7 @@ where
 }
 impl<'alloc, 'src, A> Debug for Entry<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("Entry")
@@ -107,8 +107,8 @@ where
 }
 impl<A, B> PartialEq<Entry<'_, '_, B>> for Entry<'_, '_, A>
 where
-    A: Allocator + ?Sized,
-    B: Allocator + ?Sized,
+    A: Allocator,
+    B: Allocator,
 {
     fn eq(
         &self,
@@ -133,7 +133,7 @@ where
 #[derive(Debug, PartialEq)]
 pub struct ParsedFeed<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     pub feed: Feed<'alloc, 'src, A>,
     pub entries: Vec<Entry<'alloc, 'src, A>>,
@@ -242,7 +242,7 @@ impl<'src> ParserReader<'src> for NsReader<&'src [u8]> {
 pub trait Parser<'alloc, 'src, A>: Sized
 where
     Self: Sized,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     type Reader: ParserReader<'src>;
     type State;
@@ -286,7 +286,7 @@ fn read_to_end<'alloc, 'src, R, A>(
 ) -> Result<Cow<'src, [u8], &'alloc A>, ParserError>
 where
     R: ParserReader<'src>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     let mut output = Cow::Borrowed(&b""[..]);
     read_to_end_in(reader, name, &mut output, alloc)?;
@@ -301,7 +301,7 @@ fn read_to_end_in<'alloc, 'src, R, A>(
 ) -> Result<(), ParserError>
 where
     R: ParserReader<'src> + ?Sized,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     *output = Cow::Borrowed(b"");
 
@@ -355,7 +355,7 @@ where
 pub trait HandleElementInto<'alloc, 'src, R, A, S = Self>
 where
     R: ParserReader<'src>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         _: &mut S,
@@ -375,7 +375,7 @@ where
     R: ParserReader<'src>,
     T: HandleElementInto<'alloc, 'src, R, A, U>,
     U: Default,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         closure: &mut F,
@@ -399,7 +399,7 @@ impl<'alloc, 'src, const REPLACEABLE: bool, R, T, U, A>
 where
     R: ParserReader<'src>,
     T: HandleElementInto<'alloc, 'src, R, A, U>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         replaceable: &mut Replaceable<U>,
@@ -425,7 +425,7 @@ where
 impl<'alloc, 'src, R, A> HandleElementInto<'alloc, 'src, R, A> for Cow<'src, [u8], &'alloc A>
 where
     R: ParserReader<'src>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         into: &mut Cow<'src, [u8], &'alloc A>,
@@ -446,7 +446,7 @@ where
     R: ParserReader<'src>,
     T: HandleElementInto<'alloc, 'src, R, A, U>,
     U: Default,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         option: &mut Option<U>,
@@ -481,7 +481,7 @@ impl From<Rfc2822Timestamp> for Timestamp {
 impl<'alloc, 'src, R, A> HandleElementInto<'alloc, 'src, R, A> for Rfc2822Timestamp
 where
     R: ParserReader<'src>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         timestamp: &mut Rfc2822Timestamp,
@@ -511,7 +511,7 @@ impl From<Rfc3339Timestamp> for Timestamp {
 impl<'alloc, 'src, R, A> HandleElementInto<'alloc, 'src, R, A> for Rfc3339Timestamp
 where
     R: ParserReader<'src>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         timestamp: &mut Rfc3339Timestamp,
@@ -580,7 +580,7 @@ mod tests {
     where
         T: Parser<'alloc, 'src, A>,
         T::State: Debug + Default + PartialEq,
-        A: Allocator + ?Sized,
+        A: Allocator,
     {
         let mut reader = T::Reader::from_str(input);
         let root = get_root(&mut reader)?;
@@ -605,7 +605,7 @@ mod tests {
 
     fn test_read_to_end<A, F>(input: &str, alloc: &A, f: F) -> Result<(), ParserError>
     where
-        A: Allocator + ?Sized,
+        A: Allocator,
         F: FnOnce(Cow<'_, [u8], &A>),
     {
         let mut reader = NsReader::from_str(input);

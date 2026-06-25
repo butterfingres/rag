@@ -19,14 +19,14 @@ const NS: &[u8] = b"http://www.w3.org/2005/Atom";
 
 pub struct Feed<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     update: Option<Rfc3339Timestamp>,
 }
 impl<A> Debug for Feed<'_, '_, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("Feed").field("title", &self.title).finish()
@@ -34,7 +34,7 @@ where
 }
 impl<A> Default for Feed<'_, '_, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn default() -> Self {
         Self {
@@ -45,8 +45,8 @@ where
 }
 impl<A1, A2> PartialEq<Feed<'_, '_, A2>> for Feed<'_, '_, A1>
 where
-    A1: Allocator + ?Sized,
-    A2: Allocator + ?Sized,
+    A1: Allocator,
+    A2: Allocator,
 {
     fn eq(&self, r: &Feed<'_, '_, A2>) -> bool {
         self.title.as_deref() == r.title.as_deref()
@@ -56,7 +56,7 @@ where
 pub struct AtomParser;
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for AtomParser
 where
-    A: Allocator + ?Sized + 'alloc,
+    A: Allocator + 'alloc,
 {
     type Reader = NsReader<&'src [u8]>;
     type State = Feed<'alloc, 'src, A>;

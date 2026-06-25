@@ -81,7 +81,7 @@ impl<'alloc, 'src, T, R, A> HandleElementInto<'alloc, 'src, R, A, BitArray<T::Vi
 where
     T: RssSkip,
     R: ParserReader<'src>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         bitvec: &mut BitArray<T::View, T::Order>,
@@ -113,7 +113,7 @@ where
 
 pub struct Channel<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
@@ -123,7 +123,7 @@ where
 }
 impl<A> Debug for Channel<'_, '_, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("channel")
@@ -135,7 +135,7 @@ where
 }
 impl<'alloc, 'src, A> Default for Channel<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn default() -> Self {
         Self {
@@ -149,7 +149,7 @@ where
 }
 impl<'alloc, 'src, A> From<Channel<'alloc, 'src, A>> for Feed<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn from(
         Channel {
@@ -173,7 +173,7 @@ where
 }
 impl<'alloc, 'src, A> PartialEq for Channel<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn eq(&self, r: &Self) -> bool {
         self.title.as_ref() == r.title.as_ref()
@@ -184,7 +184,7 @@ where
 
 pub struct Item<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Cow<'src, [u8], &'alloc A>>,
@@ -195,7 +195,7 @@ where
 }
 impl<'alloc, 'src, A> Item<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn new_in(alloc: &'alloc A) -> Self {
         Self {
@@ -210,7 +210,7 @@ where
 }
 impl<'alloc, 'src, A> From<Item<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn from(
         Item {
@@ -234,7 +234,7 @@ where
 }
 impl<'alloc, 'src, A> Item<'alloc, 'src, A>
 where
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_enclosure(&mut self, enclosure: BytesStart<'src>) -> Result<(), ParserError> {
         // HACK: we use pointer arithmetic and rely on the attribute
@@ -276,7 +276,7 @@ where
     F: FnMut(Entry<'alloc, 'src, A>) -> T,
     R: ParserReader<'src>,
     T: Into<Result<(), ParserError>>,
-    A: Allocator + ?Sized,
+    A: Allocator,
 {
     fn handle_element_into(
         cb: &mut F,
@@ -359,7 +359,7 @@ pub enum Step {
 }
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
-    A: Allocator + ?Sized + 'alloc,
+    A: Allocator + 'alloc,
 {
     type Reader = Reader<&'src [u8]>;
     type State = Channel<'alloc, 'src, A>;
