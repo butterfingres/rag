@@ -495,11 +495,13 @@ mod tests {
             xml::tests::{TestParserError, test_parser},
         },
         allocator_api2::{alloc::Global, vec},
+        bump_scope::Bump,
         jiff::civil::datetime,
     };
 
     #[test]
     fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
+        let alloc = Bump::<Global>::try_new()?;
         test_parser::<_, Step, _>(
             include_str!("./all.xml"),
             Channel {
@@ -526,12 +528,12 @@ mod tests {
                     .to_zoned(tz::GMT)?
                     .timestamp()
                     .into(),
-                enclosures: vec![in &Global;
-                    Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &Global)),
-                    Box::slice(Box::new_in(*b"", &Global))
+                enclosures: vec![in &alloc;
+                    Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc)),
+                    Box::slice(Box::new_in(*b"", &alloc))
                 ],
             }],
-            &Global,
+            &alloc,
         )
     }
 
