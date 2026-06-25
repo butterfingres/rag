@@ -241,7 +241,11 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_struct("Feed").field("title", &self.title).finish()
+        f.debug_struct("Feed")
+            .field("title", &self.title)
+            .field("link", &self.link)
+            .field("update", &self.update)
+            .finish()
     }
 }
 impl<A> Default for Feed<'_, '_, A>
