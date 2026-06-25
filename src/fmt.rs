@@ -53,32 +53,48 @@ where
 mod tests {
     use {super::*, arrayvec::ArrayString};
 
-    fn test_debug_iter_bytes<const BUF: usize>(
-        params: &[&[u8]],
+    fn test_formatter_fn<const N: usize, F, G, T>(
+        format: F,
+        input: G,
         output: &str,
-    ) -> Result<(), fmt::Error> {
-        let mut buf = ArrayString::<BUF>::new();
-        write!(buf, "{}", fmt::from_fn(|f| { debug_iter_bytes(params, f) }))?;
+    ) -> Result<(), fmt::Error>
+    where
+        F: Fn(T, &mut Formatter<'_>) -> Result<(), fmt::Error>,
+        G: Fn() -> T,
+    {
+        let mut buf = ArrayString::<N>::new();
+        write!(buf, "{}", fmt::from_fn(move |f| format(input(), f)))?;
         assert_eq!(buf.as_str(), output);
-
         Ok(())
     }
 
     #[test]
     fn test_debug_iter_bytes_empty() -> Result<(), fmt::Error> {
-        const OUTPUT: &str = r#"[]"#;
-        test_debug_iter_bytes::<{ OUTPUT.len() }>(&[], OUTPUT)
+        const OUTPUT: &str = "[]";
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(
+            debug_iter_bytes,
+            || -> &[&[u8]] { &[] },
+            OUTPUT,
+        )
     }
 
     #[test]
     fn test_debug_iter_bytes_single() -> Result<(), fmt::Error> {
         const OUTPUT: &str = r#"[b"hello"]"#;
-        test_debug_iter_bytes::<{ OUTPUT.len() }>(&[b"hello"], OUTPUT)
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(
+            debug_iter_bytes,
+            || -> &[&[u8]] { &[b"hello"] },
+            OUTPUT,
+        )
     }
 
     #[test]
     fn test_debug_iter_bytes_double() -> Result<(), fmt::Error> {
         const OUTPUT: &str = r#"[b"hello", b"world"]"#;
-        test_debug_iter_bytes::<{ OUTPUT.len() }>(&[b"hello", b"world"], OUTPUT)
+        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(
+            debug_iter_bytes,
+            || -> &[&[u8]] { &[b"hello", b"world"] },
+            OUTPUT,
+        )
     }
 }
