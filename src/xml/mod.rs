@@ -5,6 +5,7 @@ use {
     crate::{borrow::Cow, num::ParseIntError},
     allocator_api2::{
         alloc::{AllocError, Allocator},
+        boxed::Box,
         collections::TryReserveError,
         vec::Vec,
     },
@@ -89,7 +90,7 @@ where
     pub description: Option<Cow<'src, [u8], &'alloc A>>,
     pub id: Option<Cow<'src, [u8], &'alloc A>>,
     pub pub_date: Option<Timestamp>,
-    pub enclosures: Vec<Enclosure<'src>, &'alloc A>,
+    pub enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
 }
 impl<'alloc, 'src, A> Debug for Entry<'alloc, 'src, A>
 where
@@ -109,6 +110,8 @@ impl<A, B> PartialEq<Entry<'_, '_, B>> for Entry<'_, '_, A>
 where
     A: Allocator,
     B: Allocator,
+    for<'a> allocator_api2::boxed::Box<[u8], &'a A>:
+        PartialEq<allocator_api2::boxed::Box<[u8], &'a B>>,
 {
     fn eq(
         &self,

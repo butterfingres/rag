@@ -3,12 +3,12 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, Enclosure, Entry, Feed, HandleElementInto, OptionHandler, ParserError,
-            ParserReader, Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
+            self, Entry, Feed, HandleElementInto, OptionHandler, ParserError, ParserReader,
+            Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
             TryFromRootError, read_to_end,
         },
     },
-    allocator_api2::{alloc::Allocator, vec::Vec},
+    allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
     bitvec::{
         array::BitArray,
         order::{BitOrder, Lsb0},
@@ -17,14 +17,13 @@ use {
     jiff::Timestamp,
     quick_xml::{
         XmlVersion,
-        events::{BytesStart, Event, attributes::Attribute},
+        events::{BytesStart, Event},
         name::QName,
         reader::Reader,
     },
     std::{
         fmt::{self, Debug, Formatter},
         marker::PhantomData,
-        ops::Deref,
         ptr,
     },
 };
@@ -193,7 +192,7 @@ where
     description: Option<Cow<'src, [u8], &'alloc A>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
     pub_date: Option<Rfc2822Timestamp>,
-    enclosures: Vec<Enclosure<'src>, &'alloc A>,
+    enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
 }
 impl<'alloc, 'src, A> Item<'alloc, 'src, A>
 where
@@ -241,37 +240,30 @@ where
     fn handle_enclosure(
         &mut self,
         enclosure: BytesStart<'src>,
-        _: XmlVersion,
+        version: XmlVersion,
+        alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        // HACK: we use pointer arithmetic and rely on the attribute
-        // parser because we cannot borrow `enclosure` for 'src as
-        // required by the signature of [BytesStart::attributes]. This
-        // should be fine since our inputs must always be utf8 so
-        // everything just be borrowing from the same slice.
-
-        let attrs_start = ptr::from_ref(enclosure.deref()).addr();
-
-        for attr in enclosure.attributes() {
-            let Attribute {
-                key: QName(key),
-                value,
-            } = attr.map_err(quick_xml::Error::InvalidAttr)?;
-            // We don't need to escape the url because that would make
-            // the url invalid.
-            if key == b"url" {
-                let std::borrow::Cow::Borrowed(value) = value else {
-                    return Err(ParserError::NotUtf8);
-                };
-
-                let url_start = ptr::from_ref(value).addr() - attrs_start;
-                let url_end = url_start + value.len();
-
-                self.enclosures.push(Enclosure {
-                    tag: enclosure,
-                    enclosure: url_start..url_end,
-                });
-                break;
+        if let Some(url) = enclosure.try_get_attribute("url")? {
+            let url = url.normalized_value(version)?;
+            if self.enclosures.capacity() == 0 {
+                self.enclosures.reserve(8);
             }
+
+            let mut buf = Box::<[u8], _>::try_new_uninit_slice_in(url.len(), alloc)?;
+
+            let url_ptr = url.as_ref().as_ptr();
+            let buf_ptr = buf.as_mut_ptr().cast::<u8>();
+            let url_len = url.len();
+            // SAFETY: `buf` is a slice with size `len` and is guaranteed to be unique.
+            unsafe {
+                ptr::copy_nonoverlapping(url_ptr, buf_ptr, url_len);
+            }
+
+            // SAFETY: copying the buffer should initialize the bytes
+            let buf = unsafe { buf.assume_init() };
+
+            // let url = Box::try_new_in(*url.as_bytes(), alloc)?;
+            self.enclosures.push(buf);
         }
 
         Ok(())
@@ -341,10 +333,10 @@ where
                 }
                 Event::Start(tag) if tag.name().0 == b"enclosure" => {
                     reader.read_to_end(tag.name())?;
-                    item.handle_enclosure(tag, version)?;
+                    item.handle_enclosure(tag, version, alloc)?;
                 }
                 Event::Empty(tag) if tag.name().0 == b"enclosure" => {
-                    item.handle_enclosure(tag, version)?;
+                    item.handle_enclosure(tag, version, alloc)?;
                 }
 
                 Event::Start(tag) => {
@@ -536,10 +528,7 @@ mod tests {
                     .to_zoned(tz::GMT)?
                     .timestamp()
                     .into(),
-                enclosures: vec![in &Global; Enclosure {
-                    tag: BytesStart::from_content(r#"enclosure url="https://example.com/entry_1.mp3""#, "enclosure".len()),
-                    enclosure: r#"enclosure url=""#.len()..r#"enclosure url="https://example.com/entry_1.mp3"#.len(),
-                }],
+                enclosures: vec![in &Global; Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &Global))],
             }],
             &Global,
         )
