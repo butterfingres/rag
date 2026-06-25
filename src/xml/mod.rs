@@ -14,10 +14,10 @@ use {
         fmt::{rfc2822, temporal},
     },
     quick_xml::{
+        XmlVersion,
         errors::SyntaxError,
         escape::resolve_xml_entity,
-        events::attributes::AttrError,
-        events::{BytesStart, Event},
+        events::{BytesStart, Event, attributes::AttrError},
         name::QName,
         reader::{NsReader, Reader, Span},
     },
@@ -193,6 +193,11 @@ impl From<TryReserveError> for ParserError {
         Self::TryReserve(e)
     }
 }
+impl From<AttrError> for ParserError {
+    fn from(e: AttrError) -> Self {
+        Self::Xml(quick_xml::Error::InvalidAttr(e))
+    }
+}
 impl From<quick_xml::Error> for ParserError {
     fn from(e: quick_xml::Error) -> Self {
         Self::Xml(e)
@@ -255,6 +260,7 @@ where
         _: Event<'src>,
         _: &mut Self::State,
         _: F,
+        _: XmlVersion,
         _: &'alloc A,
     ) -> Result<Self, ParserError>
     where
@@ -269,11 +275,17 @@ where
         Self::State: Default,
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
+        let mut version = XmlVersion::default();
         let mut state = Default::default();
         loop {
             match reader.read_event()? {
+                Event::Decl(decl) => {
+                    version = decl.xml_version()?;
+                }
                 Event::Eof => break Ok(state),
-                event => self = self.handle_event(reader, event, &mut state, &mut cb, alloc)?,
+                event => {
+                    self = self.handle_event(reader, event, &mut state, &mut cb, version, alloc)?
+                }
             }
         }
     }
@@ -361,6 +373,7 @@ where
         _: &mut S,
         _: &mut R,
         _: QName<'_>,
+        _: XmlVersion,
         _: &'alloc A,
     ) -> Result<(), ParserError>;
 }
@@ -381,10 +394,11 @@ where
         closure: &mut F,
         reader: &mut R,
         name: QName<'_>,
+        version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         let mut val = U::default();
-        T::handle_element_into(&mut val, reader, name, alloc)?;
+        T::handle_element_into(&mut val, reader, name, version, alloc)?;
         closure(val)?;
 
         Ok(())
@@ -405,6 +419,7 @@ where
         replaceable: &mut Replaceable<U>,
         reader: &mut R,
         name: QName<'_>,
+        version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         if let Replaceable {
@@ -412,7 +427,7 @@ where
             data,
         } = replaceable
         {
-            T::handle_element_into(data, reader, name, alloc)?;
+            T::handle_element_into(data, reader, name, version, alloc)?;
             *replaceable = REPLACEABLE;
             Ok(())
         } else {
@@ -431,6 +446,7 @@ where
         into: &mut Cow<'src, [u8], &'alloc A>,
         reader: &mut R,
         name: QName<'_>,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         read_to_end_in(reader, name, into, alloc)
@@ -452,14 +468,15 @@ where
         option: &mut Option<U>,
         reader: &mut R,
         name: QName<'_>,
+        version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         if let Some(val) = option {
-            T::handle_element_into(val, reader, name, alloc)?;
+            T::handle_element_into(val, reader, name, version, alloc)?;
             Ok(())
         } else {
             let mut val = U::default();
-            T::handle_element_into(&mut val, reader, name, alloc)?;
+            T::handle_element_into(&mut val, reader, name, version, alloc)?;
             *option = Some(val);
             Ok(())
         }
@@ -487,6 +504,7 @@ where
         timestamp: &mut Rfc2822Timestamp,
         reader: &mut R,
         name: QName<'_>,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         let new_timestamp = read_to_end(reader, name, alloc)?;
@@ -517,6 +535,7 @@ where
         timestamp: &mut Rfc3339Timestamp,
         reader: &mut R,
         name: QName<'_>,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         let new_timestamp = read_to_end(reader, name, alloc)?;

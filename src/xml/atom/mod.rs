@@ -8,6 +8,7 @@ use {
     },
     allocator_api2::alloc::Allocator,
     quick_xml::{
+        XmlVersion,
         events::{BytesStart, Event},
         name::{Namespace, ResolveResult},
         reader::NsReader,
@@ -80,6 +81,7 @@ where
         event: Event<'src>,
         state: &mut Self::State,
         _: F,
+        version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<Self, ParserError>
     where
@@ -92,6 +94,7 @@ where
                         &mut state.title,
                         reader,
                         tag.name(),
+                        version,
                         alloc,
                     )?;
                 }
@@ -100,6 +103,7 @@ where
                         &mut state.update,
                         reader,
                         tag.name(),
+                        version,
                         alloc,
                     )?;
                 }

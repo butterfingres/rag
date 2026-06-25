@@ -16,6 +16,7 @@ use {
     },
     jiff::Timestamp,
     quick_xml::{
+        XmlVersion,
         events::{BytesStart, Event, attributes::Attribute},
         name::QName,
         reader::Reader,
@@ -87,6 +88,7 @@ where
         bitvec: &mut BitArray<T::View, T::Order>,
         reader: &mut R,
         name: QName<'_>,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         loop {
@@ -236,7 +238,11 @@ impl<'alloc, 'src, A> Item<'alloc, 'src, A>
 where
     A: Allocator,
 {
-    fn handle_enclosure(&mut self, enclosure: BytesStart<'src>) -> Result<(), ParserError> {
+    fn handle_enclosure(
+        &mut self,
+        enclosure: BytesStart<'src>,
+        _: XmlVersion,
+    ) -> Result<(), ParserError> {
         // HACK: we use pointer arithmetic and rely on the attribute
         // parser because we cannot borrow `enclosure` for 'src as
         // required by the signature of [BytesStart::attributes]. This
@@ -282,6 +288,7 @@ where
         cb: &mut F,
         reader: &mut R,
         name: QName<'_>,
+        version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         let mut item = Item::new_in(alloc);
@@ -292,6 +299,7 @@ where
                         &mut item.title,
                         reader,
                         tag.name(),
+                        version,
                         alloc,
                     )?;
                 }
@@ -300,6 +308,7 @@ where
                         &mut item.link,
                         reader,
                         tag.name(),
+                        version,
                         alloc,
                     )?;
                 }
@@ -308,6 +317,7 @@ where
                         &mut item.description,
                         reader,
                         tag.name(),
+                        version,
                         alloc,
                     )?;
                 }
@@ -316,6 +326,7 @@ where
                         &mut item.id,
                         reader,
                         tag.name(),
+                        version,
                         alloc,
                     )?;
                 }
@@ -324,15 +335,16 @@ where
                         &mut item.pub_date,
                         reader,
                         tag.name(),
+                        version,
                         alloc,
                     )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"enclosure" => {
                     reader.read_to_end(tag.name())?;
-                    item.handle_enclosure(tag)?;
+                    item.handle_enclosure(tag, version)?;
                 }
                 Event::Empty(tag) if tag.name().0 == b"enclosure" => {
-                    item.handle_enclosure(tag)?;
+                    item.handle_enclosure(tag, version)?;
                 }
 
                 Event::Start(tag) => {
@@ -390,6 +402,7 @@ where
         event: Event<'src>,
         state: &mut Channel<'alloc, 'src, A>,
         mut cb: F,
+        version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<Self, ParserError>
     where
@@ -404,12 +417,24 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"title" => {
-                OptionHandler::<_>::handle_element_into(&mut state.title, reader, tag.name(), alloc)
-                    .map(|_| step)
+                OptionHandler::<_>::handle_element_into(
+                    &mut state.title,
+                    reader,
+                    tag.name(),
+                    version,
+                    alloc,
+                )
+                .map(|_| step)
             }
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"link" => {
-                OptionHandler::<_>::handle_element_into(&mut state.link, reader, tag.name(), alloc)
-                    .map(|_| step)
+                OptionHandler::<_>::handle_element_into(
+                    &mut state.link,
+                    reader,
+                    tag.name(),
+                    version,
+                    alloc,
+                )
+                .map(|_| step)
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
@@ -417,6 +442,7 @@ where
                     &mut state.modify_date,
                     reader,
                     tag.name(),
+                    version,
                     alloc,
                 )
                 .map(|_| step)
@@ -426,6 +452,7 @@ where
                     &mut state.modify_date,
                     reader,
                     tag.name(),
+                    version,
                     alloc,
                 )
                 .map(|_| step)
@@ -436,6 +463,7 @@ where
                     &mut state.skip_hours,
                     reader,
                     tag.name(),
+                    version,
                     alloc,
                 )
                 .map(|_| step)
@@ -445,6 +473,7 @@ where
                     &mut state.skip_days,
                     reader,
                     tag.name(),
+                    version,
                     alloc,
                 )
                 .map(|_| step)
@@ -455,7 +484,7 @@ where
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"item" => {
-                Item::handle_element_into(&mut cb, reader, tag.name(), alloc).map(|_| step)
+                Item::handle_element_into(&mut cb, reader, tag.name(), version, alloc).map(|_| step)
             }
             (step, Event::Start(tag)) => reader
                 .read_to_end(tag.name())
