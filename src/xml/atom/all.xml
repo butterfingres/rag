@@ -5,6 +5,7 @@
   <link rel="self" href="https://example.com/atom"/>
   <link rel="alternate" href="https://example.com"/>
   <entry>
+    <title>first entry</title>
     <id>1</id>
   </entry>
 </feed>

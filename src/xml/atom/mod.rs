@@ -97,6 +97,17 @@ where
                         alloc,
                     )?;
                 }
+                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
+                    if tag.local_name().as_ref() == b"title" =>
+                {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut entry.title,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
 
                 (_, Event::Start(tag)) => {
                     reader.read_to_end(tag.name())?;
@@ -305,7 +316,7 @@ mod tests {
                 ),
             },
             [xml::Entry {
-                title: None,
+                title: Some(Cow::Borrowed(b"first entry")),
                 link: None,
                 description: None,
                 id: Some(Cow::Borrowed(b"1")),
