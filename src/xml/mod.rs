@@ -299,33 +299,33 @@ where
 
 fn get_attribute_when<'alloc, 'src, F, G, A>(
     tag: &'src BytesStart<'src>,
-    mut when: F,
+    mut early_exit: F,
     mut pred: G,
     version: XmlVersion,
     alloc: &'alloc A,
 ) -> Result<Option<Box<[u8], &'alloc A>>, ParserError>
 where
-    F: FnMut(&Attribute<'src>) -> bool,
+    F: FnMut(&Attribute<'src>) -> Result<bool, ParserError>,
     G: FnMut(&Attribute<'src>) -> bool,
     A: Allocator,
 {
     let mut value = None;
-    let mut ok = false;
+    let mut exit = false;
     for attr in tag.attributes() {
         let attr = attr?;
-        if !ok {
-            ok = when(&attr);
+        if !exit {
+            exit = early_exit(&attr)?;
         }
-        if pred(&attr) && value.is_none() {
+        if value.is_none() && pred(&attr) {
             value = Some(attr.normalized_value(version)?);
         }
 
-        if value.is_some() && ok {
+        if value.is_some() && exit {
             break;
         }
     }
 
-    let Some(value) = value.filter(|_| ok) else {
+    let Some(value) = value else {
         return Ok(None);
     };
 

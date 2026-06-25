@@ -244,7 +244,7 @@ where
     ) -> Result<(), ParserError> {
         if let Some(enclosure) = get_attribute_when(
             &enclosure,
-            |_| true,
+            |_| Ok(true),
             |attr| attr.key.0 == b"url",
             version,
             alloc,
