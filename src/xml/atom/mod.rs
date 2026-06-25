@@ -242,22 +242,25 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        let Self {
+            title,
+            link,
+            update,
+        } = self;
         f.debug_struct("Feed")
             .field(
                 "title",
-                &self
-                    .title
+                &title
                     .as_ref()
                     .map(|title| fmt::from_fn(move |f| debug_bytes(&title, f))),
             )
             .field(
                 "link",
-                &self
-                    .link
+                &link
                     .as_ref()
                     .map(|link| fmt::from_fn(move |f| link.debug_bytes(f))),
             )
-            .field("update", &self.update)
+            .field("update", &update)
             .finish()
     }
 }

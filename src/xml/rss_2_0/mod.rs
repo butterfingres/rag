@@ -127,24 +127,29 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        let Self {
+            title,
+            link,
+            modify_date,
+            skip_hours,
+            skip_days,
+        } = self;
         f.debug_struct("Channel")
             .field(
                 "title",
-                &self
-                    .title
+                &title
                     .as_ref()
                     .map(|title| fmt::from_fn(move |f| debug_bytes(&title, f))),
             )
             .field(
                 "link",
-                &self
-                    .link
+                &link
                     .as_ref()
                     .map(|link| fmt::from_fn(move |f| debug_bytes(&link, f))),
             )
-            .field("modify_date", &self.modify_date)
-            .field("skip_hours", &self.skip_hours)
-            .field("skip_days", &self.skip_days)
+            .field("modify_date", &modify_date)
+            .field("skip_hours", &skip_hours)
+            .field("skip_days", &skip_days)
             .finish()
     }
 }

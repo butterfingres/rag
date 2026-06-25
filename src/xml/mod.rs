@@ -115,39 +115,42 @@ where
     A: Allocator,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        let Self {
+            title,
+            link,
+            description,
+            id,
+            pub_date,
+            enclosures,
+        } = self;
         f.debug_struct("Entry")
             .field(
                 "title",
-                &self
-                    .title
+                &title
                     .as_ref()
                     .map(|title| fmt::from_fn(move |f| debug_bytes(&title, f))),
             )
             .field(
                 "link",
-                &self
-                    .link
+                &link
                     .as_ref()
                     .map(|link| fmt::from_fn(move |f| debug_bytes(&link, f))),
             )
             .field(
                 "description",
-                &self
-                    .description
+                &description
                     .as_ref()
                     .map(|description| fmt::from_fn(move |f| debug_bytes(&description, f))),
             )
             .field(
                 "id",
-                &self
-                    .id
-                    .as_ref()
+                &id.as_ref()
                     .map(|id| fmt::from_fn(move |f| debug_bytes(&id, f))),
             )
-            .field("pub_date", &self.pub_date)
+            .field("pub_date", &pub_date)
             .field(
                 "enclosures",
-                &fmt::from_fn(|f| debug_iter_bytes(&self.enclosures, f)),
+                &fmt::from_fn(|f| debug_iter_bytes(&enclosures, f)),
             )
             .finish()
     }
