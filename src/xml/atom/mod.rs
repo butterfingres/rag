@@ -2,11 +2,11 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, Entry, HandleElementInto, OptionHandler, ParserError, Rfc3339Timestamp,
-            TryFromRootError,
+            self, Entry, HandleElementInto, OptionHandler, ParserError, Replaceable,
+            Rfc3339Timestamp, TryFromRootError, get_attribute_when,
         },
     },
-    allocator_api2::alloc::Allocator,
+    allocator_api2::{alloc::Allocator, boxed::Box},
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
@@ -23,6 +23,7 @@ where
     A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
+    link: Option<Replaceable<Box<[u8], &'alloc A>>>,
     update: Option<Rfc3339Timestamp>,
 }
 impl<A> Debug for Feed<'_, '_, A>
@@ -40,6 +41,7 @@ where
     fn default() -> Self {
         Self {
             title: None,
+            link: None,
             update: None,
         }
     }
@@ -51,6 +53,48 @@ where
 {
     fn eq(&self, r: &Feed<'_, '_, A2>) -> bool {
         self.title.as_deref() == r.title.as_deref()
+    }
+}
+impl<'alloc, 'src, A> Feed<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn handle_link(
+        &mut self,
+        link: &BytesStart<'src>,
+        reader: &NsReader<&'src [u8]>,
+        version: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        let mut replaceable = true;
+        if let Some(Replaceable {
+            replaceable: true, ..
+        })
+        | None = self.link
+            && let Some(href) = get_attribute_when(
+                &link,
+                |attr| {
+                    if let (ResolveResult::Bound(Namespace(NS)), name) =
+                        reader.resolver().resolve_attribute(attr.key)
+                        && name.as_ref() == b"rel"
+                        && *attr.value == *b"alternate"
+                    {
+                        replaceable = false;
+                    }
+
+                    true
+                },
+                |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"href"),
+                version,
+                alloc,
+            )?
+        {
+            self.link = Some(Replaceable {
+                replaceable,
+                data: href,
+            });
+        }
+        Ok(())
     }
 }
 
@@ -107,9 +151,19 @@ where
                         alloc,
                     )?;
                 }
+                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"link" => {
+                    state.handle_link(&tag, reader, version, alloc)?;
+                    reader.read_to_end(tag.name())?;
+                }
                 _ => {
                     reader.read_to_end(tag.name())?;
                 }
+            },
+            Event::Empty(tag) => match reader.resolver().resolve_element(tag.name()) {
+                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"link" => {
+                    state.handle_link(&tag, reader, version, alloc)?;
+                }
+                _ => {}
             },
             _ => {}
         }
@@ -123,18 +177,25 @@ mod tests {
     use {
         super::*,
         crate::{
-            alloc, tz,
+            tz,
             xml::tests::{TestParserError, test_parser},
         },
+        allocator_api2::alloc::Global,
+        bump_scope::Bump,
         jiff::civil::datetime,
     };
 
     #[test]
     fn test_atom_parser_all() -> Result<(), TestParserError<'static>> {
+        let alloc = Bump::<Global>::try_new()?;
         test_parser::<_, AtomParser, _>(
             include_str!("./all.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"test feed")),
+                link: Some(Replaceable {
+                    replaceable: false,
+                    data: Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc)),
+                }),
                 // 2003-12-13T18:30:02Z
                 update: Some(
                     datetime(2003, 12, 13, 18, 30, 02, 00)
@@ -144,7 +205,7 @@ mod tests {
                 ),
             },
             [],
-            &alloc::Dummy,
+            &alloc,
         )
     }
 }

@@ -242,9 +242,13 @@ where
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        if let Some(enclosure) =
-            get_attribute_when(&enclosure, |_| true, QName(b"url"), version, alloc)?
-        {
+        if let Some(enclosure) = get_attribute_when(
+            &enclosure,
+            |_| true,
+            |attr| attr.key.0 == b"url",
+            version,
+            alloc,
+        )? {
             self.enclosures.push(enclosure);
         }
 

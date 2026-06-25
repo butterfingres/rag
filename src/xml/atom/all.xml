@@ -2,4 +2,6 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>test feed</title>
   <updated>2003-12-13T18:30:02Z</updated>
+  <link rel="self" href="https://example.com/atom"/>
+  <link rel="alternate" href="https://example.com"/>
 </feed>

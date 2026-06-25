@@ -297,15 +297,16 @@ where
     }
 }
 
-fn get_attribute_when<'alloc, 'src, F, A>(
+fn get_attribute_when<'alloc, 'src, F, G, A>(
     tag: &'src BytesStart<'src>,
     mut when: F,
-    attr_name: QName<'_>,
+    mut pred: G,
     version: XmlVersion,
     alloc: &'alloc A,
 ) -> Result<Option<Box<[u8], &'alloc A>>, ParserError>
 where
     F: FnMut(&Attribute<'src>) -> bool,
+    G: FnMut(&Attribute<'src>) -> bool,
     A: Allocator,
 {
     let mut value = None;
@@ -315,7 +316,7 @@ where
         if !ok {
             ok = when(&attr);
         }
-        if attr.key == attr_name && value.is_none() {
+        if pred(&attr) && value.is_none() {
             value = Some(attr.normalized_value(version)?);
         }
 
