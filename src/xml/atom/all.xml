@@ -11,5 +11,6 @@
     <foo:content>faux contents of entry number 1</foo:content>
     <content>contents of entry number 1</content>
     <updated>2004-12-13T18:30:02Z</updated>
+    <link rel="alternate" href="https://example.com/entry_1"/>
   </entry>
 </feed>

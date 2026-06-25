@@ -17,14 +17,18 @@ use {
     std::fmt::{self, Debug, Formatter},
 };
 
-const NS: &[u8] = b"http://www.w3.org/2005/Atom";
+macro_rules! ns {
+    () => {
+        ResolveResult::Unbound | ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"))
+    };
+}
 
 pub struct Entry<'alloc, 'src, A>
 where
     A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Cow<'src, [u8], &'alloc A>>,
+    link: Option<Replaceable<Box<[u8], &'alloc A>>>,
     content: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
     updated: Option<Rfc3339Timestamp>,
@@ -44,6 +48,71 @@ where
             enclosures: Vec::new_in(alloc),
         }
     }
+
+    fn handle_link(
+        &mut self,
+        link: &BytesStart<'src>,
+        reader: &NsReader<&'src [u8]>,
+        version: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        #[derive(Default)]
+        enum LinkType {
+            Enclosure,
+            Alternate,
+            #[default]
+            Other,
+        }
+        let mut found_rel = false;
+        let mut ty = None;
+
+        if let Some(href) = get_attribute_when(
+            link,
+            |attr| {
+                if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
+                    && name.as_ref() == b"rel"
+                {
+                    found_rel = true;
+                    ty = Some(match attr.normalized_value(version)?.as_ref() {
+                        "alternate" => LinkType::Alternate,
+                        "enclosure" => LinkType::Enclosure,
+                        _ => LinkType::Other,
+                    });
+                }
+
+                Ok(found_rel)
+            },
+            |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
+            version,
+            alloc,
+        )? {
+            match ty.unwrap_or_default() {
+                LinkType::Enclosure => {
+                    self.enclosures.push(href);
+                }
+                LinkType::Alternate => {
+                    self.link = Some(Replaceable {
+                        replaceable: false,
+                        data: href,
+                    });
+                }
+                LinkType::Other
+                    if let None
+                    | Some(Replaceable {
+                        replaceable: true, ..
+                    }) = self.link =>
+                {
+                    self.link = Some(Replaceable {
+                        replaceable: true,
+                        data: href,
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
 }
 impl<'alloc, 'src, A> From<Entry<'alloc, 'src, A>> for xml::Entry<'alloc, 'src, A>
 where
@@ -61,7 +130,10 @@ where
     ) -> xml::Entry<'alloc, 'src, A> {
         xml::Entry {
             title,
-            link,
+            link: link
+                .map(Replaceable::into_inner)
+                .map(Vec::from)
+                .map(Cow::Owned),
             description: content.map(Replaceable::into_inner),
             id,
             pub_date: updated.map(Timestamp::from),
@@ -86,9 +158,7 @@ where
         let mut entry = Entry::new_in(alloc);
         loop {
             match reader.read_resolved_event()? {
-                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
-                    if tag.local_name().as_ref() == b"id" =>
-                {
+                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"id" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut entry.id,
                         reader,
@@ -97,9 +167,7 @@ where
                         alloc,
                     )?;
                 }
-                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
-                    if tag.local_name().as_ref() == b"title" =>
-                {
+                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut entry.title,
                         reader,
@@ -108,9 +176,7 @@ where
                         alloc,
                     )?;
                 }
-                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
-                    if tag.local_name().as_ref() == b"content" =>
-                {
+                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
                     OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
                         &mut entry.content,
                         reader,
@@ -119,9 +185,7 @@ where
                         alloc,
                     )?;
                 }
-                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
-                    if tag.local_name().as_ref() == b"description" =>
-                {
+                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
                     OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
                         &mut entry.content,
                         reader,
@@ -130,9 +194,7 @@ where
                         alloc,
                     )?;
                 }
-                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
-                    if tag.local_name().as_ref() == b"updated" =>
-                {
+                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut entry.updated,
                         reader,
@@ -140,6 +202,14 @@ where
                         version,
                         alloc,
                     )?;
+                }
+
+                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
+                    entry.handle_link(&tag, reader, version, alloc)?;
+                    reader.read_to_end(tag.name())?;
+                }
+                (ns!(), Event::Empty(tag)) if tag.local_name().as_ref() == b"link" => {
+                    entry.handle_link(&tag, reader, version, alloc)?;
                 }
 
                 (_, Event::Start(tag)) => {
@@ -213,10 +283,9 @@ where
         })
         | None = self.link
             && let Some(href) = get_attribute_when(
-                &link,
+                link,
                 |attr| {
-                    if let (ResolveResult::Bound(Namespace(NS)), name) =
-                        reader.resolver().resolve_attribute(attr.key)
+                    if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
                         && name.as_ref() == b"rel"
                         && *attr.value == *b"alternate"
                     {
@@ -224,9 +293,9 @@ where
                         replaceable = false;
                     }
 
-                    found_rel
+                    Ok(found_rel)
                 },
-                |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"href"),
+                |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
                 version,
                 alloc,
             )?
@@ -252,8 +321,7 @@ where
         root: BytesStart<'src>,
         reader: &Self::Reader,
     ) -> Result<Self, TryFromRootError<'src>> {
-        if let (ResolveResult::Bound(Namespace(NS)), name) =
-            reader.resolver().resolve_element(root.name())
+        if let (ns!(), name) = reader.resolver().resolve_element(root.name())
             && name.as_ref() == b"feed"
         {
             Ok(Self)
@@ -275,7 +343,7 @@ where
     {
         match event {
             Event::Start(tag) => match reader.resolver().resolve_element(tag.name()) {
-                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"title" => {
+                (ns!(), name) if name.as_ref() == b"title" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut state.title,
                         reader,
@@ -284,7 +352,7 @@ where
                         alloc,
                     )?;
                 }
-                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"updated" => {
+                (ns!(), name) if name.as_ref() == b"updated" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut state.update,
                         reader,
@@ -293,12 +361,12 @@ where
                         alloc,
                     )?;
                 }
-                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"link" => {
+                (ns!(), name) if name.as_ref() == b"link" => {
                     state.handle_link(&tag, reader, version, alloc)?;
                     reader.read_to_end(tag.name())?;
                 }
 
-                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"entry" => {
+                (ns!(), name) if name.as_ref() == b"entry" => {
                     Entry::handle_element_into(&mut cb, reader, tag.name(), version, alloc)?;
                 }
                 _ => {
@@ -306,7 +374,7 @@ where
                 }
             },
             Event::Empty(tag) => match reader.resolver().resolve_element(tag.name()) {
-                (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"link" => {
+                (ns!(), name) if name.as_ref() == b"link" => {
                     state.handle_link(&tag, reader, version, alloc)?;
                 }
                 _ => {}
@@ -352,7 +420,7 @@ mod tests {
             },
             [xml::Entry {
                 title: Some(Cow::Borrowed(b"first entry")),
-                link: None,
+                link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
                 description: Some(Cow::Borrowed(b"contents of entry number 1")),
                 id: Some(Cow::Borrowed(b"1")),
                 // 2004-12-13T18:30:02Z
