@@ -130,6 +130,17 @@ where
                         alloc,
                     )?;
                 }
+                (ResolveResult::Bound(Namespace(NS)), Event::Start(tag))
+                    if tag.local_name().as_ref() == b"updated" =>
+                {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut entry.updated,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
 
                 (_, Event::Start(tag)) => {
                     reader.read_to_end(tag.name())?;
@@ -342,7 +353,13 @@ mod tests {
                 link: None,
                 description: Some(Cow::Borrowed(b"contents of entry number 1")),
                 id: Some(Cow::Borrowed(b"1")),
-                pub_date: None,
+                // 2004-12-13T18:30:02Z
+                pub_date: Some(
+                    datetime(2004, 12, 13, 18, 30, 02, 00)
+                        .to_zoned(tz::Z)?
+                        .timestamp()
+                        .into(),
+                ),
                 enclosures: Vec::new_in(&alloc),
             }],
             &alloc,
