@@ -17,20 +17,6 @@ where
 
     Ok(())
 }
-pub fn debug_optional_bytes<T>(bytes: &Option<T>, f: &mut Formatter<'_>) -> Result<(), fmt::Error>
-where
-    T: AsRef<[u8]>,
-{
-    if let Some(bytes) = bytes.as_ref() {
-        f.write_str("Some(")?;
-        debug_bytes(bytes, f)?;
-        f.write_str(")")?;
-    } else {
-        f.write_str("None")?;
-    }
-
-    Ok(())
-}
 pub fn debug_iter_bytes<T, U>(iter: &T, f: &mut Formatter<'_>) -> Result<(), fmt::Error>
 where
     T: AsRef<[U]> + ?Sized,
@@ -92,26 +78,6 @@ mod tests {
     fn test_debug_bytes_escape_debug() -> Result<(), fmt::Error> {
         const OUTPUT: &str = r#"b"\n""#;
         test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(debug_bytes, || b"\n", OUTPUT)
-    }
-
-    #[test]
-    fn test_debug_optional_bytes_some() -> Result<(), fmt::Error> {
-        const OUTPUT: &str = r#"Some(b"hello")"#;
-        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(
-            debug_optional_bytes,
-            || &Some(b"hello"),
-            OUTPUT,
-        )
-    }
-
-    #[test]
-    fn test_debug_optional_bytes_none() -> Result<(), fmt::Error> {
-        const OUTPUT: &str = r#"None"#;
-        test_formatter_fn::<{ OUTPUT.len() }, _, _, _>(
-            debug_optional_bytes,
-            || -> &Option<&[u8]> { &None },
-            OUTPUT,
-        )
     }
 
     #[test]

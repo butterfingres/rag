@@ -2,7 +2,11 @@ pub mod atom;
 pub mod rss_2_0;
 
 use {
-    crate::{borrow::Cow, num::ParseIntError},
+    crate::{
+        borrow::Cow,
+        fmt::{debug_bytes, debug_iter_bytes},
+        num::ParseIntError,
+    },
     allocator_api2::{
         alloc::{AllocError, Allocator},
         boxed::Box,
@@ -61,6 +65,17 @@ pub struct Replaceable<T> {
     data: T,
     replaceable: bool,
 }
+impl<T> Replaceable<T>
+where
+    T: AsRef<[u8]>,
+{
+    fn debug_bytes(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("Replaceable")
+            .field("data", &fmt::from_fn(|f| debug_bytes(&self.data, f)))
+            .field("replaceable", &self.replaceable)
+            .finish()
+    }
+}
 impl<T> Default for Replaceable<T>
 where
     T: Default,
@@ -101,11 +116,39 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         f.debug_struct("Entry")
-            .field("title", &self.title)
-            .field("link", &self.link)
-            .field("description", &self.description)
+            .field(
+                "title",
+                &self
+                    .title
+                    .as_ref()
+                    .map(|title| fmt::from_fn(move |f| debug_bytes(&title, f))),
+            )
+            .field(
+                "link",
+                &self
+                    .link
+                    .as_ref()
+                    .map(|link| fmt::from_fn(move |f| debug_bytes(&link, f))),
+            )
+            .field(
+                "description",
+                &self
+                    .description
+                    .as_ref()
+                    .map(|description| fmt::from_fn(move |f| debug_bytes(&description, f))),
+            )
+            .field(
+                "id",
+                &self
+                    .id
+                    .as_ref()
+                    .map(|id| fmt::from_fn(move |f| debug_bytes(&id, f))),
+            )
             .field("pub_date", &self.pub_date)
-            .field("enclosures", &self.enclosures)
+            .field(
+                "enclosures",
+                &fmt::from_fn(|f| debug_iter_bytes(&self.enclosures, f)),
+            )
             .finish()
     }
 }
