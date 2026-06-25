@@ -261,8 +261,6 @@ where
 
             // SAFETY: copying the buffer should initialize the bytes
             let buf = unsafe { buf.assume_init() };
-
-            // let url = Box::try_new_in(*url.as_bytes(), alloc)?;
             self.enclosures.push(buf);
         }
 
