@@ -228,12 +228,17 @@ impl From<quick_xml::Error> for ParserError {
 
 #[derive(Debug)]
 pub enum TryFromRootError<'src> {
-    Attr(AttrError),
+    Xml(quick_xml::Error),
     UnknownRoot(BytesStart<'src>),
 }
 impl From<AttrError> for TryFromRootError<'_> {
     fn from(e: AttrError) -> Self {
-        Self::Attr(e)
+        Self::Xml(quick_xml::Error::InvalidAttr(e))
+    }
+}
+impl From<quick_xml::Error> for TryFromRootError<'_> {
+    fn from(e: quick_xml::Error) -> Self {
+        Self::Xml(e)
     }
 }
 
@@ -274,8 +279,11 @@ where
     type Reader: ParserReader<'src>;
     type State;
 
-    fn try_from_root(_: BytesStart<'src>, _: &Self::Reader)
-    -> Result<Self, TryFromRootError<'src>>;
+    fn try_from_root(
+        _: BytesStart<'src>,
+        _: &Self::Reader,
+        _: XmlVersion,
+    ) -> Result<Self, TryFromRootError<'src>>;
     fn handle_event<F>(
         self,
         _: &mut Self::Reader,
@@ -647,13 +655,16 @@ mod tests {
         std::{assert_matches, fmt::Debug},
     };
 
-    fn get_root<'src, R>(reader: &mut R) -> Result<BytesStart<'src>, ParserError>
+    fn get_header<'src, R>(reader: &mut R) -> Result<(XmlVersion, BytesStart<'src>), ParserError>
     where
         R: ParserReader<'src>,
     {
+        let mut version = None;
+
         loop {
             match reader.read_event()? {
-                Event::Start(tag) => break Ok(tag),
+                Event::Decl(decl) => version = Some(decl.xml_version()?),
+                Event::Start(tag) => break Ok((version.unwrap_or_default(), tag)),
                 Event::Eof => break Err(ParserError::MissingRoot),
                 _ => {}
             }
@@ -694,11 +705,11 @@ mod tests {
         A: Allocator,
     {
         let mut reader = T::Reader::from_str(input);
-        let root = get_root(&mut reader)?;
+        let (version, root) = get_header(&mut reader)?;
 
         let mut items = 0;
 
-        let parser = T::try_from_root(root, &reader)?;
+        let parser = T::try_from_root(root, &reader, version)?;
         let state = parser.handle_events(
             &mut reader,
             |entry| {
@@ -720,7 +731,7 @@ mod tests {
         F: FnOnce(Cow<'_, [u8], &A>),
     {
         let mut reader = NsReader::from_str(input);
-        let root = get_root(&mut reader)?;
+        let (_, root) = get_header(&mut reader)?;
         f(read_to_end(&mut reader, root.name(), alloc)?);
         Ok(())
     }

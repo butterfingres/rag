@@ -338,6 +338,7 @@ where
     fn try_from_root(
         root: BytesStart<'src>,
         reader: &Self::Reader,
+        _: XmlVersion,
     ) -> Result<Self, TryFromRootError<'src>> {
         if let (ns!(), name) = reader.resolver().resolve_element(root.name())
             && name.as_ref() == b"feed"

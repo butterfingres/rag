@@ -18,8 +18,8 @@ use {
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
-        name::QName,
-        reader::Reader,
+        name::{QName, ResolveResult},
+        reader::NsReader,
     },
     std::{
         fmt::{self, Debug, Formatter},
@@ -392,29 +392,38 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
     A: Allocator + 'alloc,
 {
-    type Reader = Reader<&'src [u8]>;
+    type Reader = NsReader<&'src [u8]>;
     type State = Channel<'alloc, 'src, A>;
 
     fn try_from_root(
-        tag: BytesStart<'src>,
-        _: &Self::Reader,
+        root: BytesStart<'src>,
+        reader: &Self::Reader,
+        version: XmlVersion,
     ) -> Result<Self, TryFromRootError<'src>> {
-        if tag.name().0 == b"rss" && {
-            let mut found = false;
-            for attr in tag.attributes() {
-                let attr = attr?;
-                if attr.key.0 == b"version"
-                    && matches!(attr.value.as_ref(), b"0.91" | b"0.92" | b"2.0")
-                {
-                    found = true;
-                    break;
+        if let (ResolveResult::Unbound, name) = reader.resolver().resolve_element(root.name())
+            && name.as_ref() == b"rss"
+            && {
+                let mut found = false;
+                for attr in root.attributes() {
+                    let attr = attr?;
+                    if let (ResolveResult::Unbound, name) =
+                        reader.resolver().resolve_attribute(attr.key)
+                        && name.as_ref() == b"version"
+                        && matches!(
+                            attr.normalized_value(version)?.as_ref(),
+                            "0.91" | "0.92" | "2.0"
+                        )
+                    {
+                        found = true;
+                        break;
+                    }
                 }
+                found
             }
-            found
-        } {
+        {
             Ok(Self::OutsideChannel)
         } else {
-            Err(TryFromRootError::UnknownRoot(tag))
+            Err(TryFromRootError::UnknownRoot(root))
         }
     }
     fn handle_event<F>(
