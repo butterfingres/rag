@@ -41,6 +41,105 @@ use {
 pub type SkipDays = BitArr![for 7, in u8];
 pub type SkipHours = BitArr![for 24, in u32];
 
+pub struct PartialFeed<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    title: Option<Cow<'src, [u8], &'alloc A>>,
+    link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
+    modify_date: Option<Replaceable<Rfc2822Timestamp>>,
+    skip_hours: SkipHours,
+    skip_days: SkipDays,
+    ttl: Option<u64>,
+}
+impl<A> Debug for PartialFeed<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        let Self {
+            title,
+            link,
+            modify_date,
+            skip_hours,
+            skip_days,
+            ttl,
+        } = self;
+        f.debug_struct("PartialFeed")
+            .field("title", &title)
+            .field("link", &link)
+            .field("modify_date", &modify_date)
+            .field("skip_hours", &skip_hours)
+            .field("skip_days", &skip_days)
+            .field("ttl", &ttl)
+            .finish()
+    }
+}
+impl<'alloc, 'src, A> Default for PartialFeed<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn default() -> Self {
+        Self {
+            title: None,
+            link: None,
+            modify_date: None,
+            skip_hours: SkipHours::default(),
+            skip_days: SkipDays::default(),
+            ttl: None,
+        }
+    }
+}
+impl<'alloc, 'src, A> From<PartialFeed<'alloc, 'src, A>> for Feed<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn from(
+        PartialFeed {
+            title,
+            link,
+            modify_date,
+            skip_hours,
+            skip_days,
+            ttl,
+        }: PartialFeed<'alloc, 'src, A>,
+    ) -> Feed<'alloc, 'src, A> {
+        Feed {
+            title,
+            link: link.map(Replaceable::into_inner),
+            skip_days,
+            skip_hours,
+            ttl,
+            last_update: modify_date
+                .map(Replaceable::into_inner)
+                .map(Timestamp::from),
+        }
+    }
+}
+impl<'alloc, 'src, A> PartialEq for PartialFeed<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn eq(
+        &self,
+        Self {
+            title,
+            link,
+            modify_date,
+            skip_hours,
+            skip_days,
+            ttl,
+        }: &Self,
+    ) -> bool {
+        self.title.as_ref() == title.as_ref()
+            && self.link.as_ref() == link.as_ref()
+            && self.modify_date == *modify_date
+            && self.skip_hours == *skip_hours
+            && self.skip_days == *skip_days
+            && self.ttl == *ttl
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Feed<'alloc, 'src, A>
 where

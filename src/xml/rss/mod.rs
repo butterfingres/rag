@@ -3,9 +3,8 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, Entry, Feed, HandleElementInto, OptionHandler, ParserError, Replaceable,
-            ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours, TryFromRootError,
-            UintHandler, get_attribute_when, read_to_end,
+            self, Entry, HandleElementInto, OptionHandler, ParserError, ReplaceableHandler,
+            Rfc2822Timestamp, TryFromRootError, UintHandler, get_attribute_when, read_to_end,
         },
     },
     allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
@@ -21,10 +20,7 @@ use {
         name::{QName, ResolveResult},
         reader::NsReader,
     },
-    std::{
-        fmt::{self, Debug, Formatter},
-        marker::PhantomData,
-    },
+    std::marker::PhantomData,
 };
 
 trait RssSkip {
@@ -110,104 +106,105 @@ where
     }
 }
 
-pub struct Channel<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Cow<'src, [u8], &'alloc A>>,
-    modify_date: Option<Replaceable<Rfc2822Timestamp>>,
-    skip_hours: SkipHours,
-    skip_days: SkipDays,
-    ttl: Option<u64>,
-}
-impl<A> Debug for Channel<'_, '_, A>
-where
-    A: Allocator,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        let Self {
-            title,
-            link,
-            modify_date,
-            skip_hours,
-            skip_days,
-            ttl,
-        } = self;
-        f.debug_struct("Channel")
-            .field("title", &title)
-            .field("link", &link)
-            .field("modify_date", &modify_date)
-            .field("skip_hours", &skip_hours)
-            .field("skip_days", &skip_days)
-            .field("ttl", &ttl)
-            .finish()
-    }
-}
-impl<'alloc, 'src, A> Default for Channel<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn default() -> Self {
-        Self {
-            title: None,
-            link: None,
-            modify_date: None,
-            skip_hours: SkipHours::default(),
-            skip_days: SkipDays::default(),
-            ttl: None,
-        }
-    }
-}
-impl<'alloc, 'src, A> From<Channel<'alloc, 'src, A>> for Feed<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn from(
-        Channel {
-            title,
-            link,
-            modify_date,
-            skip_hours,
-            skip_days,
-            ttl,
-        }: Channel<'alloc, 'src, A>,
-    ) -> Feed<'alloc, 'src, A> {
-        Feed {
-            title,
-            link,
-            skip_days,
-            skip_hours,
-            ttl,
-            last_update: modify_date
-                .map(Replaceable::into_inner)
-                .map(Timestamp::from),
-        }
-    }
-}
-impl<'alloc, 'src, A> PartialEq for Channel<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn eq(
-        &self,
-        Self {
-            title,
-            link,
-            modify_date,
-            skip_hours,
-            skip_days,
-            ttl,
-        }: &Self,
-    ) -> bool {
-        self.title.as_ref() == title.as_ref()
-            && self.link.as_ref() == link.as_ref()
-            && self.modify_date == *modify_date
-            && self.skip_hours == *skip_hours
-            && self.skip_days == *skip_days
-            && self.ttl == *ttl
-    }
-}
+// pub struct Channel<'alloc, 'src, A>
+// where
+//     A: Allocator,
+// {
+//     title: Option<Cow<'src, [u8], &'alloc A>>,
+//     link: Option<Cow<'src, [u8], &'alloc A>>,
+//     modify_date: Option<Replaceable<Rfc2822Timestamp>>,
+//     skip_hours: SkipHours,
+//     skip_days: SkipDays,
+//     ttl: Option<u64>,
+// }
+// impl<A> Debug for Channel<'_, '_, A>
+// where
+//     A: Allocator,
+// {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+//         let Self {
+//             title,
+//             link,
+//             modify_date,
+//             skip_hours,
+//             skip_days,
+//             ttl,
+//         } = self;
+//         f.debug_struct("Channel")
+//             .field("title", &title)
+//             .field("link", &link)
+//             .field("modify_date", &modify_date)
+//             .field("skip_hours", &skip_hours)
+//             .field("skip_days", &skip_days)
+//             .field("ttl", &ttl)
+//             .finish()
+//     }
+// }
+// impl<'alloc, 'src, A> Default for Channel<'alloc, 'src, A>
+// where
+//     A: Allocator,
+// {
+//     fn default() -> Self {
+//         Self {
+//             title: None,
+//             link: None,
+//             modify_date: None,
+//             skip_hours: SkipHours::default(),
+//             skip_days: SkipDays::default(),
+//             ttl: None,
+//         }
+//     }
+// }
+// impl<'alloc, 'src, A> From<Channel<'alloc, 'src, A>> for Feed<'alloc, 'src, A>
+// where
+//     A: Allocator,
+// {
+//     fn from(
+//         Channel {
+//             title,
+//             link,
+//             modify_date,
+//             skip_hours,
+//             skip_days,
+//             ttl,
+//         }: Channel<'alloc, 'src, A>,
+//     ) -> Feed<'alloc, 'src, A> {
+//         Feed {
+//             title,
+//             link,
+//             skip_days,
+//             skip_hours,
+//             ttl,
+//             last_update: modify_date
+//                 .map(Replaceable::into_inner)
+//                 .map(Timestamp::from),
+//         }
+//     }
+// }
+// impl<'alloc, 'src, A> PartialEq for Channel<'alloc, 'src, A>
+// where
+//     A: Allocator,
+// {
+//     fn eq(
+//         &self,
+//         Self {
+//             title,
+//             link,
+//             modify_date,
+//             skip_hours,
+//             skip_days,
+//             ttl,
+//         }: &Self,
+//     ) -> bool {
+//         self.title.as_ref() == title.as_ref()
+//             && self.link.as_ref() == link.as_ref()
+//             && self.modify_date == *modify_date
+//             && self.skip_hours == *skip_hours
+//             && self.skip_days == *skip_days
+//             && self.ttl == *ttl
+//     }
+// }
+type Channel<'a, 'b, A> = xml::PartialFeed<'a, 'b, A>;
 
 pub struct Item<'alloc, 'src, A>
 where
@@ -458,7 +455,7 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"link" =>
                 {
-                    OptionHandler::<_>::handle_element_into(
+                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
                         &mut state.link,
                         reader,
                         tag.name(),
@@ -558,7 +555,10 @@ mod tests {
         super::*,
         crate::{
             alloc, tz,
-            xml::tests::{TestParserError, test_parser},
+            xml::{
+                Replaceable, SkipDays, SkipHours,
+                tests::{TestParserError, test_parser},
+            },
         },
         allocator_api2::{alloc::Global, vec},
         bump_scope::Bump,
@@ -572,7 +572,10 @@ mod tests {
             include_str!("./all.xml"),
             Channel {
                 title: Some(Cow::Borrowed(b"example feed")),
-                link: Some(Cow::Borrowed(b"https://example.com/rss")),
+                link: Some(Replaceable {
+                    data: Cow::Borrowed(b"https://example.com/rss"),
+                    replaceable: false,
+                }),
                 modify_date: Some(Replaceable {
                     // Fri, 21 Jul 2023 09:04 EDT
                     data: datetime(2023, 07, 21, 09, 04, 00, 00)
@@ -618,7 +621,10 @@ mod tests {
             include_str!("./sample-rss-091.xml"),
             Channel {
                 title: Some(Cow::Borrowed(b"WriteTheWeb")),
-                link: Some(Cow::Borrowed(b"http://writetheweb.com")),
+                link: Some(Replaceable {
+                    data: Cow::Borrowed(b"http://writetheweb.com"),
+                    replaceable: false,
+                }),
                 modify_date: None,
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
@@ -682,7 +688,10 @@ mod tests {
             include_str!("./sample-rss-092.xml"),
             Channel {
                 title: Some(Cow::Borrowed(b"Winnemac Daily News")),
-                link: Some(Cow::Borrowed(b"https://winnemac.example.com/")),
+                link: Some(Replaceable {
+                    data: Cow::Borrowed(b"https://winnemac.example.com/"),
+                    replaceable: false,
+                }),
                 // Fri, 13 Apr 2001 09:03:49 GMT
                 modify_date: Some(Replaceable {
                     data: datetime(2001, 04, 13, 09, 03, 49, 00)
@@ -825,7 +834,10 @@ mod tests {
             include_str!("./sample-rss-2.xml"),
             Channel {
                 title: Some(Cow::Borrowed(b"NASA Space Station News")),
-                link: Some(Cow::Borrowed(b"http://www.nasa.gov/")),
+                link: Some(Replaceable {
+                    data: Cow::Borrowed(b"http://www.nasa.gov/"),
+                    replaceable: false,
+                }),
                 modify_date: Some(Replaceable {
                     // Fri, 21 Jul 2023 09:04 EDT
                     data: datetime(2023, 07, 21, 09, 04, 00, 00)
@@ -916,7 +928,10 @@ mod tests {
             include_str!("./alt.xml"),
             Channel {
                 title: Some(Cow::Borrowed(b"example feed")),
-                link: Some(Cow::Borrowed(b"https://example.com/rss")),
+                link: Some(Replaceable {
+                    data: Cow::Borrowed(b"https://example.com/rss"),
+                    replaceable: false,
+                }),
                 modify_date: Some(Replaceable {
                     // Fri, 21 Jul 2023 09:04 EDT
                     data: datetime(2023, 07, 21, 09, 04, 00, 00)
