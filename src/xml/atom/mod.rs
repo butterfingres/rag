@@ -70,7 +70,7 @@ where
             LinkType::Alternate => {
                 entry.link = Some(Replaceable {
                     replaceable: false,
-                    data: href,
+                    data: Cow::Owned(href.into()),
                 });
             }
             LinkType::Other
@@ -81,7 +81,7 @@ where
             {
                 entry.link = Some(Replaceable {
                     replaceable: true,
-                    data: href,
+                    data: Cow::Owned(href.into()),
                 });
             }
             _ => {}

@@ -184,7 +184,7 @@ where
     A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Replaceable<Box<[u8], &'alloc A>>>,
+    link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
     content: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
     updated: Option<Timestamp>,
@@ -259,10 +259,7 @@ where
     ) -> Entry<'alloc, 'src, A> {
         Entry {
             title,
-            link: link
-                .map(Replaceable::into_inner)
-                .map(Vec::from)
-                .map(Cow::Owned),
+            link: link.map(Replaceable::into_inner),
             description: content.map(Replaceable::into_inner),
             id,
             pub_date: updated,

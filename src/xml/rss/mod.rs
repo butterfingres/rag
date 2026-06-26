@@ -3,18 +3,17 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, Entry, HandleElementInto, OptionHandler, ParserError, ReplaceableHandler,
-            Rfc2822TimestampHandler, TryFromRootError, UintHandler, get_attribute_when,
-            read_to_end,
+            self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
+            Replaceable, ReplaceableHandler, Rfc2822TimestampHandler, TryFromRootError,
+            UintHandler, get_attribute_when, read_to_end,
         },
     },
-    allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
+    allocator_api2::alloc::Allocator,
     bitvec::{
         array::BitArray,
         order::{BitOrder, Lsb0},
         view::BitViewSized,
     },
-    jiff::Timestamp,
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
@@ -107,86 +106,34 @@ where
     }
 }
 
-type Channel<'a, 'b, A> = xml::PartialFeed<'a, 'b, A>;
+fn handle_enclosure<'alloc, 'src, A>(
+    item: &mut PartialEntry<'alloc, 'src, A>,
+    enclosure: BytesStart<'src>,
+    version: XmlVersion,
+    alloc: &'alloc A,
+) -> Result<(), ParserError>
+where
+    A: Allocator,
+{
+    if let Some(enclosure) = get_attribute_when(
+        &enclosure,
+        |_| Ok(true),
+        |attr| attr.key.0 == b"url",
+        version,
+        alloc,
+    )? {
+        item.enclosures.push(enclosure);
+    }
 
-pub struct Item<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Cow<'src, [u8], &'alloc A>>,
-    description: Option<Cow<'src, [u8], &'alloc A>>,
-    id: Option<Cow<'src, [u8], &'alloc A>>,
-    pub_date: Option<Timestamp>,
-    enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
+    Ok(())
 }
-impl<'alloc, 'src, A> Item<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn new_in(alloc: &'alloc A) -> Self {
-        Self {
-            title: None,
-            link: None,
-            description: None,
-            id: None,
-            pub_date: None,
-            enclosures: Vec::new_in(alloc),
-        }
-    }
-}
-impl<'alloc, 'src, A> From<Item<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn from(
-        Item {
-            title,
-            link,
-            description,
-            id,
-            pub_date,
-            enclosures,
-        }: Item<'alloc, 'src, A>,
-    ) -> Entry<'alloc, 'src, A> {
-        Entry {
-            title,
-            link,
-            description,
-            id,
-            pub_date,
-            enclosures,
-        }
-    }
-}
-impl<'alloc, 'src, A> Item<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn handle_enclosure(
-        &mut self,
-        enclosure: BytesStart<'src>,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        if let Some(enclosure) = get_attribute_when(
-            &enclosure,
-            |_| Ok(true),
-            |attr| attr.key.0 == b"url",
-            version,
-            alloc,
-        )? {
-            self.enclosures.push(enclosure);
-        }
 
-        Ok(())
-    }
-}
-impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for Item<'alloc, 'src, A>
+struct RssItem;
+impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for RssItem
 where
     F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
-    A: Allocator,
+    A: Allocator + 'alloc,
 {
     fn handle_element_into(
         cb: &mut F,
@@ -195,7 +142,7 @@ where
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        let mut item = Item::new_in(alloc);
+        let mut item = PartialEntry::new_in(alloc);
         loop {
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == b"title" => {
@@ -208,7 +155,7 @@ where
                     )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"link" => {
-                    OptionHandler::<_>::handle_element_into(
+                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
                         &mut item.link,
                         reader,
                         tag.name(),
@@ -217,8 +164,8 @@ where
                     )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"description" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut item.description,
+                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
+                        &mut item.content,
                         reader,
                         tag.name(),
                         version,
@@ -243,14 +190,22 @@ where
                         version,
                         alloc,
                     )?;
-                    if is_permalink.unwrap_or(true) && item.link.is_none() {
-                        item.link = Some(link.clone());
+                    if is_permalink.unwrap_or(true)
+                        && let None
+                        | Some(Replaceable {
+                            replaceable: true, ..
+                        }) = item.link
+                    {
+                        item.link = Some(Replaceable {
+                            data: link.clone(),
+                            replaceable: false,
+                        });
                     }
                     item.id = Some(link);
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
                     OptionHandler::<Rfc2822TimestampHandler, _>::handle_element_into(
-                        &mut item.pub_date,
+                        &mut item.updated,
                         reader,
                         tag.name(),
                         version,
@@ -259,10 +214,10 @@ where
                 }
                 Event::Start(tag) if tag.name().0 == b"enclosure" => {
                     reader.read_to_end(tag.name())?;
-                    item.handle_enclosure(tag, version, alloc)?;
+                    handle_enclosure(&mut item, tag, version, alloc)?;
                 }
                 Event::Empty(tag) if tag.name().0 == b"enclosure" => {
-                    item.handle_enclosure(tag, version, alloc)?;
+                    handle_enclosure(&mut item, tag, version, alloc)?;
                 }
 
                 Event::Start(tag) => {
@@ -326,7 +281,7 @@ where
         self,
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
-        state: &mut Channel<'alloc, 'src, A>,
+        state: &mut PartialFeed<'alloc, 'src, A>,
         mut cb: F,
         version: XmlVersion,
         alloc: &'alloc A,
@@ -428,7 +383,7 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"item" =>
                 {
-                    Item::handle_element_into(&mut cb, reader, tag.name(), version, alloc)
+                    RssItem::handle_element_into(&mut cb, reader, tag.name(), version, alloc)
                         .map(|_| step)
                 }
                 (step, _) => {
@@ -461,7 +416,7 @@ mod tests {
                 tests::{TestParserError, test_parser},
             },
         },
-        allocator_api2::{alloc::Global, vec},
+        allocator_api2::{alloc::Global, boxed::Box, vec},
         bump_scope::Bump,
         jiff::civil::datetime,
     };
