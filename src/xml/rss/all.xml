@@ -24,10 +24,13 @@
       <title>entry 1</title>
       <link>https://example.com/entry_1</link>
       <description>the first entry</description>
-      <guid>1</guid>
+      <guid isPermalink="false">1</guid>
       <pubDate>Fri, 20 Jun 2003 09:00:00 GMT</pubDate>
       <enclosure url="https://example.com/entry_1.mp3"/>
       <enclosure url=""/>
+    </item>
+    <item>
+      <guid>https://example.com/entry_2</guid>
     </item>
   </channel>
 </rss>

@@ -338,13 +338,27 @@ where
                     )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"guid" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut item.id,
+                    let mut is_permalink = None;
+                    for attr in tag.attributes() {
+                        let attr = attr?;
+                        if attr.key.0 == b"isPermalink" {
+                            is_permalink = Some(attr.value.as_ref() == b"true");
+                            break;
+                        }
+                    }
+
+                    let mut link = Cow::Borrowed(&b""[..]);
+                    Cow::<'src, [u8], &'alloc A>::handle_element_into(
+                        &mut link,
                         reader,
                         tag.name(),
                         version,
                         alloc,
                     )?;
+                    if is_permalink.unwrap_or(true) && item.link.is_none() {
+                        item.link = Some(link.clone_in(alloc)?);
+                    }
+                    item.id = Some(link);
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
                     OptionHandler::<_>::handle_element_into(
@@ -552,21 +566,31 @@ mod tests {
                 skip_days: SkipDays::new([0b0111_1111]),
                 ttl: Some(30),
             },
-            [Entry {
-                title: Some(Cow::Borrowed(b"entry 1")),
-                link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
-                description: Some(Cow::Borrowed(b"the first entry")),
-                id: Some(Cow::Borrowed(b"1")),
-                // Fri, 20 Jun 2003 09:00:00 GMT
-                pub_date: datetime(2003, 06, 20, 09, 00, 00, 00)
-                    .to_zoned(tz::GMT)?
-                    .timestamp()
-                    .into(),
-                enclosures: vec![in &alloc;
-                    Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc)),
-                    Box::slice(Box::new_in(*b"", &alloc))
-                ],
-            }],
+            [
+                Entry {
+                    title: Some(Cow::Borrowed(b"entry 1")),
+                    link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
+                    description: Some(Cow::Borrowed(b"the first entry")),
+                    id: Some(Cow::Borrowed(b"1")),
+                    // Fri, 20 Jun 2003 09:00:00 GMT
+                    pub_date: datetime(2003, 06, 20, 09, 00, 00, 00)
+                        .to_zoned(tz::GMT)?
+                        .timestamp()
+                        .into(),
+                    enclosures: vec![in &alloc;
+                        Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc)),
+                        Box::slice(Box::new_in(*b"", &alloc))
+                    ],
+                },
+                Entry {
+                    title: None,
+                    link: Some(Cow::Borrowed(b"https://example.com/entry_2")),
+                    description: None,
+                    id: Some(Cow::Borrowed(b"https://example.com/entry_2")),
+                    pub_date: None,
+                    enclosures: vec![in &alloc;],
+                },
+            ],
             &alloc,
         )
     }
