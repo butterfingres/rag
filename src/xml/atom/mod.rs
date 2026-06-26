@@ -141,8 +141,7 @@ where
         }
     }
 }
-impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, NsReader<&'src [u8]>, A, F>
-    for Entry<'alloc, 'src, A>
+impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for Entry<'alloc, 'src, A>
 where
     F: FnMut(xml::Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
@@ -332,12 +331,11 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for AtomParser
 where
     A: Allocator + 'alloc,
 {
-    type Reader = NsReader<&'src [u8]>;
     type State = Feed<'alloc, 'src, A>;
 
     fn try_from_root(
         root: BytesStart<'src>,
-        reader: &Self::Reader,
+        reader: &NsReader<&'src [u8]>,
         _: XmlVersion,
     ) -> Result<Self, TryFromRootError<'src>> {
         if let (ns!(), name) = reader.resolver().resolve_element(root.name())
@@ -350,7 +348,7 @@ where
     }
     fn handle_event<F>(
         self,
-        reader: &mut Self::Reader,
+        reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut Self::State,
         mut cb: F,

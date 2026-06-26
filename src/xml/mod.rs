@@ -27,7 +27,7 @@ use {
             attributes::{AttrError, Attribute},
         },
         name::QName,
-        reader::{NsReader, Reader, Span},
+        reader::NsReader,
     },
     std::{
         error::Error,
@@ -242,51 +242,21 @@ impl From<quick_xml::Error> for TryFromRootError<'_> {
     }
 }
 
-pub trait ParserReader<'src> {
-    fn from_str(_: &'src str) -> Self;
-
-    fn read_event(&mut self) -> Result<Event<'src>, quick_xml::Error>;
-    fn read_to_end(&mut self, _: QName<'_>) -> Result<Span, quick_xml::Error>;
-}
-impl<'src> ParserReader<'src> for Reader<&'src [u8]> {
-    fn from_str(input: &'src str) -> Self {
-        Self::from_str(input)
-    }
-    fn read_event(&mut self) -> Result<Event<'src>, quick_xml::Error> {
-        self.read_event()
-    }
-    fn read_to_end(&mut self, end: QName<'_>) -> Result<Span, quick_xml::Error> {
-        self.read_to_end(end)
-    }
-}
-impl<'src> ParserReader<'src> for NsReader<&'src [u8]> {
-    fn from_str(input: &'src str) -> Self {
-        Self::from_str(input)
-    }
-    fn read_event(&mut self) -> Result<Event<'src>, quick_xml::Error> {
-        self.read_event()
-    }
-    fn read_to_end(&mut self, end: QName<'_>) -> Result<Span, quick_xml::Error> {
-        self.read_to_end(end)
-    }
-}
-
 pub trait Parser<'alloc, 'src, A>: Sized
 where
     Self: Sized,
     A: Allocator,
 {
-    type Reader: ParserReader<'src>;
     type State;
 
     fn try_from_root(
         _: BytesStart<'src>,
-        _: &Self::Reader,
+        _: &NsReader<&'src [u8]>,
         _: XmlVersion,
     ) -> Result<Self, TryFromRootError<'src>>;
     fn handle_event<F>(
         self,
-        _: &mut Self::Reader,
+        _: &mut NsReader<&'src [u8]>,
         _: Event<'src>,
         _: &mut Self::State,
         _: F,
@@ -297,7 +267,7 @@ where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>;
     fn handle_events<F>(
         mut self,
-        reader: &mut Self::Reader,
+        reader: &mut NsReader<&'src [u8]>,
         mut cb: F,
         alloc: &'alloc A,
     ) -> Result<Self::State, ParserError>
@@ -368,13 +338,12 @@ where
     Ok(Some(buf))
 }
 
-fn read_to_end<'alloc, 'src, R, A>(
-    reader: &mut R,
+fn read_to_end<'alloc, 'src, A>(
+    reader: &mut NsReader<&'src [u8]>,
     name: QName<'_>,
     alloc: &'alloc A,
 ) -> Result<Cow<'src, [u8], &'alloc A>, ParserError>
 where
-    R: ParserReader<'src>,
     A: Allocator,
 {
     let mut output = Cow::Borrowed(&b""[..]);
@@ -382,14 +351,13 @@ where
     Ok(output)
 }
 
-fn read_to_end_in<'alloc, 'src, R, A>(
-    reader: &mut R,
+fn read_to_end_in<'alloc, 'src, A>(
+    reader: &mut NsReader<&'src [u8]>,
     name: QName<'_>,
     output: &mut Cow<'src, [u8], &'alloc A>,
     alloc: &'alloc A,
 ) -> Result<(), ParserError>
 where
-    R: ParserReader<'src> + ?Sized,
     A: Allocator,
 {
     *output = Cow::Borrowed(b"");
@@ -441,14 +409,13 @@ where
     }
 }
 
-pub trait HandleElementInto<'alloc, 'src, R, A, S = Self>
+pub trait HandleElementInto<'alloc, 'src, A, S = Self>
 where
-    R: ParserReader<'src>,
     A: Allocator,
 {
     fn handle_element_into(
         _: &mut S,
-        _: &mut R,
+        _: &mut NsReader<&'src [u8]>,
         _: QName<'_>,
         _: XmlVersion,
         _: &'alloc A,
@@ -458,18 +425,16 @@ where
 pub struct CallbackHandler<F, T, U> {
     _marker: PhantomData<(F, T, U)>,
 }
-impl<'alloc, 'src, F, R, T, U, A> HandleElementInto<'alloc, 'src, R, A, F>
-    for CallbackHandler<F, T, U>
+impl<'alloc, 'src, F, T, U, A> HandleElementInto<'alloc, 'src, A, F> for CallbackHandler<F, T, U>
 where
     F: FnMut(U) -> Result<(), ParserError>,
-    R: ParserReader<'src>,
-    T: HandleElementInto<'alloc, 'src, R, A, U>,
+    T: HandleElementInto<'alloc, 'src, A, U>,
     U: Default,
     A: Allocator,
 {
     fn handle_element_into(
         closure: &mut F,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         version: XmlVersion,
         alloc: &'alloc A,
@@ -485,15 +450,14 @@ where
 pub struct UintHandler<T> {
     _marker: PhantomData<T>,
 }
-impl<'alloc, 'src, T, R, A> HandleElementInto<'alloc, 'src, R, A, T> for UintHandler<T>
+impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A, T> for UintHandler<T>
 where
     T: UnsignedInteger,
-    R: ParserReader<'src>,
     A: Allocator,
 {
     fn handle_element_into(
         val: &mut T,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         _: XmlVersion,
         alloc: &'alloc A,
@@ -508,16 +472,15 @@ where
 pub struct ReplaceableHandler<const REPLACEABLE: bool, T, U = T> {
     _marker: PhantomData<(T, U)>,
 }
-impl<'alloc, 'src, const REPLACEABLE: bool, R, T, U, A>
-    HandleElementInto<'alloc, 'src, R, A, Replaceable<U>> for ReplaceableHandler<REPLACEABLE, T, U>
+impl<'alloc, 'src, const REPLACEABLE: bool, T, U, A>
+    HandleElementInto<'alloc, 'src, A, Replaceable<U>> for ReplaceableHandler<REPLACEABLE, T, U>
 where
-    R: ParserReader<'src>,
-    T: HandleElementInto<'alloc, 'src, R, A, U>,
+    T: HandleElementInto<'alloc, 'src, A, U>,
     A: Allocator,
 {
     fn handle_element_into(
         replaceable: &mut Replaceable<U>,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         version: XmlVersion,
         alloc: &'alloc A,
@@ -537,14 +500,13 @@ where
     }
 }
 
-impl<'alloc, 'src, R, A> HandleElementInto<'alloc, 'src, R, A> for Cow<'src, [u8], &'alloc A>
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Cow<'src, [u8], &'alloc A>
 where
-    R: ParserReader<'src>,
     A: Allocator,
 {
     fn handle_element_into(
         into: &mut Cow<'src, [u8], &'alloc A>,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         _: XmlVersion,
         alloc: &'alloc A,
@@ -556,17 +518,15 @@ where
 pub struct OptionHandler<T, U = T> {
     _marker: PhantomData<(T, U)>,
 }
-impl<'alloc, 'src, R, T, U, A> HandleElementInto<'alloc, 'src, R, A, Option<U>>
-    for OptionHandler<T, U>
+impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Option<U>> for OptionHandler<T, U>
 where
-    R: ParserReader<'src>,
-    T: HandleElementInto<'alloc, 'src, R, A, U>,
+    T: HandleElementInto<'alloc, 'src, A, U>,
     U: Default,
     A: Allocator,
 {
     fn handle_element_into(
         option: &mut Option<U>,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         version: XmlVersion,
         alloc: &'alloc A,
@@ -595,14 +555,13 @@ impl From<Rfc2822Timestamp> for Timestamp {
         ts
     }
 }
-impl<'alloc, 'src, R, A> HandleElementInto<'alloc, 'src, R, A> for Rfc2822Timestamp
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Rfc2822Timestamp
 where
-    R: ParserReader<'src>,
     A: Allocator,
 {
     fn handle_element_into(
         timestamp: &mut Rfc2822Timestamp,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         _: XmlVersion,
         alloc: &'alloc A,
@@ -626,14 +585,13 @@ impl From<Rfc3339Timestamp> for Timestamp {
         ts
     }
 }
-impl<'alloc, 'src, R, A> HandleElementInto<'alloc, 'src, R, A> for Rfc3339Timestamp
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Rfc3339Timestamp
 where
-    R: ParserReader<'src>,
     A: Allocator,
 {
     fn handle_element_into(
         timestamp: &mut Rfc3339Timestamp,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         _: XmlVersion,
         alloc: &'alloc A,
@@ -655,10 +613,9 @@ mod tests {
         std::{assert_matches, fmt::Debug},
     };
 
-    fn get_header<'src, R>(reader: &mut R) -> Result<(XmlVersion, BytesStart<'src>), ParserError>
-    where
-        R: ParserReader<'src>,
-    {
+    fn get_header<'src>(
+        reader: &mut NsReader<&'src [u8]>,
+    ) -> Result<(XmlVersion, BytesStart<'src>), ParserError> {
         let mut version = None;
 
         loop {
@@ -704,7 +661,7 @@ mod tests {
         T::State: Debug + Default + PartialEq,
         A: Allocator,
     {
-        let mut reader = T::Reader::from_str(input);
+        let mut reader = NsReader::from_str(input);
         let (version, root) = get_header(&mut reader)?;
 
         let mut items = 0;

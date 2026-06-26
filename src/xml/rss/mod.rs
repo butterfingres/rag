@@ -3,9 +3,9 @@ use {
         borrow::Cow,
         num,
         xml::{
-            self, Entry, Feed, HandleElementInto, OptionHandler, ParserError, ParserReader,
-            Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
-            TryFromRootError, UintHandler, get_attribute_when, read_to_end,
+            self, Entry, Feed, HandleElementInto, OptionHandler, ParserError, Replaceable,
+            ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours, TryFromRootError,
+            UintHandler, get_attribute_when, read_to_end,
         },
     },
     allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
@@ -75,16 +75,15 @@ impl RssSkip for RssSkipDay {
 struct RssSkipHandler<T> {
     _marker: PhantomData<T>,
 }
-impl<'alloc, 'src, T, R, A> HandleElementInto<'alloc, 'src, R, A, BitArray<T::View, T::Order>>
+impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A, BitArray<T::View, T::Order>>
     for RssSkipHandler<T>
 where
     T: RssSkip,
-    R: ParserReader<'src>,
     A: Allocator,
 {
     fn handle_element_into(
         bitvec: &mut BitArray<T::View, T::Order>,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         _: XmlVersion,
         alloc: &'alloc A,
@@ -282,16 +281,15 @@ where
         Ok(())
     }
 }
-impl<'alloc, 'src, F, T, R, A> HandleElementInto<'alloc, 'src, R, A, F> for Item<'alloc, 'src, A>
+impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for Item<'alloc, 'src, A>
 where
     F: FnMut(Entry<'alloc, 'src, A>) -> T,
-    R: ParserReader<'src>,
     T: Into<Result<(), ParserError>>,
     A: Allocator,
 {
     fn handle_element_into(
         cb: &mut F,
-        reader: &mut R,
+        reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         version: XmlVersion,
         alloc: &'alloc A,
@@ -392,12 +390,11 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
     A: Allocator + 'alloc,
 {
-    type Reader = NsReader<&'src [u8]>;
     type State = Channel<'alloc, 'src, A>;
 
     fn try_from_root(
         root: BytesStart<'src>,
-        reader: &Self::Reader,
+        reader: &NsReader<&'src [u8]>,
         version: XmlVersion,
     ) -> Result<Self, TryFromRootError<'src>> {
         if let (ResolveResult::Unbound, name) = reader.resolver().resolve_element(root.name())
@@ -428,7 +425,7 @@ where
     }
     fn handle_event<F>(
         self,
-        reader: &mut Self::Reader,
+        reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut Channel<'alloc, 'src, A>,
         mut cb: F,
