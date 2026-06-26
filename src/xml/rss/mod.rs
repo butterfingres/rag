@@ -435,97 +435,118 @@ where
     where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        match (self, event) {
-            (Step::OutsideChannel, Event::Start(tag)) if tag.name().0 == b"channel" => {
-                Ok(Self::InsideChannel)
-            }
-            (Step::InsideChannel, Event::End(tag)) if tag.name().0 == b"channel" => {
+        match event {
+            Event::Start(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
+                (Step::OutsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"channel" =>
+                {
+                    Ok(Step::InsideChannel)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"title" =>
+                {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut state.title,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"link" =>
+                {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut state.link,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"pubDate" =>
+                {
+                    OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
+                        &mut state.modify_date,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"lastBuildDate" =>
+                {
+                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
+                        &mut state.modify_date,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"skipHours" =>
+                {
+                    RssSkipHandler::<RssSkipHour>::handle_element_into(
+                        &mut state.skip_hours,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"skipDays" =>
+                {
+                    RssSkipHandler::<RssSkipDay>::handle_element_into(
+                        &mut state.skip_days,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"ttl" =>
+                {
+                    OptionHandler::<UintHandler<_>, _>::handle_element_into(
+                        &mut state.ttl,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                    if name.as_ref() == b"item" =>
+                {
+                    Item::handle_element_into(&mut cb, reader, tag.name(), version, alloc)
+                        .map(|_| step)
+                }
+                (step, _) => {
+                    reader.read_to_end(tag.name())?;
+                    Ok(step)
+                }
+            },
+            Event::End(tag)
+                if let (ResolveResult::Unbound, name) =
+                    reader.resolver().resolve_element(tag.name())
+                    && let Step::InsideChannel = self
+                    && name.as_ref() == b"channel" =>
+            {
                 Ok(Self::OutsideChannel)
             }
 
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"title" => {
-                OptionHandler::<_>::handle_element_into(
-                    &mut state.title,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"link" => {
-                OptionHandler::<_>::handle_element_into(
-                    &mut state.link,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
-                OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
-                    &mut state.modify_date,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"lastBuildDate" => {
-                OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                    &mut state.modify_date,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"skipHours" => {
-                RssSkipHandler::<RssSkipHour>::handle_element_into(
-                    &mut state.skip_hours,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"skipDays" => {
-                RssSkipHandler::<RssSkipDay>::handle_element_into(
-                    &mut state.skip_days,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"ttl" => {
-                OptionHandler::<UintHandler<_>, _>::handle_element_into(
-                    &mut state.ttl,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-
-            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"item" => {
-                Item::handle_element_into(&mut cb, reader, tag.name(), version, alloc).map(|_| step)
-            }
-            (step, Event::Start(tag)) => reader
-                .read_to_end(tag.name())
-                .map_err(ParserError::Xml)
-                .map(|_| step),
-
-            (step, _) => Ok(step),
+            _ => Ok(self),
         }
     }
 }
