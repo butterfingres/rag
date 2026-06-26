@@ -1,7 +1,6 @@
 use {
     crate::{
         borrow::Cow,
-        fmt::debug_bytes,
         xml::{
             self, HandleElementInto, OptionHandler, ParserError, Replaceable, ReplaceableHandler,
             Rfc3339Timestamp, TryFromRootError, get_attribute_when,
@@ -248,18 +247,8 @@ where
             update,
         } = self;
         f.debug_struct("Feed")
-            .field(
-                "title",
-                &title
-                    .as_ref()
-                    .map(|title| fmt::from_fn(move |f| debug_bytes(&title, f))),
-            )
-            .field(
-                "link",
-                &link
-                    .as_ref()
-                    .map(|link| fmt::from_fn(move |f| link.debug_bytes(f))),
-            )
+            .field("title", &title)
+            .field("link", &link)
             .field("update", &update)
             .finish()
     }

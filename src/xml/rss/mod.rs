@@ -1,7 +1,6 @@
 use {
     crate::{
         borrow::Cow,
-        fmt::debug_bytes,
         num,
         xml::{
             self, Entry, Feed, HandleElementInto, OptionHandler, ParserError, ParserReader,
@@ -137,18 +136,8 @@ where
             ttl,
         } = self;
         f.debug_struct("Channel")
-            .field(
-                "title",
-                &title
-                    .as_ref()
-                    .map(|title| fmt::from_fn(move |f| debug_bytes(&title, f))),
-            )
-            .field(
-                "link",
-                &link
-                    .as_ref()
-                    .map(|link| fmt::from_fn(move |f| debug_bytes(&link, f))),
-            )
+            .field("title", &title)
+            .field("link", &link)
             .field("modify_date", &modify_date)
             .field("skip_hours", &skip_hours)
             .field("skip_days", &skip_days)

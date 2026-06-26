@@ -1,4 +1,5 @@
 use {
+    crate::fmt::debug_bytes,
     allocator_api2::{
         alloc::{Allocator, Global},
         boxed::Box,
@@ -69,19 +70,6 @@ where
         }
     }
 }
-impl<'a, T, A> Clone for Cow<'a, T, A>
-where
-    T: ToOwnedIn<A> + ?Sized,
-    T::Owned: Clone,
-    A: Allocator,
-{
-    fn clone(&self) -> Self {
-        match self {
-            Self::Borrowed(val) => Cow::Borrowed(*val),
-            Self::Owned(val) => Cow::Owned(val.clone()),
-        }
-    }
-}
 impl<'a, T, A> AsRef<T> for Cow<'a, T, A>
 where
     T: ToOwnedIn<A> + PartialEq + ?Sized + 'a,
@@ -95,6 +83,36 @@ where
         }
     }
 }
+impl<'a, T, A> Clone for Cow<'a, T, A>
+where
+    T: ToOwnedIn<A> + ?Sized,
+    T::Owned: Clone,
+    A: Allocator,
+{
+    fn clone(&self) -> Self {
+        match self {
+            Self::Borrowed(val) => Cow::Borrowed(*val),
+            Self::Owned(val) => Cow::Owned(val.clone()),
+        }
+    }
+}
+impl<A> fmt::Debug for Cow<'_, [u8], A>
+where
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Cow::Borrowed(ref val) => f
+                .debug_tuple("Cow")
+                .field(&fmt::from_fn(|f| debug_bytes(val, f)))
+                .finish(),
+            Cow::Owned(ref val) => f
+                .debug_tuple("Cow")
+                .field(&fmt::from_fn(|f| debug_bytes(val, f)))
+                .finish(),
+        }
+    }
+}
 impl<'a, T, A> Deref for Cow<'a, T, A>
 where
     T: ToOwnedIn<A> + PartialEq + ?Sized + 'a,
@@ -105,18 +123,6 @@ where
 
     fn deref(&self) -> &T {
         self.as_ref()
-    }
-}
-impl<T, A> fmt::Debug for Cow<'_, T, A>
-where
-    T: fmt::Debug + ToOwnedIn<A, Owned: fmt::Debug> + ?Sized,
-    A: Allocator,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Cow::Borrowed(ref b) => fmt::Debug::fmt(b, f),
-            Cow::Owned(ref o) => fmt::Debug::fmt(o, f),
-        }
     }
 }
 impl<'a, T, A> Default for Cow<'a, [T], A>

@@ -4,7 +4,7 @@ pub mod rss;
 use {
     crate::{
         borrow::Cow,
-        fmt::{debug_bytes, debug_iter_bytes},
+        fmt::debug_iter_bytes,
         num::{self, ParseIntError, UnsignedInteger},
     },
     allocator_api2::{
@@ -65,17 +65,6 @@ pub struct Replaceable<T> {
     data: T,
     replaceable: bool,
 }
-impl<T> Replaceable<T>
-where
-    T: AsRef<[u8]>,
-{
-    fn debug_bytes(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        f.debug_struct("Replaceable")
-            .field("data", &fmt::from_fn(|f| debug_bytes(&self.data, f)))
-            .field("replaceable", &self.replaceable)
-            .finish()
-    }
-}
 impl<T> Default for Replaceable<T>
 where
     T: Default,
@@ -124,29 +113,10 @@ where
             enclosures,
         } = self;
         f.debug_struct("Entry")
-            .field(
-                "title",
-                &title
-                    .as_ref()
-                    .map(|title| fmt::from_fn(move |f| debug_bytes(&title, f))),
-            )
-            .field(
-                "link",
-                &link
-                    .as_ref()
-                    .map(|link| fmt::from_fn(move |f| debug_bytes(&link, f))),
-            )
-            .field(
-                "description",
-                &description
-                    .as_ref()
-                    .map(|description| fmt::from_fn(move |f| debug_bytes(&description, f))),
-            )
-            .field(
-                "id",
-                &id.as_ref()
-                    .map(|id| fmt::from_fn(move |f| debug_bytes(&id, f))),
-            )
+            .field("title", &title)
+            .field("link", &link)
+            .field("description", &description)
+            .field("id", &id)
             .field("pub_date", &pub_date)
             .field(
                 "enclosures",
