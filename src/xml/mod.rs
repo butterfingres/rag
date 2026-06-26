@@ -179,6 +179,33 @@ impl<T> Replaceable<T> {
     }
 }
 
+pub struct PartialEntry<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    title: Option<Cow<'src, [u8], &'alloc A>>,
+    link: Option<Replaceable<Box<[u8], &'alloc A>>>,
+    content: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
+    id: Option<Cow<'src, [u8], &'alloc A>>,
+    updated: Option<Timestamp>,
+    enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
+}
+impl<'alloc, 'src, A> PartialEntry<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn new_in(alloc: &'alloc A) -> Self {
+        Self {
+            title: None,
+            link: None,
+            content: None,
+            id: None,
+            updated: None,
+            enclosures: Vec::new_in(alloc),
+        }
+    }
+}
+
 pub struct Entry<'alloc, 'src, A>
 where
     A: Allocator,
@@ -214,6 +241,33 @@ where
                 &fmt::from_fn(|f| debug_iter_bytes(&enclosures, f)),
             )
             .finish()
+    }
+}
+impl<'alloc, 'src, A> From<PartialEntry<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
+where
+    A: Allocator,
+{
+    fn from(
+        PartialEntry {
+            title,
+            link,
+            content,
+            id,
+            updated,
+            enclosures,
+        }: PartialEntry<'alloc, 'src, A>,
+    ) -> Entry<'alloc, 'src, A> {
+        Entry {
+            title,
+            link: link
+                .map(Replaceable::into_inner)
+                .map(Vec::from)
+                .map(Cow::Owned),
+            description: content.map(Replaceable::into_inner),
+            id,
+            pub_date: updated,
+            enclosures,
+        }
     }
 }
 impl<A, B> PartialEq<Entry<'_, '_, B>> for Entry<'_, '_, A>

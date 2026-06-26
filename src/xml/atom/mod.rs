@@ -2,12 +2,12 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, HandleElementInto, OptionHandler, ParserError, PartialFeed, Replaceable,
-            ReplaceableHandler, Rfc3339TimestampHandler, TryFromRootError, get_attribute_when,
+            self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
+            Replaceable, ReplaceableHandler, Rfc3339TimestampHandler, TryFromRootError,
+            get_attribute_when,
         },
     },
-    allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
-    jiff::Timestamp,
+    allocator_api2::alloc::Allocator,
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
@@ -23,129 +23,80 @@ macro_rules! ns {
     };
 }
 
-pub struct Entry<'alloc, 'src, A>
+fn handle_link<'alloc, 'src, A>(
+    entry: &mut PartialEntry<'alloc, 'src, A>,
+    link: &BytesStart<'src>,
+    reader: &NsReader<&'src [u8]>,
+    version: XmlVersion,
+    alloc: &'alloc A,
+) -> Result<(), ParserError>
 where
     A: Allocator,
 {
-    title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Replaceable<Box<[u8], &'alloc A>>>,
-    content: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    id: Option<Cow<'src, [u8], &'alloc A>>,
-    updated: Option<Timestamp>,
-    enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
-}
-impl<'alloc, 'src, A> Entry<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn new_in(alloc: &'alloc A) -> Self {
-        Self {
-            title: None,
-            link: None,
-            content: None,
-            id: None,
-            updated: None,
-            enclosures: Vec::new_in(alloc),
-        }
+    #[derive(Default)]
+    enum LinkType {
+        Enclosure,
+        Alternate,
+        #[default]
+        Other,
     }
+    let mut found_rel = false;
+    let mut ty = None;
 
-    fn handle_link(
-        &mut self,
-        link: &BytesStart<'src>,
-        reader: &NsReader<&'src [u8]>,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        #[derive(Default)]
-        enum LinkType {
-            Enclosure,
-            Alternate,
-            #[default]
-            Other,
-        }
-        let mut found_rel = false;
-        let mut ty = None;
-
-        if let Some(href) = get_attribute_when(
-            link,
-            |attr| {
-                if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
-                    && name.as_ref() == b"rel"
-                {
-                    found_rel = true;
-                    ty = Some(match attr.normalized_value(version)?.as_ref() {
-                        "alternate" => LinkType::Alternate,
-                        "enclosure" => LinkType::Enclosure,
-                        _ => LinkType::Other,
-                    });
-                }
-
-                Ok(found_rel)
-            },
-            |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
-            version,
-            alloc,
-        )? {
-            match ty.unwrap_or_default() {
-                LinkType::Enclosure => {
-                    self.enclosures.push(href);
-                }
-                LinkType::Alternate => {
-                    self.link = Some(Replaceable {
-                        replaceable: false,
-                        data: href,
-                    });
-                }
-                LinkType::Other
-                    if let None
-                    | Some(Replaceable {
-                        replaceable: true, ..
-                    }) = self.link =>
-                {
-                    self.link = Some(Replaceable {
-                        replaceable: true,
-                        data: href,
-                    });
-                }
-                _ => {}
+    if let Some(href) = get_attribute_when(
+        link,
+        |attr| {
+            if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
+                && name.as_ref() == b"rel"
+            {
+                found_rel = true;
+                ty = Some(match attr.normalized_value(version)?.as_ref() {
+                    "alternate" => LinkType::Alternate,
+                    "enclosure" => LinkType::Enclosure,
+                    _ => LinkType::Other,
+                });
             }
-        }
 
-        Ok(())
-    }
-}
-impl<'alloc, 'src, A> From<Entry<'alloc, 'src, A>> for xml::Entry<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn from(
-        Entry {
-            title,
-            link,
-            content,
-            id,
-            updated,
-            enclosures,
-        }: Entry<'alloc, 'src, A>,
-    ) -> xml::Entry<'alloc, 'src, A> {
-        xml::Entry {
-            title,
-            link: link
-                .map(Replaceable::into_inner)
-                .map(Vec::from)
-                .map(Cow::Owned),
-            description: content.map(Replaceable::into_inner),
-            id,
-            pub_date: updated,
-            enclosures,
+            Ok(found_rel)
+        },
+        |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
+        version,
+        alloc,
+    )? {
+        match ty.unwrap_or_default() {
+            LinkType::Enclosure => {
+                entry.enclosures.push(href);
+            }
+            LinkType::Alternate => {
+                entry.link = Some(Replaceable {
+                    replaceable: false,
+                    data: href,
+                });
+            }
+            LinkType::Other
+                if let None
+                | Some(Replaceable {
+                    replaceable: true, ..
+                }) = entry.link =>
+            {
+                entry.link = Some(Replaceable {
+                    replaceable: true,
+                    data: href,
+                });
+            }
+            _ => {}
         }
     }
+
+    Ok(())
 }
-impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for Entry<'alloc, 'src, A>
+
+struct AtomEntry;
+impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for AtomEntry
 where
-    F: FnMut(xml::Entry<'alloc, 'src, A>) -> T,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
-    A: Allocator,
+    A: Allocator + 'alloc,
 {
     fn handle_element_into(
         cb: &mut F,
@@ -154,7 +105,7 @@ where
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        let mut entry = Entry::new_in(alloc);
+        let mut entry = PartialEntry::new_in(alloc);
         loop {
             match reader.read_resolved_event()? {
                 (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"id" => {
@@ -204,11 +155,11 @@ where
                 }
 
                 (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
-                    entry.handle_link(&tag, reader, version, alloc)?;
+                    handle_link(&mut entry, &tag, reader, version, alloc)?;
                     reader.read_to_end(tag.name())?;
                 }
                 (ns!(), Event::Empty(tag)) if tag.local_name().as_ref() == b"link" => {
-                    entry.handle_link(&tag, reader, version, alloc)?;
+                    handle_link(&mut entry, &tag, reader, version, alloc)?;
                 }
 
                 (_, Event::Start(tag)) => {
@@ -325,7 +276,7 @@ where
                 }
 
                 (ns!(), name) if name.as_ref() == b"entry" => {
-                    Entry::handle_element_into(&mut cb, reader, tag.name(), version, alloc)?;
+                    AtomEntry::handle_element_into(&mut cb, reader, tag.name(), version, alloc)?;
                 }
                 _ => {
                     reader.read_to_end(tag.name())?;
@@ -355,7 +306,7 @@ mod tests {
                 tests::{TestParserError, test_parser},
             },
         },
-        allocator_api2::{alloc::Global, vec},
+        allocator_api2::{alloc::Global, boxed::Box, vec},
         bump_scope::Bump,
         jiff::civil::datetime,
     };
