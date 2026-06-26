@@ -18,8 +18,7 @@ use {
 
 macro_rules! ns {
     () => {
-        ::quick_xml::name::ResolveResult::Unbound
-            | ::quick_xml::name::ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"))
+        ::quick_xml::name::ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"))
     };
 }
 
@@ -46,7 +45,7 @@ where
     if let Some(href) = get_attribute_when(
         link,
         |attr| {
-            if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
+            if let (ns!(), name) = reader.resolver().resolve(attr.key, true)
                 && name.as_ref() == b"rel"
             {
                 found_rel = true;
@@ -59,7 +58,7 @@ where
 
             Ok(found_rel)
         },
-        |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
+        |attr| matches!(reader.resolver().resolve(attr.key, true), (ns!(), name) if name.as_ref() == b"href"),
         version,
         alloc,
     )? {
@@ -197,7 +196,7 @@ where
         && let Some(href) = get_attribute_when(
             link,
             |attr| {
-                if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
+                if let (ns!(), name) = reader.resolver().resolve(attr.key, true)
                     && name.as_ref() == b"rel"
                     && *attr.value == *b"alternate"
                 {
@@ -207,7 +206,7 @@ where
 
                 Ok(found_rel)
             },
-            |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
+            |attr| matches!(reader.resolver().resolve(attr.key, true), (ns!(), name) if name.as_ref() == b"href"),
             version,
             alloc,
         )?
