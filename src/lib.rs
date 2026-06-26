@@ -1,6 +1,5 @@
 pub mod alloc;
 pub mod borrow;
-pub mod buffer;
 mod fmt;
 mod num;
 mod sym;
@@ -11,5 +10,10 @@ emacs::plugin_is_GPL_compatible!();
 
 #[emacs::module(name = "rag-core")]
 fn init(_: &emacs::Env) -> Result<(), emacs::Error> {
+    Ok(())
+}
+
+#[emacs::defun]
+fn parse_buffer() -> Result<(), emacs::Error> {
     Ok(())
 }

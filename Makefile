@@ -17,7 +17,7 @@ clean:
 	-rm ${ELCS}
 	-${CARGO} ${CARGOFLAGS} clean ${CARGOCLEANFLAGS}
 
-target/debug/${LIB}: Cargo.toml src/buffer.rs src/lib.rs src/sym.rs
+target/debug/${LIB}: Cargo.toml src/alloc.rs src/borrow.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs src/xml/atom/mod.rs src/xml/mod.rs src/xml/rdf/mod.rs src/xml/rss/mod.rs
 	${CARGO} ${CARGOFLAGS} build ${CARGOBUILDFLAGS}
 target/debug/rag-core.${SO}: target/debug/librag_core.${SO}
 	ln -sf $$(realpath $<) $@
