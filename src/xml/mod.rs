@@ -87,9 +87,7 @@ where
             skip_days,
             skip_hours,
             ttl,
-            last_update: modify_date
-                .map(Replaceable::into_inner)
-                .map(Timestamp::from),
+            last_update: modify_date.map(Replaceable::into_inner),
         }
     }
 }

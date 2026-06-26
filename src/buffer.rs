@@ -8,7 +8,7 @@ use crate::sym;
 /// If you need to get a buffer's string efficiently, use
 /// `buffer-substring` because this function will copy the string.
 #[cfg_attr(debug_assertions, emacs::defun(name = "-string"))]
-fn string<'e>(env: &'e emacs::Env) -> Result<String, emacs::Error> {
+fn string(env: &emacs::Env) -> Result<String, emacs::Error> {
     sym::fun::BUFFER_SUBSTRING_NO_PROPERTIES
         .call(
             env,
