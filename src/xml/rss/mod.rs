@@ -578,4 +578,94 @@ mod tests {
             &alloc::Dummy,
         )
     }
+
+    #[test]
+    fn test_rss_parser_2_0() -> Result<(), TestParserError<'static>> {
+        let alloc = Bump::<Global>::try_new()?;
+
+        test_parser::<_, Step, _>(
+            include_str!("./sample-rss-2.xml"),
+            Channel {
+                title: Some(Cow::Borrowed(b"NASA Space Station News")),
+                link: Some(Cow::Borrowed(b"http://www.nasa.gov/")),
+                modify_date: Some(Replaceable {
+                    // Fri, 21 Jul 2023 09:04 EDT
+                    data: datetime(2023, 07, 21, 09, 04, 00, 00)
+                        .to_zoned(tz::EDT)?
+                        .timestamp()
+                        .into(),
+                    replaceable: false,
+                }),
+                skip_hours: SkipHours::default(),
+                skip_days: SkipDays::default(),
+            },
+            [
+                Entry {
+                    title: Some(Cow::Borrowed(b"Louisiana Students to Hear from NASA Astronauts Aboard Space Station")),
+                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/louisiana-students-to-hear-from-nasa-astronauts-aboard-space-station")),
+                    description: Some(Cow::Borrowed(b"As part of the state's first Earth-to-space call, students from Louisiana will have an opportunity soon to hear from NASA astronauts aboard the International Space Station.")),
+                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/louisiana-students-to-hear-from-nasa-astronauts-aboard-space-station")),
+                    // Fri, 21 Jul 2023 09:04 EDT
+                    pub_date: datetime(2023, 07, 21, 09, 04, 00, 00)
+                        .to_zoned(tz::EDT)?
+                        .timestamp()
+                        .into(),
+                    enclosures: vec![in &alloc;],
+                },
+                Entry {
+                    title: None,
+                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-awards-integrated-mission-operations-contract-iii")),
+                    description: Some(Cow::Borrowed(b"NASA has selected KBR Wyle Services, LLC, of Fulton, Maryland, to provide mission and flight crew operations support for the International Space Station and future human space exploration.")),
+                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-awards-integrated-mission-operations-contract-iii")),
+                    // Thu, 20 Jul 2023 15:05 EDT
+                    pub_date: datetime(2023, 07, 20, 15, 05, 00, 00)
+                        .to_zoned(tz::EDT)?
+                        .timestamp()
+                        .into(),
+                    enclosures: vec![in &alloc;]
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"NASA Expands Options for Spacewalking, Moonwalking Suits")),
+                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-expands-options-for-spacewalking-moonwalking-suits-services")),
+                    description: Some(Cow::Borrowed(b"NASA has awarded Axiom Space and Collins Aerospace task orders under existing contracts to advance spacewalking capabilities in low Earth orbit, as well as moonwalking services for Artemis missions.")),
+                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-expands-options-for-spacewalking-moonwalking-suits-services")),
+                    // Mon, 10 Jul 2023 14:14 EDT
+                    pub_date: datetime(2023, 07, 10, 14, 14, 00, 00)
+                        .to_zoned(tz::EDT)?
+                        .timestamp()
+                        .into(),
+                    enclosures: vec![in &alloc;
+                        Box::slice(Box::new_in(*b"http://www.nasa.gov/sites/default/files/styles/1x1_cardfeed/public/thumbnails/image/iss068e027836orig.jpg?itok=ucNUaaGx", &alloc)),
+                    ],
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"NASA to Provide Coverage as Dragon Departs Station")),
+                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-to-provide-coverage-as-dragon-departs-station-with-science")),
+                    description: Some(Cow::Borrowed(b"NASA is set to receive scientific research samples and hardware as a SpaceX Dragon cargo resupply spacecraft departs the International Space Station on Thursday, June 29.")),
+                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-to-provide-coverage-as-dragon-departs-station-with-science")),
+                    // Tue, 20 May 2003 08:56:02 GMT
+                    pub_date: datetime(2003, 05, 20, 08, 56, 02, 00)
+                        .to_zoned(tz::GMT)?
+                        .timestamp()
+                        .into(),
+                    enclosures: vec![in &alloc;]
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"NASA Plans Coverage of Roscosmos Spacewalk Outside Space Station")),
+                    link: Some(Cow::Borrowed(b"http://liftoff.msfc.nasa.gov/news/2003/news-laundry.asp")),
+                    description: Some(Cow::Borrowed(b"Compared to earlier spacecraft, the International Space Station has many luxuries, but laundry facilities are not one of them.  Instead, astronauts have other options.")),
+                    id: Some(Cow::Borrowed(b"http://liftoff.msfc.nasa.gov/2003/05/20.html#item570")),
+                    // Mon, 26 Jun 2023 12:45 EDT
+                    pub_date: datetime(2023, 06, 26, 12, 45, 00, 00)
+                        .to_zoned(tz::EDT)?
+                        .timestamp()
+                        .into(),
+                    enclosures: vec![in &alloc;
+                        Box::slice(Box::new_in(*b"http://www.nasa.gov/sites/default/files/styles/1x1_cardfeed/public/thumbnails/image/spacex_dragon_june_29.jpg?itok=nIYlBLme", &alloc))
+                    ]
+                }
+            ],
+            &alloc,
+        )
+    }
 }

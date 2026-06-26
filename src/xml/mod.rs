@@ -709,7 +709,7 @@ mod tests {
         let state = parser.handle_events(
             &mut reader,
             |entry| {
-                assert_eq!(entry, output_entries[items]);
+                assert_eq!(Some(&entry), output_entries.get(items));
                 items += 1;
                 Ok(())
             },
