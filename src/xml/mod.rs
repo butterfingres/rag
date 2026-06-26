@@ -33,7 +33,6 @@ use {
         error::Error,
         fmt::{self, Debug, Display, Formatter},
         marker::PhantomData,
-        ops::Range,
         ptr, str,
     },
 };
@@ -178,12 +177,6 @@ impl<T> Replaceable<T> {
     fn into_inner(Replaceable { data, .. }: Replaceable<T>) -> T {
         data
     }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Enclosure<'src> {
-    tag: BytesStart<'src>,
-    enclosure: Range<usize>,
 }
 
 pub struct Entry<'alloc, 'src, A>
