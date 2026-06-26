@@ -46,16 +46,6 @@ where
     T: ToOwnedIn<A> + ?Sized,
     A: Allocator,
 {
-    pub fn clone_in(&self, alloc: A) -> Result<Self, TryReserveError>
-    where
-        T::Owned: Clone,
-    {
-        Ok(Self::Owned(match self {
-            Self::Borrowed(val) => val.try_to_owned_in(alloc)?,
-            Self::Owned(val) => val.clone(),
-        }))
-    }
-
     pub fn try_from_in(cow: std::borrow::Cow<'a, T>, alloc: A) -> Result<Self, TryReserveError>
     where
         T: ToOwned,
@@ -76,6 +66,19 @@ where
                 }
             }
             Self::Owned(val) => Ok(val),
+        }
+    }
+}
+impl<'a, T, A> Clone for Cow<'a, T, A>
+where
+    T: ToOwnedIn<A> + ?Sized,
+    T::Owned: Clone,
+    A: Allocator,
+{
+    fn clone(&self) -> Self {
+        match self {
+            Self::Borrowed(val) => Cow::Borrowed(*val),
+            Self::Owned(val) => Cow::Owned(val.clone()),
         }
     }
 }

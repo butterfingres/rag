@@ -356,7 +356,7 @@ where
                         alloc,
                     )?;
                     if is_permalink.unwrap_or(true) && item.link.is_none() {
-                        item.link = Some(link.clone_in(alloc)?);
+                        item.link = Some(link.clone());
                     }
                     item.id = Some(link);
                 }
