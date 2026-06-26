@@ -4,7 +4,7 @@ pub mod rss;
 
 use {
     crate::{
-        borrow::{Cow, ToOwnedIn},
+        borrow::Cow,
         fmt::debug_iter_bytes,
         num::{self, ParseIntError, UnsignedInteger},
     },
@@ -21,7 +21,6 @@ use {
     },
     quick_xml::{
         XmlVersion,
-        encoding::EncodingError,
         errors::SyntaxError,
         escape::resolve_xml_entity,
         events::{
@@ -308,7 +307,6 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     Alloc(AllocError),
-    Encoding(EncodingError),
     MissingRoot,
     NotUtf8,
     ParseInt(ParseIntError),
@@ -324,7 +322,6 @@ impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::Alloc(e) => Display::fmt(e, f),
-            Self::Encoding(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),
             Self::NotUtf8 => f.write_str("input is not utf8"),
             Self::ParseInt(e) => Display::fmt(e, f),
@@ -344,11 +341,6 @@ impl From<AllocError> for ParserError {
 impl From<bump_scope::alloc::AllocError> for ParserError {
     fn from(_: bump_scope::alloc::AllocError) -> Self {
         Self::Alloc(AllocError)
-    }
-}
-impl From<EncodingError> for ParserError {
-    fn from(e: EncodingError) -> Self {
-        Self::Encoding(e)
     }
 }
 impl From<jiff::Error> for ParserError {
@@ -489,14 +481,13 @@ where
 fn read_to_end<'alloc, 'src, A>(
     reader: &mut NsReader<&'src [u8]>,
     name: QName<'_>,
-    version: XmlVersion,
     alloc: &'alloc A,
 ) -> Result<Cow<'src, [u8], &'alloc A>, ParserError>
 where
     A: Allocator,
 {
     let mut output = Cow::Borrowed(&b""[..]);
-    read_to_end_in(reader, name, &mut output, version, alloc)?;
+    read_to_end_in(reader, name, &mut output, alloc)?;
     Ok(output)
 }
 
@@ -504,7 +495,6 @@ fn read_to_end_in<'alloc, 'src, A>(
     reader: &mut NsReader<&'src [u8]>,
     name: QName<'_>,
     output: &mut Cow<'src, [u8], &'alloc A>,
-    version: XmlVersion,
     alloc: &'alloc A,
 ) -> Result<(), ParserError>
 where
@@ -515,20 +505,14 @@ where
     loop {
         match reader.read_event()? {
             Event::Text(text) => {
-                let data = text.xml_content(version)?;
                 match output {
                     Cow::Borrowed(b"") => {
-                        *output = match data {
-                            std::borrow::Cow::Borrowed(val) => Cow::Borrowed(val.as_bytes()),
-                            std::borrow::Cow::Owned(val) => {
-                                Cow::Owned(val.as_bytes().try_to_owned_in(alloc)?)
-                            }
-                        };
+                        *output = Cow::try_from_in(text.into_inner(), alloc)?;
                     }
                     _ => {
                         output
                             .try_to_mut_in(alloc)?
-                            .extend_from_slice(data.as_bytes());
+                            .extend_from_slice(text.as_ref());
                     }
                 };
             }
@@ -615,10 +599,10 @@ where
         val: &mut T,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
-        version: XmlVersion,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        let buf = read_to_end(reader, name, version, alloc)?;
+        let buf = read_to_end(reader, name, alloc)?;
         *val = num::parse(buf.as_ref())?;
 
         Ok(())
@@ -664,10 +648,10 @@ where
         into: &mut Cow<'src, [u8], &'alloc A>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
-        version: XmlVersion,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        read_to_end_in(reader, name, into, version, alloc)
+        read_to_end_in(reader, name, into, alloc)
     }
 }
 
@@ -709,10 +693,10 @@ where
         timestamp: &mut Timestamp,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
-        version: XmlVersion,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        let new_timestamp = read_to_end(reader, name, version, alloc)?;
+        let new_timestamp = read_to_end(reader, name, alloc)?;
         let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
         *timestamp = new_timestamp;
         Ok(())
@@ -729,10 +713,10 @@ where
         timestamp: &mut Timestamp,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
-        version: XmlVersion,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        let new_timestamp = read_to_end(reader, name, version, alloc)?;
+        let new_timestamp = read_to_end(reader, name, alloc)?;
         let new_timestamp = temporal::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
         *timestamp = new_timestamp;
         Ok(())
@@ -823,8 +807,8 @@ mod tests {
         F: FnOnce(Cow<'_, [u8], &A>),
     {
         let mut reader = NsReader::from_str(input);
-        let (version, root) = get_header(&mut reader)?;
-        f(read_to_end(&mut reader, root.name(), version, alloc)?);
+        let (_, root) = get_header(&mut reader)?;
+        f(read_to_end(&mut reader, root.name(), alloc)?);
         Ok(())
     }
 

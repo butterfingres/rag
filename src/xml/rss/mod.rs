@@ -81,13 +81,13 @@ where
         bitvec: &mut BitArray<T::View, T::Order>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
-        version: XmlVersion,
+        _: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         loop {
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == T::TAG.as_bytes() => {
-                    let index = read_to_end(reader, tag.name(), version, alloc)?;
+                    let index = read_to_end(reader, tag.name(), alloc)?;
                     let index: usize = T::parse_index(index.as_ref())?.into();
                     bitvec.set(index, true);
                 }
