@@ -4,7 +4,8 @@ use {
         num,
         xml::{
             self, Entry, HandleElementInto, OptionHandler, ParserError, ReplaceableHandler,
-            Rfc2822Timestamp, TryFromRootError, UintHandler, get_attribute_when, read_to_end,
+            Rfc2822TimestampHandler, TryFromRootError, UintHandler, get_attribute_when,
+            read_to_end,
         },
     },
     allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
@@ -214,7 +215,7 @@ where
     link: Option<Cow<'src, [u8], &'alloc A>>,
     description: Option<Cow<'src, [u8], &'alloc A>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
-    pub_date: Option<Rfc2822Timestamp>,
+    pub_date: Option<Timestamp>,
     enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
 }
 impl<'alloc, 'src, A> Item<'alloc, 'src, A>
@@ -251,7 +252,7 @@ where
             link,
             description,
             id,
-            pub_date: pub_date.map(Timestamp::from),
+            pub_date,
             enclosures,
         }
     }
@@ -346,7 +347,7 @@ where
                     item.id = Some(link);
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
-                    OptionHandler::<_>::handle_element_into(
+                    OptionHandler::<Rfc2822TimestampHandler, _>::handle_element_into(
                         &mut item.pub_date,
                         reader,
                         tag.name(),
@@ -388,8 +389,6 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
 where
     A: Allocator + 'alloc,
 {
-    type State = Channel<'alloc, 'src, A>;
-
     fn try_from_root(
         root: BytesStart<'src>,
         reader: &NsReader<&'src [u8]>,
@@ -467,7 +466,7 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"pubDate" =>
                 {
-                    OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
+                    OptionHandler::<ReplaceableHandler<true, Rfc2822TimestampHandler, _>, _>::handle_element_into(
                         &mut state.modify_date,
                         reader,
                         tag.name(),
@@ -479,7 +478,7 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"lastBuildDate" =>
                 {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
+                    OptionHandler::<ReplaceableHandler<false, Rfc2822TimestampHandler, _>, _>::handle_element_into(
                         &mut state.modify_date,
                         reader,
                         tag.name(),
@@ -556,7 +555,7 @@ mod tests {
         crate::{
             alloc, tz,
             xml::{
-                Replaceable, SkipDays, SkipHours,
+                Feed, SkipDays, SkipHours,
                 tests::{TestParserError, test_parser},
             },
         },
@@ -570,20 +569,16 @@ mod tests {
         let mut alloc = Bump::<Global>::try_new()?;
         test_parser::<_, Step, _>(
             include_str!("./all.xml"),
-            Channel {
+            Feed {
                 title: Some(Cow::Borrowed(b"example feed")),
-                link: Some(Replaceable {
-                    data: Cow::Borrowed(b"https://example.com/rss"),
-                    replaceable: false,
-                }),
-                modify_date: Some(Replaceable {
-                    // Fri, 21 Jul 2023 09:04 EDT
-                    data: datetime(2023, 07, 21, 09, 04, 00, 00)
+                link: Some(Cow::Borrowed(b"https://example.com/rss")),
+                // Fri, 21 Jul 2023 09:04 EDT
+                last_update: Some(
+                    datetime(2023, 07, 21, 09, 04, 00, 00)
                         .to_zoned(tz::EDT)?
                         .timestamp()
                         .into(),
-                    replaceable: false,
-                }),
+                ),
                 skip_hours: SkipHours::new([0b1110]),
                 skip_days: SkipDays::new([0b0111_1111]),
                 ttl: Some(30),
@@ -619,13 +614,10 @@ mod tests {
 
         test_parser::<_, Step, _>(
             include_str!("./sample-rss-091.xml"),
-            Channel {
+            Feed {
                 title: Some(Cow::Borrowed(b"WriteTheWeb")),
-                link: Some(Replaceable {
-                    data: Cow::Borrowed(b"http://writetheweb.com"),
-                    replaceable: false,
-                }),
-                modify_date: None,
+                link: Some(Cow::Borrowed(b"http://writetheweb.com")),
+                last_update: None,
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
                 ttl: None,
@@ -686,20 +678,16 @@ mod tests {
 
         test_parser::<_, Step, _>(
             include_str!("./sample-rss-092.xml"),
-            Channel {
+            Feed {
                 title: Some(Cow::Borrowed(b"Winnemac Daily News")),
-                link: Some(Replaceable {
-                    data: Cow::Borrowed(b"https://winnemac.example.com/"),
-                    replaceable: false,
-                }),
+                link: Some(Cow::Borrowed(b"https://winnemac.example.com/")),
                 // Fri, 13 Apr 2001 09:03:49 GMT
-                modify_date: Some(Replaceable {
-                    data: datetime(2001, 04, 13, 09, 03, 49, 00)
+                last_update: Some(
+                    datetime(2001, 04, 13, 09, 03, 49, 00)
                         .to_zoned(tz::GMT)?
                         .timestamp()
-                        .into(),
-                    replaceable: false,
-                }),
+                        .into()
+                ),
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
                 ttl: None,
@@ -832,20 +820,16 @@ mod tests {
 
         test_parser::<_, Step, _>(
             include_str!("./sample-rss-2.xml"),
-            Channel {
+            Feed {
                 title: Some(Cow::Borrowed(b"NASA Space Station News")),
-                link: Some(Replaceable {
-                    data: Cow::Borrowed(b"http://www.nasa.gov/"),
-                    replaceable: false,
-                }),
-                modify_date: Some(Replaceable {
-                    // Fri, 21 Jul 2023 09:04 EDT
-                    data: datetime(2023, 07, 21, 09, 04, 00, 00)
+                link: Some(Cow::Borrowed(b"http://www.nasa.gov/")),
+                // Fri, 21 Jul 2023 09:04 EDT
+                last_update: Some(
+                    datetime(2023, 07, 21, 09, 04, 00, 00)
                         .to_zoned(tz::EDT)?
                         .timestamp()
-                        .into(),
-                    replaceable: false,
-                }),
+                        .into()
+                ),
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
                 ttl: None,
@@ -926,20 +910,16 @@ mod tests {
     fn test_rss_parser_zero_copy() -> Result<(), TestParserError<'static>> {
         test_parser::<_, Step, _>(
             include_str!("./alt.xml"),
-            Channel {
+            Feed {
                 title: Some(Cow::Borrowed(b"example feed")),
-                link: Some(Replaceable {
-                    data: Cow::Borrowed(b"https://example.com/rss"),
-                    replaceable: false,
-                }),
-                modify_date: Some(Replaceable {
-                    // Fri, 21 Jul 2023 09:04 EDT
-                    data: datetime(2023, 07, 21, 09, 04, 00, 00)
+                link: Some(Cow::Borrowed(b"https://example.com/rss")),
+                // Fri, 21 Jul 2023 09:04 EDT
+                last_update: Some(
+                    datetime(2023, 07, 21, 09, 04, 00, 00)
                         .to_zoned(tz::EDT)?
                         .timestamp()
                         .into(),
-                    replaceable: false,
-                }),
+                ),
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
                 ttl: None,

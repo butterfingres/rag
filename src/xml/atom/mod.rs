@@ -2,8 +2,8 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, HandleElementInto, OptionHandler, ParserError, Replaceable, ReplaceableHandler,
-            Rfc3339Timestamp, TryFromRootError, get_attribute_when,
+            self, HandleElementInto, OptionHandler, ParserError, PartialFeed, Replaceable,
+            ReplaceableHandler, Rfc3339TimestampHandler, TryFromRootError, get_attribute_when,
         },
     },
     allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
@@ -14,7 +14,6 @@ use {
         name::{Namespace, QName},
         reader::NsReader,
     },
-    std::fmt::{self, Debug, Formatter},
 };
 
 macro_rules! ns {
@@ -32,7 +31,7 @@ where
     link: Option<Replaceable<Box<[u8], &'alloc A>>>,
     content: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
-    updated: Option<Rfc3339Timestamp>,
+    updated: Option<Timestamp>,
     enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
 }
 impl<'alloc, 'src, A> Entry<'alloc, 'src, A>
@@ -137,7 +136,7 @@ where
                 .map(Cow::Owned),
             description: content.map(Replaceable::into_inner),
             id,
-            pub_date: updated.map(Timestamp::from),
+            pub_date: updated,
             enclosures,
         }
     }
@@ -195,7 +194,7 @@ where
                     )?;
                 }
                 (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
-                    OptionHandler::<_>::handle_element_into(
+                    OptionHandler::<Rfc3339TimestampHandler, _>::handle_element_into(
                         &mut entry.updated,
                         reader,
                         tag.name(),
@@ -228,103 +227,46 @@ where
     }
 }
 
-pub struct Feed<'alloc, 'src, A>
+fn feed_handle_link<'alloc, 'src, A>(
+    feed: &mut PartialFeed<'alloc, 'src, A>,
+    link: &BytesStart<'src>,
+    reader: &NsReader<&'src [u8]>,
+    version: XmlVersion,
+    alloc: &'alloc A,
+) -> Result<(), ParserError>
 where
     A: Allocator,
 {
-    title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Replaceable<Box<[u8], &'alloc A>>>,
-    update: Option<Rfc3339Timestamp>,
-}
-impl<A> Debug for Feed<'_, '_, A>
-where
-    A: Allocator,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        let Self {
-            title,
+    let mut replaceable = true;
+    let mut found_rel = false;
+    if let Some(Replaceable {
+        replaceable: true, ..
+    })
+    | None = feed.link
+        && let Some(href) = get_attribute_when(
             link,
-            update,
-        } = self;
-        f.debug_struct("Feed")
-            .field("title", &title)
-            .field("link", &link)
-            .field("update", &update)
-            .finish()
-    }
-}
-impl<A> Default for Feed<'_, '_, A>
-where
-    A: Allocator,
-{
-    fn default() -> Self {
-        Self {
-            title: None,
-            link: None,
-            update: None,
-        }
-    }
-}
-impl<A1, A2> PartialEq<Feed<'_, '_, A2>> for Feed<'_, '_, A1>
-where
-    A1: Allocator,
-    A2: Allocator,
-    for<'a> Option<Replaceable<Box<[u8], &'a A1>>>:
-        PartialEq<Option<Replaceable<Box<[u8], &'a A2>>>>,
-{
-    fn eq(
-        &self,
-        Feed {
-            title,
-            link,
-            update,
-        }: &Feed<'_, '_, A2>,
-    ) -> bool {
-        self.title.as_deref() == title.as_deref() && self.link == *link && self.update == *update
-    }
-}
-impl<'alloc, 'src, A> Feed<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn handle_link(
-        &mut self,
-        link: &BytesStart<'src>,
-        reader: &NsReader<&'src [u8]>,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        let mut replaceable = true;
-        let mut found_rel = false;
-        if let Some(Replaceable {
-            replaceable: true, ..
-        })
-        | None = self.link
-            && let Some(href) = get_attribute_when(
-                link,
-                |attr| {
-                    if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
-                        && name.as_ref() == b"rel"
-                        && *attr.value == *b"alternate"
-                    {
-                        found_rel = true;
-                        replaceable = false;
-                    }
+            |attr| {
+                if let (ns!(), name) = reader.resolver().resolve_attribute(attr.key)
+                    && name.as_ref() == b"rel"
+                    && *attr.value == *b"alternate"
+                {
+                    found_rel = true;
+                    replaceable = false;
+                }
 
-                    Ok(found_rel)
-                },
-                |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
-                version,
-                alloc,
-            )?
-        {
-            self.link = Some(Replaceable {
-                replaceable,
-                data: href,
-            });
-        }
-        Ok(())
+                Ok(found_rel)
+            },
+            |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ns!(), name) if name.as_ref() == b"href"),
+            version,
+            alloc,
+        )?
+    {
+        feed.link = Some(Replaceable {
+            replaceable,
+            data: Cow::Owned(href.into()),
+        });
     }
+    Ok(())
 }
 
 pub struct AtomParser;
@@ -332,8 +274,6 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for AtomParser
 where
     A: Allocator + 'alloc,
 {
-    type State = Feed<'alloc, 'src, A>;
-
     fn try_from_root(
         root: BytesStart<'src>,
         reader: &NsReader<&'src [u8]>,
@@ -351,7 +291,7 @@ where
         self,
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
-        state: &mut Self::State,
+        state: &mut PartialFeed<'alloc, 'src, A>,
         mut cb: F,
         version: XmlVersion,
         alloc: &'alloc A,
@@ -371,8 +311,8 @@ where
                     )?;
                 }
                 (ns!(), name) if name.as_ref() == b"updated" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut state.update,
+                    OptionHandler::<ReplaceableHandler<false, Rfc3339TimestampHandler, _>, _>::handle_element_into(
+                        &mut state.modify_date,
                         reader,
                         tag.name(),
                         version,
@@ -380,7 +320,7 @@ where
                     )?;
                 }
                 (ns!(), name) if name.as_ref() == b"link" => {
-                    state.handle_link(&tag, reader, version, alloc)?;
+                    feed_handle_link(state, &tag, reader, version, alloc)?;
                     reader.read_to_end(tag.name())?;
                 }
 
@@ -393,7 +333,7 @@ where
             },
             Event::Empty(tag) => match reader.resolver().resolve_element(tag.name()) {
                 (ns!(), name) if name.as_ref() == b"link" => {
-                    state.handle_link(&tag, reader, version, alloc)?;
+                    feed_handle_link(state, &tag, reader, version, alloc)?;
                 }
                 _ => {}
             },
@@ -410,7 +350,10 @@ mod tests {
         super::*,
         crate::{
             tz,
-            xml::tests::{TestParserError, test_parser},
+            xml::{
+                Feed, SkipDays, SkipHours,
+                tests::{TestParserError, test_parser},
+            },
         },
         allocator_api2::{alloc::Global, vec},
         bump_scope::Bump,
@@ -424,17 +367,17 @@ mod tests {
             include_str!("./all.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"test feed")),
-                link: Some(Replaceable {
-                    replaceable: false,
-                    data: Box::slice(Box::new_in(*b"https://example.com", &alloc)),
-                }),
+                link: Some(Cow::Borrowed(b"https://example.com")),
                 // 2003-12-13T18:30:02Z
-                update: Some(
+                last_update: Some(
                     datetime(2003, 12, 13, 18, 30, 02, 00)
                         .to_zoned(tz::Z)?
                         .timestamp()
                         .into(),
                 ),
+                skip_hours: SkipHours::default(),
+                skip_days: SkipDays::default(),
+                ttl: None,
             },
             [xml::Entry {
                 title: Some(Cow::Borrowed(b"first entry")),

@@ -47,33 +47,10 @@ where
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    modify_date: Option<Replaceable<Rfc2822Timestamp>>,
+    modify_date: Option<Replaceable<Timestamp>>,
     skip_hours: SkipHours,
     skip_days: SkipDays,
     ttl: Option<u64>,
-}
-impl<A> Debug for PartialFeed<'_, '_, A>
-where
-    A: Allocator,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        let Self {
-            title,
-            link,
-            modify_date,
-            skip_hours,
-            skip_days,
-            ttl,
-        } = self;
-        f.debug_struct("PartialFeed")
-            .field("title", &title)
-            .field("link", &link)
-            .field("modify_date", &modify_date)
-            .field("skip_hours", &skip_hours)
-            .field("skip_days", &skip_days)
-            .field("ttl", &ttl)
-            .finish()
-    }
 }
 impl<'alloc, 'src, A> Default for PartialFeed<'alloc, 'src, A>
 where
@@ -116,31 +93,7 @@ where
         }
     }
 }
-impl<'alloc, 'src, A> PartialEq for PartialFeed<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    fn eq(
-        &self,
-        Self {
-            title,
-            link,
-            modify_date,
-            skip_hours,
-            skip_days,
-            ttl,
-        }: &Self,
-    ) -> bool {
-        self.title.as_ref() == title.as_ref()
-            && self.link.as_ref() == link.as_ref()
-            && self.modify_date == *modify_date
-            && self.skip_hours == *skip_hours
-            && self.skip_days == *skip_days
-            && self.ttl == *ttl
-    }
-}
 
-#[derive(Debug, PartialEq)]
 pub struct Feed<'alloc, 'src, A>
 where
     A: Allocator,
@@ -151,6 +104,53 @@ where
     pub skip_hours: SkipHours,
     pub ttl: Option<u64>,
     pub last_update: Option<Timestamp>,
+}
+impl<A> Debug for Feed<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        let Self {
+            title,
+            link,
+            last_update,
+            skip_hours,
+            skip_days,
+            ttl,
+        } = self;
+        f.debug_struct("PartialFeed")
+            .field("title", &title)
+            .field("link", &link)
+            .field("last_update", &last_update)
+            .field("skip_hours", &skip_hours)
+            .field("skip_days", &skip_days)
+            .field("ttl", &ttl)
+            .finish()
+    }
+}
+impl<A1, A2> PartialEq<Feed<'_, '_, A2>> for Feed<'_, '_, A1>
+where
+    A1: Allocator,
+    A2: Allocator,
+{
+    fn eq(
+        &self,
+        Feed {
+            title,
+            link,
+            last_update,
+            skip_hours,
+            skip_days,
+            ttl,
+        }: &Feed<'_, '_, A2>,
+    ) -> bool {
+        self.title.as_deref() == title.as_deref()
+            && self.link.as_deref() == link.as_deref()
+            && self.last_update == *last_update
+            && self.skip_hours == *skip_hours
+            && self.skip_days == *skip_days
+            && self.ttl == *ttl
+    }
 }
 
 /// Text content that may come from multiple sources, with differing
@@ -347,8 +347,6 @@ where
     Self: Sized,
     A: Allocator,
 {
-    type State;
-
     fn try_from_root(
         _: BytesStart<'src>,
         _: &NsReader<&'src [u8]>,
@@ -358,7 +356,7 @@ where
         self,
         _: &mut NsReader<&'src [u8]>,
         _: Event<'src>,
-        _: &mut Self::State,
+        _: &mut PartialFeed<'alloc, 'src, A>,
         _: F,
         _: XmlVersion,
         _: &'alloc A,
@@ -370,19 +368,18 @@ where
         reader: &mut NsReader<&'src [u8]>,
         mut cb: F,
         alloc: &'alloc A,
-    ) -> Result<Self::State, ParserError>
+    ) -> Result<Feed<'alloc, 'src, A>, ParserError>
     where
-        Self::State: Default,
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
         let mut version = XmlVersion::default();
-        let mut state = Default::default();
+        let mut state = PartialFeed::default();
         loop {
             match reader.read_event()? {
                 Event::Decl(decl) => {
                     version = decl.xml_version()?;
                 }
-                Event::Eof => break Ok(state),
+                Event::Eof => break Ok(state.into()),
                 event => {
                     self = self.handle_event(reader, event, &mut state, &mut cb, version, alloc)?
                 }
@@ -644,23 +641,13 @@ where
 }
 
 #[derive(Debug, Default, PartialEq)]
-pub struct Rfc2822Timestamp(Timestamp);
-impl From<Timestamp> for Rfc2822Timestamp {
-    fn from(ts: Timestamp) -> Self {
-        Self(ts)
-    }
-}
-impl From<Rfc2822Timestamp> for Timestamp {
-    fn from(Rfc2822Timestamp(ts): Rfc2822Timestamp) -> Self {
-        ts
-    }
-}
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Rfc2822Timestamp
+pub struct Rfc2822TimestampHandler;
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A, Timestamp> for Rfc2822TimestampHandler
 where
     A: Allocator,
 {
     fn handle_element_into(
-        timestamp: &mut Rfc2822Timestamp,
+        timestamp: &mut Timestamp,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         _: XmlVersion,
@@ -668,29 +655,19 @@ where
     ) -> Result<(), ParserError> {
         let new_timestamp = read_to_end(reader, name, alloc)?;
         let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
-        *timestamp = Rfc2822Timestamp(new_timestamp);
+        *timestamp = new_timestamp;
         Ok(())
     }
 }
 
 #[derive(Debug, Default, PartialEq)]
-pub struct Rfc3339Timestamp(Timestamp);
-impl From<Timestamp> for Rfc3339Timestamp {
-    fn from(ts: Timestamp) -> Self {
-        Self(ts)
-    }
-}
-impl From<Rfc3339Timestamp> for Timestamp {
-    fn from(Rfc3339Timestamp(ts): Rfc3339Timestamp) -> Self {
-        ts
-    }
-}
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Rfc3339Timestamp
+pub struct Rfc3339TimestampHandler;
+impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A, Timestamp> for Rfc3339TimestampHandler
 where
     A: Allocator,
 {
     fn handle_element_into(
-        timestamp: &mut Rfc3339Timestamp,
+        timestamp: &mut Timestamp,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
         _: XmlVersion,
@@ -698,7 +675,7 @@ where
     ) -> Result<(), ParserError> {
         let new_timestamp = read_to_end(reader, name, alloc)?;
         let new_timestamp = temporal::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
-        *timestamp = Rfc3339Timestamp(new_timestamp);
+        *timestamp = new_timestamp;
         Ok(())
     }
 }
@@ -752,13 +729,12 @@ mod tests {
     }
     pub fn test_parser<'alloc, 'src, const N: usize, T, A>(
         input: &'src str,
-        output_state: T::State,
+        output_state: Feed<'alloc, 'src, A>,
         output_entries: [Entry<'alloc, 'src, A>; N],
         alloc: &'alloc A,
     ) -> Result<(), TestParserError<'src>>
     where
         T: Parser<'alloc, 'src, A>,
-        T::State: Debug + Default + PartialEq,
         A: Allocator,
     {
         let mut reader = NsReader::from_str(input);
