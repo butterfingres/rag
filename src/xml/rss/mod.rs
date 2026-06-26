@@ -6,7 +6,7 @@ use {
         xml::{
             self, Entry, Feed, HandleElementInto, OptionHandler, ParserError, ParserReader,
             Replaceable, ReplaceableHandler, Rfc2822Timestamp, SkipDays, SkipHours,
-            TryFromRootError, get_attribute_when, read_to_end,
+            TryFromRootError, UintHandler, get_attribute_when, read_to_end,
         },
     },
     allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
@@ -121,6 +121,7 @@ where
     modify_date: Option<Replaceable<Rfc2822Timestamp>>,
     skip_hours: SkipHours,
     skip_days: SkipDays,
+    ttl: Option<u64>,
 }
 impl<A> Debug for Channel<'_, '_, A>
 where
@@ -133,6 +134,7 @@ where
             modify_date,
             skip_hours,
             skip_days,
+            ttl,
         } = self;
         f.debug_struct("Channel")
             .field(
@@ -150,6 +152,7 @@ where
             .field("modify_date", &modify_date)
             .field("skip_hours", &skip_hours)
             .field("skip_days", &skip_days)
+            .field("ttl", &ttl)
             .finish()
     }
 }
@@ -164,6 +167,7 @@ where
             modify_date: None,
             skip_hours: SkipHours::default(),
             skip_days: SkipDays::default(),
+            ttl: None,
         }
     }
 }
@@ -178,6 +182,7 @@ where
             modify_date,
             skip_hours,
             skip_days,
+            ttl: _,
         }: Channel<'alloc, 'src, A>,
     ) -> Feed<'alloc, 'src, A> {
         Feed {
@@ -203,6 +208,7 @@ where
             modify_date,
             skip_hours,
             skip_days,
+            ttl,
         }: &Self,
     ) -> bool {
         self.title.as_ref() == title.as_ref()
@@ -210,6 +216,7 @@ where
             && self.modify_date == *modify_date
             && self.skip_hours == *skip_hours
             && self.skip_days == *skip_days
+            && self.ttl == *ttl
     }
 }
 
@@ -488,8 +495,15 @@ where
                 .map(|_| step)
             }
 
-            (Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"ttl" => {
-                todo!()
+            (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"ttl" => {
+                OptionHandler::<UintHandler<_>, _>::handle_element_into(
+                    &mut state.ttl,
+                    reader,
+                    tag.name(),
+                    version,
+                    alloc,
+                )
+                .map(|_| step)
             }
 
             (step @ Step::InsideChannel, Event::Start(tag)) if tag.name().0 == b"item" => {
@@ -536,6 +550,7 @@ mod tests {
                 }),
                 skip_hours: SkipHours::new([0b1110]),
                 skip_days: SkipDays::new([0b0111_1111]),
+                ttl: Some(30),
             },
             [Entry {
                 title: Some(Cow::Borrowed(b"entry 1")),
@@ -573,6 +588,7 @@ mod tests {
                 }),
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
+                ttl: None,
             },
             [],
             &alloc::Dummy,
@@ -598,6 +614,7 @@ mod tests {
                 }),
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
+                ttl: None,
             },
             [
                 Entry {

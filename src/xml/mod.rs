@@ -5,7 +5,7 @@ use {
     crate::{
         borrow::Cow,
         fmt::{debug_bytes, debug_iter_bytes},
-        num::ParseIntError,
+        num::{self, ParseIntError, UnsignedInteger},
     },
     allocator_api2::{
         alloc::{AllocError, Allocator},
@@ -499,6 +499,29 @@ where
         let mut val = U::default();
         T::handle_element_into(&mut val, reader, name, version, alloc)?;
         closure(val)?;
+
+        Ok(())
+    }
+}
+
+pub struct UintHandler<T> {
+    _marker: PhantomData<T>,
+}
+impl<'alloc, 'src, T, R, A> HandleElementInto<'alloc, 'src, R, A, T> for UintHandler<T>
+where
+    T: UnsignedInteger,
+    R: ParserReader<'src>,
+    A: Allocator,
+{
+    fn handle_element_into(
+        val: &mut T,
+        reader: &mut R,
+        name: QName<'_>,
+        _: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        let buf = read_to_end(reader, name, alloc)?;
+        *val = num::parse(buf.as_ref())?;
 
         Ok(())
     }

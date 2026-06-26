@@ -8,28 +8,24 @@ pub trait UnsignedInteger: From<u8> + PartialOrd {
     fn checked_mul(self, r: Self) -> Option<Self>;
 }
 
-impl UnsignedInteger for u8 {
-    const ZERO: Self = 0;
-    const TEN: Self = 10;
+macro_rules! impl_uint {
+    ($ty:ty) => {
+        impl $crate::num::UnsignedInteger for $ty {
+            const ZERO: Self = 0;
+            const TEN: Self = 10;
 
-    fn checked_add(self, r: Self) -> Option<Self> {
-        self.checked_add(r)
-    }
-    fn checked_mul(self, r: Self) -> Option<Self> {
-        self.checked_mul(r)
-    }
+            fn checked_add(self, r: Self) -> Option<Self> {
+                self.checked_add(r)
+            }
+            fn checked_mul(self, r: Self) -> Option<Self> {
+                self.checked_mul(r)
+            }
+        }
+    };
 }
-impl UnsignedInteger for u32 {
-    const ZERO: Self = 0;
-    const TEN: Self = 10;
-
-    fn checked_add(self, r: Self) -> Option<Self> {
-        self.checked_add(r)
-    }
-    fn checked_mul(self, r: Self) -> Option<Self> {
-        self.checked_mul(r)
-    }
-}
+impl_uint!(u8);
+impl_uint!(u32);
+impl_uint!(u64);
 
 #[derive(Debug)]
 pub enum ParseIntError {
@@ -46,7 +42,7 @@ impl Display for ParseIntError {
 }
 pub fn parse<T>(bytes: &[u8]) -> Result<T, ParseIntError>
 where
-    T: std::fmt::Debug + UnsignedInteger,
+    T: UnsignedInteger,
 {
     let mut num = T::ZERO;
 
