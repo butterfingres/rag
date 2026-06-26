@@ -103,11 +103,11 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Cow::Borrowed(ref val) => f
-                .debug_tuple("Cow")
+                .debug_tuple("Borrowed")
                 .field(&fmt::from_fn(|f| debug_bytes(val, f)))
                 .finish(),
             Cow::Owned(ref val) => f
-                .debug_tuple("Cow")
+                .debug_tuple("Owned")
                 .field(&fmt::from_fn(|f| debug_bytes(val, f)))
                 .finish(),
         }
