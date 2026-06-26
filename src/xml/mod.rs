@@ -46,7 +46,7 @@ where
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    modify_date: Option<Replaceable<Timestamp>>,
+    last_update: Option<Replaceable<Timestamp>>,
     skip_hours: SkipHours,
     skip_days: SkipDays,
     ttl: Option<u64>,
@@ -59,7 +59,7 @@ where
         Self {
             title: None,
             link: None,
-            modify_date: None,
+            last_update: None,
             skip_hours: SkipHours::default(),
             skip_days: SkipDays::default(),
             ttl: None,
@@ -74,7 +74,7 @@ where
         PartialFeed {
             title,
             link,
-            modify_date,
+            last_update,
             skip_hours,
             skip_days,
             ttl,
@@ -86,7 +86,7 @@ where
             skip_days,
             skip_hours,
             ttl,
-            last_update: modify_date.map(Replaceable::into_inner),
+            last_update: last_update.map(Replaceable::into_inner),
         }
     }
 }

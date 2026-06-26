@@ -312,7 +312,7 @@ where
                 }
                 (ns!(), name) if name.as_ref() == b"updated" => {
                     OptionHandler::<ReplaceableHandler<false, Rfc3339TimestampHandler, _>, _>::handle_element_into(
-                        &mut state.modify_date,
+                        &mut state.last_update,
                         reader,
                         tag.name(),
                         version,

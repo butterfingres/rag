@@ -113,7 +113,7 @@ where
 // {
 //     title: Option<Cow<'src, [u8], &'alloc A>>,
 //     link: Option<Cow<'src, [u8], &'alloc A>>,
-//     modify_date: Option<Replaceable<Rfc2822Timestamp>>,
+//     last_update: Option<Replaceable<Rfc2822Timestamp>>,
 //     skip_hours: SkipHours,
 //     skip_days: SkipDays,
 //     ttl: Option<u64>,
@@ -126,7 +126,7 @@ where
 //         let Self {
 //             title,
 //             link,
-//             modify_date,
+//             last_update,
 //             skip_hours,
 //             skip_days,
 //             ttl,
@@ -134,7 +134,7 @@ where
 //         f.debug_struct("Channel")
 //             .field("title", &title)
 //             .field("link", &link)
-//             .field("modify_date", &modify_date)
+//             .field("last_update", &last_update)
 //             .field("skip_hours", &skip_hours)
 //             .field("skip_days", &skip_days)
 //             .field("ttl", &ttl)
@@ -149,7 +149,7 @@ where
 //         Self {
 //             title: None,
 //             link: None,
-//             modify_date: None,
+//             last_update: None,
 //             skip_hours: SkipHours::default(),
 //             skip_days: SkipDays::default(),
 //             ttl: None,
@@ -164,7 +164,7 @@ where
 //         Channel {
 //             title,
 //             link,
-//             modify_date,
+//             last_update,
 //             skip_hours,
 //             skip_days,
 //             ttl,
@@ -176,7 +176,7 @@ where
 //             skip_days,
 //             skip_hours,
 //             ttl,
-//             last_update: modify_date
+//             last_update: last_update
 //                 .map(Replaceable::into_inner)
 //                 .map(Timestamp::from),
 //         }
@@ -191,7 +191,7 @@ where
 //         Self {
 //             title,
 //             link,
-//             modify_date,
+//             last_update,
 //             skip_hours,
 //             skip_days,
 //             ttl,
@@ -199,7 +199,7 @@ where
 //     ) -> bool {
 //         self.title.as_ref() == title.as_ref()
 //             && self.link.as_ref() == link.as_ref()
-//             && self.modify_date == *modify_date
+//             && self.last_update == *last_update
 //             && self.skip_hours == *skip_hours
 //             && self.skip_days == *skip_days
 //             && self.ttl == *ttl
@@ -467,7 +467,7 @@ where
                     if name.as_ref() == b"pubDate" =>
                 {
                     OptionHandler::<ReplaceableHandler<true, Rfc2822TimestampHandler, _>, _>::handle_element_into(
-                        &mut state.modify_date,
+                        &mut state.last_update,
                         reader,
                         tag.name(),
                         version,
@@ -479,7 +479,7 @@ where
                     if name.as_ref() == b"lastBuildDate" =>
                 {
                     OptionHandler::<ReplaceableHandler<false, Rfc2822TimestampHandler, _>, _>::handle_element_into(
-                        &mut state.modify_date,
+                        &mut state.last_update,
                         reader,
                         tag.name(),
                         version,
