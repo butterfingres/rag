@@ -414,7 +414,9 @@ where
             let mut found = false;
             for attr in tag.attributes() {
                 let attr = attr?;
-                if attr.key.0 == b"version" && matches!(attr.value.as_ref(), b"0.92" | b"2.0") {
+                if attr.key.0 == b"version"
+                    && matches!(attr.value.as_ref(), b"0.91" | b"0.92" | b"2.0")
+                {
                     found = true;
                     break;
                 }
@@ -616,6 +618,73 @@ mod tests {
             },
             [],
             &alloc::Dummy,
+        )
+    }
+
+    #[test]
+    fn test_rss_parser_0_91() -> Result<(), TestParserError<'static>> {
+        let alloc = Bump::<Global>::try_new()?;
+        test_parser::<_, Step, _>(
+            include_str!("./sample-rss-091.xml"),
+            Channel {
+                title: Some(Cow::Borrowed(b"WriteTheWeb")),
+                link: Some(Cow::Borrowed(b"http://writetheweb.com")),
+                modify_date: None,
+                skip_hours: SkipHours::default(),
+                skip_days: SkipDays::default(),
+                ttl: None,
+            },
+            [
+                Entry {
+                    title: Some(Cow::Borrowed(b"Giving the world a pluggable Gnutella")),
+                    link: Some(Cow::Borrowed(b"http://writetheweb.com/read.php?item=24")),
+                    description: Some(Cow::Borrowed(b"WorldOS is a framework on which to build programs that work like Freenet or Gnutella -allowing distributed applications using peer-to-peer routing.")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc;]
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"Syndication discussions hot up")),
+                    link: Some(Cow::Borrowed(b"http://writetheweb.com/read.php?item=23")),
+                    description: Some(Cow::Borrowed(b"After a period of dormancy, the Syndication mailing list has become active again, with contributions from leaders in traditional media and Web syndication.")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc;]
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"Personal web server integrates file sharing and messaging")),
+                    link: Some(Cow::Borrowed(b"http://writetheweb.com/read.php?item=22")),
+                    description: Some(Cow::Borrowed(b"The Magi Project is an innovative project to create a combined personal web server and messaging system that enables the sharing and synchronization of information across desktop, laptop and palmtop devices.")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc]
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"Syndication and Metadata")),
+                    link: Some(Cow::Borrowed(b"http://writetheweb.com/read.php?item=21")),
+                    description: Some(Cow::Borrowed(b"RSS is probably the best known metadata format around. RDF is probably one of the least understood. In this essay, published on my O'Reilly Network weblog, I argue that the next generation of RSS should be based on RDF.")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc]
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"UK bloggers get organised")),
+                    link: Some(Cow::Borrowed(b"http://writetheweb.com/read.php?item=20")),
+                    description: Some(Cow::Borrowed(b"Looks like the weblogs scene is gathering pace beyond the shores of the US. There's now a UK-specific page on weblogs.com, and a mailing list at egroups.")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc]
+                },
+                Entry {
+                    title: Some(Cow::Borrowed(b"Yournamehere.com more important than anything")),
+                    link: Some(Cow::Borrowed(b"http://writetheweb.com/read.php?item=19")),
+                    description: Some(Cow::Borrowed(b"Whatever you're publishing on the web, your site name is the most valuable asset you have, according to Carl Steadman.")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc]
+                },
+            ],
+            &alloc,
         )
     }
 
