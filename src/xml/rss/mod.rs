@@ -549,8 +549,8 @@ mod tests {
     };
 
     #[test]
-    fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
-        let alloc = Bump::<Global>::try_new()?;
+    fn test_rss_parser_alloc() -> Result<(), TestParserError<'static>> {
+        let mut alloc = Bump::<Global>::try_new()?;
         test_parser::<_, Step, _>(
             include_str!("./all.xml"),
             Channel {
@@ -594,36 +594,9 @@ mod tests {
                 },
             ],
             &alloc,
-        )
-    }
+        )?;
+        alloc.reset_to_start();
 
-    #[test]
-    fn test_rss_parser_alt() -> Result<(), TestParserError<'static>> {
-        test_parser::<_, Step, _>(
-            include_str!("./alt.xml"),
-            Channel {
-                title: Some(Cow::Borrowed(b"example feed")),
-                link: Some(Cow::Borrowed(b"https://example.com/rss")),
-                modify_date: Some(Replaceable {
-                    // Fri, 21 Jul 2023 09:04 EDT
-                    data: datetime(2023, 07, 21, 09, 04, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                    replaceable: false,
-                }),
-                skip_hours: SkipHours::default(),
-                skip_days: SkipDays::default(),
-                ttl: None,
-            },
-            [],
-            &alloc::Dummy,
-        )
-    }
-
-    #[test]
-    fn test_rss_parser_0_91() -> Result<(), TestParserError<'static>> {
-        let alloc = Bump::<Global>::try_new()?;
         test_parser::<_, Step, _>(
             include_str!("./sample-rss-091.xml"),
             Channel {
@@ -685,12 +658,9 @@ mod tests {
                 },
             ],
             &alloc,
-        )
-    }
+        )?;
+        alloc.reset_to_start();
 
-    #[test]
-    fn test_rss_parser_0_92() -> Result<(), TestParserError<'static>> {
-        let alloc = Bump::<Global>::try_new()?;
         test_parser::<_, Step, _>(
             include_str!("./sample-rss-092.xml"),
             Channel {
@@ -831,12 +801,8 @@ mod tests {
                 },
             ],
             &alloc,
-        )
-    }
-
-    #[test]
-    fn test_rss_parser_2_0() -> Result<(), TestParserError<'static>> {
-        let alloc = Bump::<Global>::try_new()?;
+        )?;
+        alloc.reset_to_start();
 
         test_parser::<_, Step, _>(
             include_str!("./sample-rss-2.xml"),
@@ -922,6 +888,32 @@ mod tests {
                 }
             ],
             &alloc,
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_rss_parser_zero_copy() -> Result<(), TestParserError<'static>> {
+        test_parser::<_, Step, _>(
+            include_str!("./alt.xml"),
+            Channel {
+                title: Some(Cow::Borrowed(b"example feed")),
+                link: Some(Cow::Borrowed(b"https://example.com/rss")),
+                modify_date: Some(Replaceable {
+                    // Fri, 21 Jul 2023 09:04 EDT
+                    data: datetime(2023, 07, 21, 09, 04, 00, 00)
+                        .to_zoned(tz::EDT)?
+                        .timestamp()
+                        .into(),
+                    replaceable: false,
+                }),
+                skip_hours: SkipHours::default(),
+                skip_days: SkipDays::default(),
+                ttl: None,
+            },
+            [],
+            &alloc::Dummy,
         )
     }
 }
