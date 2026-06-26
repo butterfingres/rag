@@ -1,6 +1,7 @@
 use {
     crate::xml::{
-        self, HandleElementInto, OptionHandler, ParserError, PartialFeed, TryFromRootError,
+        self, HandleElementInto, OptionHandler, ParserError, PartialFeed, ReplaceableHandler,
+        TryFromRootError,
     },
     allocator_api2::alloc::Allocator,
     quick_xml::{
@@ -68,6 +69,16 @@ where
                     )
                     .map(|_| step)
                 }
+                (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"link" => {
+                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
+                        &mut state.link,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
                 (step, _) => {
                     reader.read_to_end(tag.name())?;
                     Ok(step)
@@ -104,7 +115,7 @@ mod tests {
             include_str!("./sample.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"XML.com")),
-                link: None,
+                link: Some(Cow::Borrowed(b"http://xml.com/pub")),
                 last_update: None,
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
