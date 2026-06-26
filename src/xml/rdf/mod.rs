@@ -1,5 +1,7 @@
 use {
-    crate::xml::{self, ParserError, PartialFeed, TryFromRootError},
+    crate::xml::{
+        self, HandleElementInto, OptionHandler, ParserError, PartialFeed, TryFromRootError,
+    },
     allocator_api2::alloc::Allocator,
     quick_xml::{
         XmlVersion,
@@ -41,17 +43,44 @@ where
 
     fn handle_event<F>(
         self,
-        _reader: &mut NsReader<&'src [u8]>,
-        _event: Event<'src>,
-        _state: &mut PartialFeed<'alloc, 'src, A>,
+        reader: &mut NsReader<&'src [u8]>,
+        event: Event<'src>,
+        state: &mut PartialFeed<'alloc, 'src, A>,
         _cb: F,
-        _version: XmlVersion,
-        _alloc: &'alloc A,
+        version: XmlVersion,
+        alloc: &'alloc A,
     ) -> Result<Self, ParserError>
     where
         F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        Ok(self)
+        match event {
+            Event::Start(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
+                (Self::OutsideChannel, (ns::RSS, name)) if name.as_ref() == b"channel" => {
+                    Ok(Self::InsideChannel)
+                }
+                (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"title" => {
+                    OptionHandler::<_>::handle_element_into(
+                        &mut state.title,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )
+                    .map(|_| step)
+                }
+                (step, _) => {
+                    reader.read_to_end(tag.name())?;
+                    Ok(step)
+                }
+            },
+            Event::End(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
+                (Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"channel" => {
+                    Ok(Self::OutsideChannel)
+                }
+                (step, _) => Ok(step),
+            },
+            _ => Ok(self),
+        }
     }
 }
 
@@ -61,6 +90,7 @@ mod tests {
         super::*,
         crate::{
             alloc,
+            borrow::Cow,
             xml::{
                 Feed, SkipDays, SkipHours,
                 tests::{TestParserError, test_parser},
@@ -73,7 +103,7 @@ mod tests {
         test_parser::<_, RdfParser, _>(
             include_str!("./sample.xml"),
             Feed {
-                title: None,
+                title: Some(Cow::Borrowed(b"XML.com")),
                 link: None,
                 last_update: None,
                 skip_hours: SkipHours::default(),
