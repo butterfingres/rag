@@ -170,7 +170,7 @@ where
             modify_date,
             skip_hours,
             skip_days,
-            ttl: _,
+            ttl,
         }: Channel<'alloc, 'src, A>,
     ) -> Feed<'alloc, 'src, A> {
         Feed {
@@ -178,6 +178,7 @@ where
             link,
             skip_days,
             skip_hours,
+            ttl,
             last_update: modify_date
                 .map(Replaceable::into_inner)
                 .map(Timestamp::from),

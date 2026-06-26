@@ -50,6 +50,7 @@ where
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub skip_days: SkipDays,
     pub skip_hours: SkipHours,
+    pub ttl: Option<u64>,
     pub last_update: Option<Timestamp>,
 }
 
