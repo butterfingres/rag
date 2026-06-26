@@ -11,16 +11,12 @@ use {
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
-        name::{Namespace, QName},
+        name::{Namespace, QName, ResolveResult},
         reader::NsReader,
     },
 };
 
-macro_rules! ns {
-    () => {
-        ::quick_xml::name::ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"))
-    };
-}
+const NS: ResolveResult<'static> = ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"));
 
 fn handle_link<'alloc, 'src, A>(
     entry: &mut PartialEntry<'alloc, 'src, A>,
@@ -45,7 +41,7 @@ where
     if let Some(href) = get_attribute_when(
         link,
         |attr| {
-            if let (ns!(), name) = reader.resolver().resolve(attr.key, true)
+            if let (NS, name) = reader.resolver().resolve(attr.key, true)
                 && name.as_ref() == b"rel"
             {
                 found_rel = true;
@@ -58,7 +54,7 @@ where
 
             Ok(found_rel)
         },
-        |attr| matches!(reader.resolver().resolve(attr.key, true), (ns!(), name) if name.as_ref() == b"href"),
+        |attr| matches!(reader.resolver().resolve(attr.key, true), (NS, name) if name.as_ref() == b"href"),
         version,
         alloc,
     )? {
@@ -107,7 +103,7 @@ where
         let mut entry = PartialEntry::new_in(alloc);
         loop {
             match reader.read_resolved_event()? {
-                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"id" => {
+                (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"id" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut entry.id,
                         reader,
@@ -116,7 +112,7 @@ where
                         alloc,
                     )?;
                 }
-                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
+                (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut entry.title,
                         reader,
@@ -125,7 +121,7 @@ where
                         alloc,
                     )?;
                 }
-                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
+                (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
                     OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
                         &mut entry.content,
                         reader,
@@ -134,7 +130,7 @@ where
                         alloc,
                     )?;
                 }
-                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
+                (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
                     OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
                         &mut entry.content,
                         reader,
@@ -143,7 +139,7 @@ where
                         alloc,
                     )?;
                 }
-                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
+                (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
                     OptionHandler::<Rfc3339TimestampHandler, _>::handle_element_into(
                         &mut entry.updated,
                         reader,
@@ -153,11 +149,11 @@ where
                     )?;
                 }
 
-                (ns!(), Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
+                (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
                     handle_link(&mut entry, &tag, reader, version, alloc)?;
                     reader.read_to_end(tag.name())?;
                 }
-                (ns!(), Event::Empty(tag)) if tag.local_name().as_ref() == b"link" => {
+                (NS, Event::Empty(tag)) if tag.local_name().as_ref() == b"link" => {
                     handle_link(&mut entry, &tag, reader, version, alloc)?;
                 }
 
@@ -196,7 +192,7 @@ where
         && let Some(href) = get_attribute_when(
             link,
             |attr| {
-                if let (ns!(), name) = reader.resolver().resolve(attr.key, true)
+                if let (NS, name) = reader.resolver().resolve(attr.key, true)
                     && name.as_ref() == b"rel"
                     && *attr.value == *b"alternate"
                 {
@@ -206,7 +202,7 @@ where
 
                 Ok(found_rel)
             },
-            |attr| matches!(reader.resolver().resolve(attr.key, true), (ns!(), name) if name.as_ref() == b"href"),
+            |attr| matches!(reader.resolver().resolve(attr.key, true), (NS, name) if name.as_ref() == b"href"),
             version,
             alloc,
         )?
@@ -229,7 +225,7 @@ where
         reader: &NsReader<&'src [u8]>,
         _: XmlVersion,
     ) -> Result<Self, TryFromRootError<'src>> {
-        if let (ns!(), name) = reader.resolver().resolve_element(root.name())
+        if let (NS, name) = reader.resolver().resolve_element(root.name())
             && name.as_ref() == b"feed"
         {
             Ok(Self)
@@ -251,7 +247,7 @@ where
     {
         match event {
             Event::Start(tag) => match reader.resolver().resolve_element(tag.name()) {
-                (ns!(), name) if name.as_ref() == b"title" => {
+                (NS, name) if name.as_ref() == b"title" => {
                     OptionHandler::<_>::handle_element_into(
                         &mut state.title,
                         reader,
@@ -260,7 +256,7 @@ where
                         alloc,
                     )?;
                 }
-                (ns!(), name) if name.as_ref() == b"updated" => {
+                (NS, name) if name.as_ref() == b"updated" => {
                     OptionHandler::<ReplaceableHandler<false, Rfc3339TimestampHandler, _>, _>::handle_element_into(
                         &mut state.last_update,
                         reader,
@@ -269,12 +265,12 @@ where
                         alloc,
                     )?;
                 }
-                (ns!(), name) if name.as_ref() == b"link" => {
+                (NS, name) if name.as_ref() == b"link" => {
                     feed_handle_link(state, &tag, reader, version, alloc)?;
                     reader.read_to_end(tag.name())?;
                 }
 
-                (ns!(), name) if name.as_ref() == b"entry" => {
+                (NS, name) if name.as_ref() == b"entry" => {
                     AtomEntry::handle_element_into(&mut cb, reader, tag.name(), version, alloc)?;
                 }
                 _ => {
@@ -282,7 +278,7 @@ where
                 }
             },
             Event::Empty(tag) => match reader.resolver().resolve_element(tag.name()) {
-                (ns!(), name) if name.as_ref() == b"link" => {
+                (NS, name) if name.as_ref() == b"link" => {
                     feed_handle_link(state, &tag, reader, version, alloc)?;
                 }
                 _ => {}
