@@ -11,7 +11,7 @@ use {
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
-        name::{Namespace, QName, ResolveResult},
+        name::{Namespace, QName},
         reader::NsReader,
     },
     std::fmt::{self, Debug, Formatter},
@@ -19,7 +19,8 @@ use {
 
 macro_rules! ns {
     () => {
-        ResolveResult::Unbound | ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"))
+        ::quick_xml::name::ResolveResult::Unbound
+            | ::quick_xml::name::ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"))
     };
 }
 
