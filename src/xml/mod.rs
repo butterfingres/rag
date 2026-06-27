@@ -558,49 +558,6 @@ where
     ) -> Result<(), ParserError>;
 }
 
-// impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Cow<'src, [u8], &'alloc A>
-// where
-//     A: Allocator,
-// {
-//     fn handle_element_into(
-//         into: &mut Cow<'src, [u8], &'alloc A>,
-//         reader: &mut NsReader<&'src [u8]>,
-//         name: QName<'_>,
-//         _: XmlVersion,
-//         alloc: &'alloc A,
-//     ) -> Result<(), ParserError> {
-//         read_to_end_in(reader, name, into, alloc)
-//     }
-// }
-
-// pub struct OptionHandler<T, U = T> {
-//     _marker: PhantomData<(T, U)>,
-// }
-// impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Option<U>> for OptionHandler<T, U>
-// where
-//     T: HandleElementInto<'alloc, 'src, A, U>,
-//     U: Default,
-//     A: Allocator,
-// {
-//     fn handle_element_into(
-//         option: &mut Option<U>,
-//         reader: &mut NsReader<&'src [u8]>,
-//         name: QName<'_>,
-//         version: XmlVersion,
-//         alloc: &'alloc A,
-//     ) -> Result<(), ParserError> {
-//         if let Some(val) = option {
-//             T::handle_element_into(val, reader, name, version, alloc)?;
-//             Ok(())
-//         } else {
-//             let mut val = U::default();
-//             T::handle_element_into(&mut val, reader, name, version, alloc)?;
-//             *option = Some(val);
-//             Ok(())
-//         }
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use {
