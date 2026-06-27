@@ -22,7 +22,8 @@
   :group 'rag-fetcher-curl
   :type 'file)
 
-(defcustom rag-fetcher-curl-swiches '("--silent" "--fail")
+(defcustom rag-fetcher-curl-switches '("--silent" "--show-error"
+                                       "--fail")
   "Parameters to pass before the url.
 
 This is always given to the process and cannot be overwritten."
