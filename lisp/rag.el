@@ -70,30 +70,33 @@ schema.")
 (defun rag-db-get ()
   "Get the `rag-db'."
   (with-memoization rag-db
-    (let ((new (file-exists-p rag-db-path))
-          (db (sqlite-open rag-db-path)))
+    (let* ((new (not (file-exists-p rag-db-path)))
+           (db (sqlite-open rag-db-path)))
       (if new
           (progn
             (sqlite-transaction db)
             (unwind-protect
-                (cl-loop for migration across rag-db-migrations
-                         do (sqlite-execute-batch db migration))
+                (progn
+                  (cl-loop for migration across rag-db-migrations
+                           do (sqlite-execute-batch db migration))
+                  (sqlite-execute db "INSERT INTO schema(version) VALUES(?1)"
+                                  (list (length rag-db-migrations))))
               (sqlite-commit db)))
-        (let ((last-version (caar (or (sqlite-select db
-                                                     "SELECT MAX(version) FROM schema")
-                                      `((,(1+ (length rag-db-migrations))))))))
+        (let ((last-version (or (caar (sqlite-select db
+                                                     "SELECT MAX(version) FROM schema"))
+                                (length rag-db-migrations))))
           (sqlite-transaction db)
           (unwind-protect
-              (cl-loop for migration across (substring migrations last-version)
+              (cl-loop for migration across (substring rag-db-migrations last-version)
                        with i = 0
-                       for version = (+ i last-version)
                        do (progn
                             (sqlite-execute-batch db migration)
                             (sqlite-execute db
                                             "INSERT INTO schema(version) VALUES(?1)"
-                                            (list version))
+                                            (list (+ i last-version)))
                             (setq i (1+ i))))
-            (sqlite-commit db)))))))
+            (sqlite-commit db))))
+      db)))
 
 ;;; Retrieval & progress
 
