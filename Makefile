@@ -10,7 +10,7 @@ CARGO = cargo
 
 PREFIX = /usr/local
 SITELISP = ${PREFIX}/share/emacs/site-lisp
-LIBDIR = ${PREFIX}/lib/emacs
+LIBDIR = ${PREFIX}/share/emacs/site-lisp
 
 # find -name '*.toml' -o -name '*.rs' | sed 's/\.\///g' | sort | xargs echo
 RUSTFILES = Cargo.toml src/alloc.rs src/borrow.rs src/bump.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs src/xml/atom/mod.rs src/xml/mod.rs src/xml/parser.rs src/xml/rdf/mod.rs src/xml/rss/mod.rs
