@@ -149,10 +149,10 @@ where
         }
 
         args.push(sym::key::SKIP_DAYS.bind(env));
-        args.push(skip_days[0].into_lisp(env)?);
+        args.push(skip_days.data[0].into_lisp(env)?);
 
         args.push(sym::key::SKIP_HOURS.bind(env));
-        args.push(skip_hours[0].into_lisp(env)?);
+        args.push(skip_hours.data[0].into_lisp(env)?);
 
         if let Some(val) = ttl {
             args.push(sym::key::TTL.bind(env));

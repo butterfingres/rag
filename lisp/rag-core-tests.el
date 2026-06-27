@@ -22,6 +22,7 @@
                                       rag-core-test-allocator
                                       (lambda (entry)
                                         (push entry entries)))))
+    (setq entries (nreverse entries))
     (should (equal feed output-feed))
     (should (equal entries output-entries))))
 
@@ -46,13 +47,92 @@
 </feed>"
    (make-rag-feed :title "test feed"
                   :link "https://example.com"
-                  :last-update 1071340202)
+                  :last-update 1071340202
+                  :skip-days 0
+                  :skip-hours 0)
    (list (make-rag-entry :title "first entry"
                          :link "https://example.com/entry_1"
                          :id "1"
                          :description "contents of entry number 1"
                          :pub-date 1102962602
                          :enclosures ["https://example.com/entry_1.mp3"]))))
+
+(ert-deftest rag-core-test-rdf-feed ()
+  (rag-core-test-parse-feed
+   "<?xml version=\"1.0\"?>
+<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"
+         xmlns=\"http://purl.org/rss/1.0/\">
+  <channel>
+    <title>test feed</title>
+    <link>https://example.com</link>
+    <description>test feed description</description>
+  </channel>
+  <item>
+    <title>entry 1</title>
+    <link>https://example.com/entry_1</link>
+    <description>entry 1 description</description>
+  </item>
+</rdf:RDF>"
+   (make-rag-feed :title "test feed"
+                  :link "https://example.com"
+                  :skip-days 0
+                  :skip-hours 0)
+   (list (make-rag-entry :title "entry 1"
+                         :link "https://example.com/entry_1"
+                         :description "entry 1 description"))))
+
+(ert-deftest rag-core-test-rss-feed ()
+  (rag-core-test-parse-feed
+   "<?xml version=\"1.0\"?>
+<rss version=\"2.0\">
+  <channel>
+    <title>example feed</title>
+    <link>https://example.com</link>
+    <pubDate>Tue, 10 Jun 2003 04:00:00 GMT</pubDate>
+    <lastBuildDate>Fri, 21 Jul 2023 09:04 EDT</lastBuildDate>
+    <skipHours>
+      <hour>1</hour>
+      <hour>2</hour>
+      <hour>3</hour>
+    </skipHours>
+    <skipDays>
+      <day>Monday</day>
+      <day>Tuesday</day>
+      <day>Wednesday</day>
+      <day>Thursday</day>
+      <day>Friday</day>
+      <day>Saturday</day>
+      <day>Sunday</day>
+    </skipDays>
+    <ttl>30</ttl>
+    <item>
+      <title>entry 1</title>
+      <link>https://example.com/entry_1</link>
+      <description>the first entry</description>
+      <guid isPermalink=\"false\">1</guid>
+      <pubDate>Fri, 20 Jun 2003 09:00:00 GMT</pubDate>
+      <enclosure url=\"https://example.com/entry_1.mp3\"/>
+      <enclosure url=\"\"/>
+    </item>
+    <item>
+      <guid>https://example.com/entry_2</guid>
+    </item>
+  </channel>
+</rss>"
+   (make-rag-feed :title "example feed"
+                  :link "https://example.com"
+                  :last-update 1689944640
+                  :skip-hours #b00001110
+                  :skip-days  #b01111111
+                  :ttl 30)
+   (list (make-rag-entry :title "entry 1"
+                         :link "https://example.com/entry_1"
+                         :description "the first entry"
+                         :id "1"
+                         :pub-date 1056099600
+                         :enclosures ["https://example.com/entry_1.mp3" ""])
+         (make-rag-entry :id "https://example.com/entry_2"
+                         :link "https://example.com/entry_2"))))
 
 (provide 'rag-core-tests)
 
