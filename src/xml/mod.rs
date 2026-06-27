@@ -1,4 +1,5 @@
 pub mod atom;
+pub mod parser;
 pub mod rdf;
 pub mod rss;
 
