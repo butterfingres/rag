@@ -57,6 +57,9 @@
   (re-search-forward (rx line-start line-end))
   (forward-line))
 
+(defun rag-source-update-region (start end)
+  nil)
+
 (defun rag-source-update (source)
   "Update source SOURCE."
   (let* ((progress-buffer (rag-progress-buffer-get))
@@ -83,6 +86,8 @@
                  (goto-char (point-min))
                  (re-search-forward (rx line-start line-end))
                  (forward-line)
+
+                 (rag-source-update-region (point) (point-max))
 
                  (with-current-buffer (rag-progress-buffer-get)
                    (save-excursion
