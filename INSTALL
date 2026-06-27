@@ -25,8 +25,9 @@ Compiling:
          # Replace /usr/local with directory that contains share/emacs/site-lisp
          make install PREFIX=/usr/local
 
-         # Replace /usr/local/share/emacs/site-lisp a directory in your 'load-path'
+         # Or configure the directories
          make install SITELISP=/usr/local/share/emacs/site-lisp
+         make install LIBDIR=/usr/local/lib/emacs
 
      Alternatively you can just add the directories at the command-line.
 

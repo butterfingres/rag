@@ -10,6 +10,7 @@ CARGO = cargo
 
 PREFIX = /usr/local
 SITELISP = ${PREFIX}/share/emacs/site-lisp
+LIBDIR = ${PREFIX}/lib/emacs
 
 # find -name '*.toml' -o -name '*.rs' | sed 's/\.\///g' | sort | xargs echo
 RUSTFILES = Cargo.toml src/alloc.rs src/borrow.rs src/bump.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs src/xml/atom/mod.rs src/xml/mod.rs src/xml/parser.rs src/xml/rdf/mod.rs src/xml/rss/mod.rs
@@ -41,7 +42,9 @@ lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
 
 install: target/release/rag-core.${SO} ${ELCS}
 	install -m 755 -d "${SITELISP}"
-	install -m 644 target/release/rag-core.${SO} lisp/*.el lisp/*.elc "${SITELISP}"
+	install -m 644 lisp/*.el lisp/*.elc "${SITELISP}"
+	install -m 755 -d "${LIBDIR}"
+	install -m 644 target/release/rag-core.${SO} "${LIBDIR}"
 
 .el.elc:
 	${EMACS} ${EMACSFLAGS} -l bytecomp -f batch-byte-compile $<
