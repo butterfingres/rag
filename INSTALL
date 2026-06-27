@@ -1,0 +1,33 @@
+rag Installation Guide
+
+BASIC INSTALLATION
+
+Prerequestites:
+ - GNU Emacs version >= 26.2 (tested on 32.0.50).
+ - Posix makefile runner (tested with GNU Make).
+ - rustc vresion >= 1.97.0 (tested on 1.98.0).
+
+Compiling:
+  1.  Invoke the 'configure' script:
+
+		 ./configure
+
+  2.  Invoke the 'make' program:
+
+         make
+
+  3.  Install
+
+         make install
+
+      You may want to change the directory that gets installed into.
+
+         # Replace /usr/local with directory that contains share/emacs/site-lisp
+         make install PREFIX=/usr/local
+
+         # Replace /usr/local/share/emacs/site-lisp a directory in your 'load-path'
+         make install SITELISP=/usr/local/share/emacs/site-lisp
+
+     Alternatively you can just add the directories at the command-line.
+
+         emacs -L lisp -L target/release

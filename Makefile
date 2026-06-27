@@ -7,6 +7,11 @@ EMACSFLAGS = -Q -batch -L target/debug -L lisp
 
 CARGO = cargo
 
+PREFIX = /usr/local
+SITELISP = ${PREFIX}/share/emacs/site-lisp
+
+RUSTFILES = Cargo.toml src/alloc.rs src/borrow.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs src/xml/atom/mod.rs src/xml/mod.rs src/xml/rdf/mod.rs src/xml/rss/mod.rs
+
 include Makefile.in
 
 all: ${ELCS}
@@ -17,12 +22,21 @@ clean:
 	-rm ${ELCS}
 	-${CARGO} ${CARGOFLAGS} clean ${CARGOCLEANFLAGS}
 
-target/debug/${LIB}: Cargo.toml src/alloc.rs src/borrow.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs src/xml/atom/mod.rs src/xml/mod.rs src/xml/rdf/mod.rs src/xml/rss/mod.rs
+target/debug/${LIB}: ${RUSTFILES}
 	${CARGO} ${CARGOFLAGS} build ${CARGOBUILDFLAGS}
 target/debug/rag-core.${SO}: target/debug/librag_core.${SO}
-	ln -sf $$(realpath $<) $@
+	cp $< $@
+
+target/release/${LIB}: ${RUSTFILES}
+	${CARGO} ${CARGOFLAGS} build --release ${CARGOBUILDFLAGS}
+target/release/rag-core.${SO}: target/release/librag_core.${SO}
+	cp $< $@
 
 lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
+
+install: target/release/rag-core.${SO} ${ELCS}
+	install -m 755 -d "${SITELISP}"
+	install -m 644 target/release/rag-core.${SO} lisp/*.el lisp/*.elc "${SITELISP}"
 
 .el.elc:
 	${EMACS} ${EMACSFLAGS} -l bytecomp -f batch-byte-compile $<
