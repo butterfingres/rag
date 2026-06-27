@@ -357,6 +357,7 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     Alloc(AllocError),
+    Emacs(emacs::Error),
     MissingRoot,
     NotUtf8,
     ParseInt(ParseIntError),
@@ -372,6 +373,7 @@ impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::Alloc(e) => Display::fmt(e, f),
+            Self::Emacs(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),
             Self::NotUtf8 => f.write_str("input is not utf8"),
             Self::ParseInt(e) => Display::fmt(e, f),
@@ -391,6 +393,11 @@ impl From<AllocError> for ParserError {
 impl From<bump_scope::alloc::AllocError> for ParserError {
     fn from(_: bump_scope::alloc::AllocError) -> Self {
         Self::Alloc(AllocError)
+    }
+}
+impl From<emacs::Error> for ParserError {
+    fn from(e: emacs::Error) -> Self {
+        Self::Emacs(e)
     }
 }
 impl From<jiff::Error> for ParserError {
