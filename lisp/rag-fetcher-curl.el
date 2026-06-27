@@ -22,8 +22,10 @@
   :group 'rag-fetcher-curl
   :type 'file)
 
-(defcustom rag-fetcher-curl-swiches '("--silent")
-  "Parameters to pass before the url."
+(defcustom rag-fetcher-curl-swiches '("--silent" "--fail")
+  "Parameters to pass before the url.
+
+This is always given to the process and cannot be overwritten."
   :group 'rag-fetcher-curl
   :type '(repeat string))
 
@@ -31,6 +33,29 @@
   "Curl fetcher configuration."
   program
   switches)
+
+(cl-defmethod rag-fetcher-fetch-url (backend-config
+                                     (rag-fetcher-curl curl-config)
+                                     url
+                                     callback)
+  (let ((buffer (generate-new-buffer " *rag-fetcher-curl-temp*")))
+    (condition-case _error
+        (make-process :name "curl"
+                      :buffer buffer
+                      :command (append (or (rag-fetcher-curl-program curl-config)
+                                           rag-fetcher-curl-program)
+                                       rag-fetcher-curl-switches
+                                       (rag-fetcher-curl-switches curl-config)
+                                       (when-let* ((timeout (rag-fetcher-config-timeout backend-config)))
+                                         `("--max-time" ,(number-to-string timeout)))
+                                       (list url))
+                      :sentinel (lambda (process _status)
+                                  (when (memq (process-status process) '(exit signal))
+                                    (unwind-protect
+                                        (with-current-buffer buffer
+                                          (funcall callback))
+                                      (kill-buffer buffer)))))
+      (error (kill-buffer buffer)))))
 
 (provide 'rag-fetcher-curl)
 
