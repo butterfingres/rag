@@ -9,6 +9,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: awalsh128/cache-apt-pkgs-action@v1
         with:
-          packages: emacs rust
+          packages: emacs rustc rust-clippy rustfmt
           version: 1.0
       - run: make check
