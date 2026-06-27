@@ -1,7 +1,7 @@
 use {
     crate::xml::{
-        self, Entry, HandleElementInto, ParserError, PartialEntry, PartialFeed, TryFromRootError,
-        parser::{Content, TagParser},
+        self, Entry, ParserError, PartialEntry, PartialFeed, TryFromRootError,
+        parser::{Content, ParseTagInto, TagParser},
     },
     allocator_api2::alloc::Allocator,
     quick_xml::{
@@ -22,13 +22,13 @@ mod ns {
 }
 
 struct RdfItemHandler;
-impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for RdfItemHandler
+impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for RdfItemHandler
 where
     F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
-    fn handle_element_into(
+    fn parse_tag_into(
         cb: &mut F,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
@@ -128,7 +128,7 @@ where
                     Ok(step)
                 }
                 (step @ Self::OutsideChannel, (ns::RSS, name)) if name.as_ref() == b"item" => {
-                    RdfItemHandler::handle_element_into(&mut cb, reader, tag.name(), version, alloc)
+                    RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
                         .map(|_| step)
                 }
                 (step, _) => {

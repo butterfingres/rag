@@ -12,6 +12,19 @@ use {
     std::{marker::PhantomData, str::FromStr},
 };
 
+pub trait ParseTagInto<'alloc, 'src, A, S = Self>
+where
+    A: Allocator,
+{
+    fn parse_tag_into(
+        _: &mut S,
+        _: &mut NsReader<&'src [u8]>,
+        _: QName<'_>,
+        _: XmlVersion,
+        _: &'alloc A,
+    ) -> Result<(), ParserError>;
+}
+
 pub trait TagParser<'alloc, 'src, A>
 where
     A: Allocator,

@@ -2,9 +2,9 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, Entry, HandleElementInto, ParserError, PartialEntry, PartialFeed, Replaceable,
-            TryFromRootError, get_attribute_when,
-            parser::{Content, TagParser, rfc3339_timestamp},
+            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
+            get_attribute_when,
+            parser::{Content, ParseTagInto, TagParser, rfc3339_timestamp},
         },
     },
     allocator_api2::alloc::Allocator,
@@ -86,13 +86,13 @@ where
 }
 
 struct AtomEntry;
-impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for AtomEntry
+impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for AtomEntry
 where
     F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
-    fn handle_element_into(
+    fn parse_tag_into(
         cb: &mut F,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
@@ -247,7 +247,7 @@ where
                 }
 
                 (NS, name) if name.as_ref() == b"entry" => {
-                    AtomEntry::handle_element_into(&mut cb, reader, tag.name(), version, alloc)?;
+                    AtomEntry::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
                 }
                 _ => {
                     reader.read_to_end(tag.name())?;

@@ -2,9 +2,9 @@ use {
     crate::{
         num,
         xml::{
-            self, Entry, HandleElementInto, ParserError, PartialEntry, PartialFeed, Replaceable,
-            TryFromRootError, get_attribute_when,
-            parser::{Content, TagParser, rfc2822_timestamp},
+            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
+            get_attribute_when,
+            parser::{Content, ParseTagInto, TagParser, rfc2822_timestamp},
             read_to_end,
         },
     },
@@ -71,13 +71,13 @@ impl RssSkip for RssSkipDay {
 struct RssSkipHandler<T> {
     _marker: PhantomData<T>,
 }
-impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A, BitArray<T::View, T::Order>>
+impl<'alloc, 'src, T, A> ParseTagInto<'alloc, 'src, A, BitArray<T::View, T::Order>>
     for RssSkipHandler<T>
 where
     T: RssSkip,
     A: Allocator,
 {
-    fn handle_element_into(
+    fn parse_tag_into(
         bitvec: &mut BitArray<T::View, T::Order>,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
@@ -129,13 +129,13 @@ where
 }
 
 struct RssItem;
-impl<'alloc, 'src, F, T, A> HandleElementInto<'alloc, 'src, A, F> for RssItem
+impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for RssItem
 where
     F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
-    fn handle_element_into(
+    fn parse_tag_into(
         cb: &mut F,
         reader: &mut NsReader<&'src [u8]>,
         name: QName<'_>,
@@ -328,7 +328,7 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"skipHours" =>
                 {
-                    RssSkipHandler::<RssSkipHour>::handle_element_into(
+                    RssSkipHandler::<RssSkipHour>::parse_tag_into(
                         &mut state.skip_hours,
                         reader,
                         tag.name(),
@@ -340,7 +340,7 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"skipDays" =>
                 {
-                    RssSkipHandler::<RssSkipDay>::handle_element_into(
+                    RssSkipHandler::<RssSkipDay>::parse_tag_into(
                         &mut state.skip_days,
                         reader,
                         tag.name(),
@@ -362,7 +362,7 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"item" =>
                 {
-                    RssItem::handle_element_into(&mut cb, reader, tag.name(), version, alloc)
+                    RssItem::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
                         .map(|_| step)
                 }
                 (step, _) => {

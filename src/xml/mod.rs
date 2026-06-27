@@ -545,19 +545,6 @@ where
     }
 }
 
-pub trait HandleElementInto<'alloc, 'src, A, S = Self>
-where
-    A: Allocator,
-{
-    fn handle_element_into(
-        _: &mut S,
-        _: &mut NsReader<&'src [u8]>,
-        _: QName<'_>,
-        _: XmlVersion,
-        _: &'alloc A,
-    ) -> Result<(), ParserError>;
-}
-
 #[cfg(test)]
 mod tests {
     use {
