@@ -4,14 +4,16 @@ pub mod rdf;
 pub mod rss;
 
 use {
-    crate::{borrow::Cow, fmt::debug_iter_bytes, num::ParseIntError, xml::parser::TagParser},
+    crate::{borrow::Cow, fmt::debug_iter_bytes, num::ParseIntError, sym, xml::parser::TagParser},
     allocator_api2::{
         alloc::{AllocError, Allocator},
         boxed::Box,
         collections::TryReserveError,
         vec::Vec,
     },
+    arrayvec::ArrayVec,
     bitvec::BitArr,
+    emacs::IntoLisp,
     jiff::Timestamp,
     quick_xml::{
         XmlVersion,
@@ -117,6 +119,43 @@ where
             .field("skip_days", &skip_days)
             .field("ttl", &ttl)
             .finish()
+    }
+}
+impl<'e, A> IntoLisp<'e> for Feed<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn into_lisp(self, env: &'e emacs::Env) -> Result<emacs::Value<'e>, emacs::Error> {
+        let mut args = ArrayVec::<emacs::Value<'e>, { 6 * 2 }>::new();
+        if let Some(val) = self.title {
+            let val = String::from_utf8_lossy(&val);
+            args.push(sym::key::TITLE.bind(env));
+            args.push(val.as_ref().into_lisp(env)?);
+        }
+
+        if let Some(val) = self.link {
+            let val = String::from_utf8_lossy(&val);
+            args.push(sym::key::LINK.bind(env));
+            args.push(val.as_ref().into_lisp(env)?);
+        }
+
+        args.push(sym::key::SKIP_DAYS.bind(env));
+        args.push(self.skip_days[0].into_lisp(env)?);
+
+        args.push(sym::key::SKIP_HOURS.bind(env));
+        args.push(self.skip_hours[0].into_lisp(env)?);
+
+        if let Some(val) = self.ttl {
+            args.push(sym::key::TTL.bind(env));
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = self.last_update {
+            args.push(sym::key::LAST_UPDATE.bind(env));
+            args.push(val.as_second().into_lisp(env)?);
+        }
+
+        sym::val::MAKE_RAG_FEED.call(env, args.as_ref())
     }
 }
 impl<A1, A2> PartialEq<Feed<'_, '_, A2>> for Feed<'_, '_, A1>

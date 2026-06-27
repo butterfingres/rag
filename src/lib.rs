@@ -12,7 +12,6 @@ emacs::plugin_is_GPL_compatible!();
 use {
     crate::xml::{Parser, TryFromRootError, atom, get_header, rdf, rss},
     allocator_api2::alloc::Global,
-    arrayvec::ArrayVec,
     bump_scope::Bump,
     emacs::IntoLisp,
     quick_xml::reader::NsReader,
@@ -80,39 +79,7 @@ fn parse_string<'e>(
             match <$car as Parser<'_, '_, &Bump<Global>>>::try_from_root($root, &reader, version) {
                 Ok(parser) => {
                     let feed = parser.handle_events(&mut reader, |_cb| Ok(()), version, alloc)?;
-
-                    let mut args = ArrayVec::<emacs::Value<'e>, { 6 * 2 }>::new();
-                    if let Some(val) = feed.title {
-                        let val = String::from_utf8_lossy(&val);
-                        args.push(sym::key::TITLE.bind(env));
-                        args.push(val.as_ref().into_lisp(env)?);
-                    }
-
-                    if let Some(val) = feed.link {
-                        let val = String::from_utf8_lossy(&val);
-                        args.push(sym::key::LINK.bind(env));
-                        args.push(val.as_ref().into_lisp(env)?);
-                    }
-
-                    args.push(sym::key::SKIP_DAYS.bind(env));
-                    args.push(feed.skip_days[0].into_lisp(env)?);
-
-                    args.push(sym::key::SKIP_HOURS.bind(env));
-                    args.push(feed.skip_hours[0].into_lisp(env)?);
-
-                    if let Some(val) = feed.ttl {
-                        args.push(sym::key::TTL.bind(env));
-                        args.push(val.into_lisp(env)?);
-                    }
-
-                    if let Some(val) = feed.last_update {
-                        args.push(sym::key::LAST_UPDATE.bind(env));
-                        args.push(val.as_second().into_lisp(env)?);
-                    }
-
-                    let feed = sym::val::MAKE_RAG_FEED.call(env, args.as_ref())?;
-
-                    return Ok(feed);
+                    return feed.into_lisp(env);
                 }
                 Err(TryFromRootError::UnknownRoot(root)) => {
                     try_parsers!(root, [$($($cdr),*)?]);
