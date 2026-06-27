@@ -14,10 +14,12 @@
 (require 'ert)
 (require 'rag-core)
 
+(defvar rag-core-test-allocator (rag-core-bump-new))
 (defun rag-core-test-parse-feed (input output-feed output-entries)
+  (rag-core-bump-reset rag-core-test-allocator)
   (let* ((entries '())
          (feed (rag-core-parse-string input
-                                      (rag-core-bump-new)
+                                      rag-core-test-allocator
                                       (lambda (entry)
                                         (push entry entries)))))
     (should (equal feed output-feed))
