@@ -37,10 +37,6 @@ and rust code.")
   pub-date
   enclosures)
 
-(cl-defstruct rag-enclosure
-  "Enclosure structure."
-  link)
-
 (provide 'rag-lib)
 
 ;;; rag-lib.el ends here

@@ -23,7 +23,6 @@ pub mod val {
     emacs::use_symbols! {
         MAKE_RAG_FEED => "make-rag-feed"
         MAKE_RAG_ENTRY => "make-rag-entry"
-        MAKE_RAG_ENCLOSURE => "make-rag-enclosure"
         RAG_ABI_VERSION => "rag-abi-version"
         RAG_LIB => "rag-lib"
     }
