@@ -11,4 +11,6 @@ jobs:
         with:
           packages: emacs rustc rust-clippy rustfmt
           version: 1.0
-      - run: make check
+      - run: |
+          ./configure
+          make check
