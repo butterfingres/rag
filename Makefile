@@ -1,6 +1,6 @@
 .POSIX:
 
-ELCS = lisp/rag-core-tests.elc
+ELCS = lisp/rag-lib.elc lisp/rag-core-tests.elc
 
 EMACS = emacs
 EMACSFLAGS = -Q -batch -L target/debug -L lisp
@@ -22,7 +22,7 @@ target/debug/${LIB}: Cargo.toml src/alloc.rs src/borrow.rs src/fmt.rs src/lib.rs
 target/debug/rag-core.${SO}: target/debug/librag_core.${SO}
 	ln -sf $$(realpath $<) $@
 
-lisp/rag-core-tests.elc: target/debug/rag-core.so
+lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
 
 .el.elc:
 	${EMACS} ${EMACSFLAGS} -l bytecomp -f batch-byte-compile $<
