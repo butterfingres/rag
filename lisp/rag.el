@@ -47,13 +47,14 @@
   :group 'rag-db
   :type 'file)
 
-(defconst rag-db-migrations ["CREATE TABLE schema(
+(defconst rag-db-migrations ["CREATE TABLE IF NOT EXISTS schema(
   version INTEGER PRIMARY KEY
 );
 
-CREATE TABLE feed(
+CREATE TABLE IF NOT EXISTS feed(
   url PRIMARY KEY STRING,
   title STRING,
+  link STRING,
   skip_days INTEGER,
   skip_hours INTEGER,
   ttl INTEGER,
@@ -74,28 +75,21 @@ schema.")
            (db (sqlite-open rag-db-path)))
       (if new
           (progn
-            (sqlite-transaction db)
-            (unwind-protect
-                (progn
-                  (cl-loop for migration across rag-db-migrations
-                           do (sqlite-execute-batch db migration))
-                  (sqlite-execute db "INSERT INTO schema(version) VALUES(?1)"
-                                  (list (length rag-db-migrations))))
-              (sqlite-commit db)))
+            (cl-loop for migration across rag-db-migrations
+                     do (sqlite-execute-batch db migration))
+            (sqlite-execute db "INSERT INTO schema(version) VALUES(?1)"
+                            (list (length rag-db-migrations))))
         (let ((last-version (or (caar (sqlite-select db
                                                      "SELECT MAX(version) FROM schema"))
                                 (length rag-db-migrations))))
-          (sqlite-transaction db)
-          (unwind-protect
-              (cl-loop for migration across (substring rag-db-migrations last-version)
-                       with i = 0
-                       do (progn
-                            (sqlite-execute-batch db migration)
-                            (sqlite-execute db
-                                            "INSERT INTO schema(version) VALUES(?1)"
-                                            (list (+ i last-version)))
-                            (setq i (1+ i))))
-            (sqlite-commit db))))
+          (cl-loop for migration across (substring rag-db-migrations last-version)
+                   with i = 0
+                   do (progn
+                        (sqlite-execute-batch db migration)
+                        (sqlite-execute db
+                                        "INSERT INTO schema(version) VALUES(?1)"
+                                        (list (+ i last-version)))
+                        (setq i (1+ i))))))
       db)))
 
 ;;; Retrieval & progress
@@ -134,8 +128,18 @@ schema.")
 
 (defun rag-source-update-region (source start end)
   (rag-pool-with alloc
-    (let ((string (buffer-substring start end)))
-      nil)))
+    (let* ((string (buffer-substring start end))
+           (feed (rag-core-parse-string string alloc (lambda (_entry) nil)))
+           (db (rag-db-get)))
+      (sqlite-execute db
+                      "INSERT OR REPLACE INTO feed(url, title, link, skip_days, skip_hours, ttl, last_update) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+                      (list (rag-source-url source)
+                            (rag-feed-title feed)
+                            (rag-feed-link feed)
+                            (rag-feed-skip-days feed)
+                            (rag-feed-skip-hours feed)
+                            (rag-feed-ttl feed)
+                            (rag-feed-last-update feed))))))
 
 (defun rag-source-update (source)
   "Update source SOURCE."
