@@ -3,8 +3,8 @@ use {
         borrow::Cow,
         xml::{
             self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
-            Replaceable, ReplaceableHandler, Rfc3339TimestampHandler, TryFromRootError,
-            get_attribute_when,
+            Replaceable, Rfc3339TimestampHandler, TryFromRootError, get_attribute_when,
+            parser::{Content, TagParser, rfc3339_timestamp},
         },
     },
     allocator_api2::alloc::Allocator,
@@ -63,21 +63,20 @@ where
                 entry.enclosures.push(href);
             }
             LinkType::Alternate => {
-                entry.link = Some(Replaceable {
+                entry.link = Replaceable {
                     replaceable: false,
-                    data: Cow::Owned(href.into()),
-                });
+                    data: Some(Cow::Owned(href.into())),
+                };
             }
             LinkType::Other
-                if let None
-                | Some(Replaceable {
+                if let Replaceable {
                     replaceable: true, ..
-                }) = entry.link =>
+                } = entry.link =>
             {
-                entry.link = Some(Replaceable {
+                entry.link = Replaceable {
                     replaceable: true,
-                    data: Cow::Owned(href.into()),
-                });
+                    data: Some(Cow::Owned(href.into())),
+                };
             }
             _ => {}
         }
@@ -122,22 +121,18 @@ where
                     )?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                        &mut entry.content,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.content.replace::<false>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
-                    OptionHandler::<ReplaceableHandler<true, _>, _>::handle_element_into(
-                        &mut entry.content,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.content.replace::<true>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
                     OptionHandler::<Rfc3339TimestampHandler, _>::handle_element_into(
@@ -185,10 +180,9 @@ where
 {
     let mut replaceable = true;
     let mut found_rel = false;
-    if let Some(Replaceable {
+    if let Replaceable {
         replaceable: true, ..
-    })
-    | None = feed.link
+    } = feed.link
         && let Some(href) = get_attribute_when(
             link,
             |attr| {
@@ -207,10 +201,10 @@ where
             alloc,
         )?
     {
-        feed.link = Some(Replaceable {
+        feed.link = Replaceable {
             replaceable,
-            data: Cow::Owned(href.into()),
-        });
+            data: Some(Cow::Owned(href.into())),
+        };
     }
     Ok(())
 }
@@ -248,22 +242,15 @@ where
         match event {
             Event::Start(tag) => match reader.resolver().resolve_element(tag.name()) {
                 (NS, name) if name.as_ref() == b"title" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut state.title,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    state.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
                 }
                 (NS, name) if name.as_ref() == b"updated" => {
-                    OptionHandler::<ReplaceableHandler<false, Rfc3339TimestampHandler, _>, _>::handle_element_into(
-                        &mut state.last_update,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    state.last_update.replace::<false>(
+                        Content
+                            .flat_map(rfc3339_timestamp)
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
                 }
                 (NS, name) if name.as_ref() == b"link" => {
                     feed_handle_link(state, &tag, reader, version, alloc)?;

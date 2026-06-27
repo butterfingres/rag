@@ -47,8 +47,8 @@ where
     A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    last_update: Option<Replaceable<Timestamp>>,
+    link: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
+    last_update: Replaceable<Option<Timestamp>>,
     skip_hours: SkipHours,
     skip_days: SkipDays,
     ttl: Option<u64>,
@@ -60,8 +60,8 @@ where
     fn default() -> Self {
         Self {
             title: None,
-            link: None,
-            last_update: None,
+            link: Replaceable::default(),
+            last_update: Replaceable::default(),
             skip_hours: SkipHours::default(),
             skip_days: SkipDays::default(),
             ttl: None,
@@ -84,11 +84,11 @@ where
     ) -> Feed<'alloc, 'src, A> {
         Feed {
             title,
-            link: link.map(Replaceable::into_inner),
+            link: link.data,
             skip_days,
             skip_hours,
             ttl,
-            last_update: last_update.map(Replaceable::into_inner),
+            last_update: last_update.data,
         }
     }
 }
@@ -164,6 +164,14 @@ pub struct Replaceable<T> {
     data: T,
     replaceable: bool,
 }
+impl<T> Replaceable<T> {
+    fn replace<const REPLACEABLE: bool>(&mut self, data: T) {
+        if self.replaceable {
+            self.data = data;
+            self.replaceable = REPLACEABLE;
+        }
+    }
+}
 impl<T> Default for Replaceable<T>
 where
     T: Default,
@@ -175,19 +183,14 @@ where
         }
     }
 }
-impl<T> Replaceable<T> {
-    fn into_inner(Replaceable { data, .. }: Replaceable<T>) -> T {
-        data
-    }
-}
 
 pub struct PartialEntry<'alloc, 'src, A>
 where
     A: Allocator,
 {
     title: Option<Cow<'src, [u8], &'alloc A>>,
-    link: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
-    content: Option<Replaceable<Cow<'src, [u8], &'alloc A>>>,
+    link: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
+    content: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
     updated: Option<Timestamp>,
     enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
@@ -199,8 +202,8 @@ where
     fn new_in(alloc: &'alloc A) -> Self {
         Self {
             title: None,
-            link: None,
-            content: None,
+            link: Replaceable::default(),
+            content: Replaceable::default(),
             id: None,
             updated: None,
             enclosures: Vec::new_in(alloc),
@@ -261,8 +264,8 @@ where
     ) -> Entry<'alloc, 'src, A> {
         Entry {
             title,
-            link: link.map(Replaceable::into_inner),
-            description: content.map(Replaceable::into_inner),
+            link: link.data,
+            description: content.data,
             id,
             pub_date: updated,
             enclosures,

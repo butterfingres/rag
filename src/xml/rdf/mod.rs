@@ -1,7 +1,8 @@
 use {
     crate::xml::{
         self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
-        ReplaceableHandler, TryFromRootError,
+        TryFromRootError,
+        parser::{Content, TagParser},
     },
     allocator_api2::alloc::Allocator,
     quick_xml::{
@@ -39,31 +40,21 @@ where
         loop {
             match reader.read_resolved_event()? {
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut entry.title,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                        &mut entry.content,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.content.replace::<false>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                        &mut entry.link,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.link.replace::<false>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
                 }
 
                 (_, Event::Start(tag)) => {
@@ -132,14 +123,13 @@ where
                     .map(|_| step)
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"link" => {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                        &mut state.link,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
+                    state.link.replace::<false>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
+
+                    Ok(step)
                 }
                 (step @ Self::OutsideChannel, (ns::RSS, name)) if name.as_ref() == b"item" => {
                     RdfItemHandler::handle_element_into(&mut cb, reader, tag.name(), version, alloc)

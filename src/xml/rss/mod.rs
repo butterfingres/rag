@@ -4,8 +4,10 @@ use {
         num,
         xml::{
             self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
-            Replaceable, ReplaceableHandler, Rfc2822TimestampHandler, TryFromRootError,
-            UintHandler, get_attribute_when, read_to_end,
+            Replaceable, Rfc2822TimestampHandler, TryFromRootError, UintHandler,
+            get_attribute_when,
+            parser::{Content, TagParser, rfc2822_timestamp},
+            read_to_end,
         },
     },
     allocator_api2::alloc::Allocator,
@@ -155,22 +157,18 @@ where
                     )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"link" => {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                        &mut item.link,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    item.link.replace::<false>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
                 }
                 Event::Start(tag) if tag.name().0 == b"description" => {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                        &mut item.content,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    item.content.replace::<false>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
                 }
                 Event::Start(tag) if tag.name().0 == b"guid" => {
                     let mut is_permalink = None;
@@ -191,15 +189,14 @@ where
                         alloc,
                     )?;
                     if is_permalink.unwrap_or(true)
-                        && let None
-                        | Some(Replaceable {
+                        && let Replaceable {
                             replaceable: true, ..
-                        }) = item.link
+                        } = item.link
                     {
-                        item.link = Some(Replaceable {
-                            data: link.clone(),
+                        item.link = Replaceable {
+                            data: Some(link.clone()),
                             replaceable: false,
-                        });
+                        };
                     }
                     item.id = Some(link);
                 }
@@ -311,38 +308,41 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"link" =>
                 {
-                    OptionHandler::<ReplaceableHandler<false, _>, _>::handle_element_into(
-                        &mut state.link,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
+                    state.link.replace::<false>(
+                        Content
+                            .parse_tag(reader, tag.name(), version, alloc)
+                            .map(Some)?,
+                    );
+
+                    Ok(step)
                 }
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"pubDate" =>
                 {
-                    OptionHandler::<ReplaceableHandler<true, Rfc2822TimestampHandler, _>, _>::handle_element_into(
-                        &mut state.last_update,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
+                    state.last_update.replace::<true>(
+                        Content.flat_map(rfc2822_timestamp).map(Some).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )?,
+                    );
+
+                    Ok(step)
                 }
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"lastBuildDate" =>
                 {
-                    OptionHandler::<ReplaceableHandler<false, Rfc2822TimestampHandler, _>, _>::handle_element_into(
-                        &mut state.last_update,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
+                    state.last_update.replace::<false>(
+                        Content.flat_map(rfc2822_timestamp).map(Some).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )?,
+                    );
+
+                    Ok(step)
                 }
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"skipHours" =>
