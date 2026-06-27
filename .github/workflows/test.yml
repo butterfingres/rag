@@ -10,6 +10,5 @@ jobs:
       - name: install packages
         run: |
           sudo apt-get -y update
-          sudo apt-get -y upgrade
           sudo apt-get -y install emacs rust
       - run: make check
