@@ -1,7 +1,30 @@
 pub mod fun {
     emacs::use_functions! {
-        BUFFER_SUBSTRING_NO_PROPERTIES => "buffer-substring-no-properties"
-        POINT_MAX => "point-max"
-        POINT_MIN => "point-min"
+        REQUIRE => "require"
+        SYMBOL_VALUE => "symbol-value"
+    }
+}
+pub mod key {
+    emacs::use_symbols! {
+        TITLE => ":title"
+        LINK => ":link"
+        SKIP_DAYS => ":skip-days"
+        SKIP_HOURS => ":skip-hours"
+        TTL => ":ttl"
+        LAST_UPDATE => ":last-update"
+
+        DESCRIPTION => ":description"
+        ID => ":id"
+        PUB_DATE => ":pub-date"
+        ENCLOSURES => ":enclosures"
+    }
+}
+pub mod val {
+    emacs::use_symbols! {
+        MAKE_RAG_FEED => "make-rag-feed"
+        MAKE_RAG_ENTRY => "make-rag-entry"
+        MAKE_RAG_ENCLOSURE => "make-rag-enclosure"
+        RAG_ABI_VERSION => "rag-abi-version"
+        RAG_LIB => "rag-lib"
     }
 }
