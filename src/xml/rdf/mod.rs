@@ -1,7 +1,6 @@
 use {
     crate::xml::{
-        self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
-        TryFromRootError,
+        self, Entry, HandleElementInto, ParserError, PartialEntry, PartialFeed, TryFromRootError,
         parser::{Content, TagParser},
     },
     allocator_api2::alloc::Allocator,
@@ -113,14 +112,11 @@ where
                     Ok(Self::InsideChannel)
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"title" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut state.title,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
+                    state.title = Content
+                        .parse_tag(reader, tag.name(), version, alloc)
+                        .map(Some)?;
+
+                    Ok(step)
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"link" => {
                     state.link.replace::<false>(

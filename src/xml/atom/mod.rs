@@ -2,8 +2,8 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
-            Replaceable, Rfc3339TimestampHandler, TryFromRootError, get_attribute_when,
+            self, Entry, HandleElementInto, ParserError, PartialEntry, PartialFeed, Replaceable,
+            TryFromRootError, get_attribute_when,
             parser::{Content, TagParser, rfc3339_timestamp},
         },
     },
@@ -103,22 +103,14 @@ where
         loop {
             match reader.read_resolved_event()? {
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"id" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut entry.id,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.id = Content
+                        .parse_tag(reader, tag.name(), version, alloc)
+                        .map(Some)?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut entry.title,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.title = Content
+                        .parse_tag(reader, tag.name(), version, alloc)
+                        .map(Some)?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
                     entry.content.replace::<false>(
@@ -135,13 +127,10 @@ where
                     );
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
-                    OptionHandler::<Rfc3339TimestampHandler, _>::handle_element_into(
-                        &mut entry.updated,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    entry.updated = Content
+                        .flat_map(rfc3339_timestamp)
+                        .parse_tag(reader, tag.name(), version, alloc)
+                        .map(Some)?;
                 }
 
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {

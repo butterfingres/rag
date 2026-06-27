@@ -4,11 +4,7 @@ pub mod rdf;
 pub mod rss;
 
 use {
-    crate::{
-        borrow::Cow,
-        fmt::debug_iter_bytes,
-        num::{self, ParseIntError, UnsignedInteger},
-    },
+    crate::{borrow::Cow, fmt::debug_iter_bytes, num::ParseIntError},
     allocator_api2::{
         alloc::{AllocError, Allocator},
         boxed::Box,
@@ -16,10 +12,7 @@ use {
         vec::Vec,
     },
     bitvec::BitArr,
-    jiff::{
-        Timestamp,
-        fmt::{rfc2822, temporal},
-    },
+    jiff::Timestamp,
     quick_xml::{
         XmlVersion,
         errors::SyntaxError,
@@ -34,7 +27,6 @@ use {
     std::{
         error::Error,
         fmt::{self, Debug, Display, Formatter},
-        marker::PhantomData,
         ptr, str,
     },
 };
@@ -566,166 +558,48 @@ where
     ) -> Result<(), ParserError>;
 }
 
-pub struct CallbackHandler<F, T, U> {
-    _marker: PhantomData<(F, T, U)>,
-}
-impl<'alloc, 'src, F, T, U, A> HandleElementInto<'alloc, 'src, A, F> for CallbackHandler<F, T, U>
-where
-    F: FnMut(U) -> Result<(), ParserError>,
-    T: HandleElementInto<'alloc, 'src, A, U>,
-    U: Default,
-    A: Allocator,
-{
-    fn handle_element_into(
-        closure: &mut F,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        let mut val = U::default();
-        T::handle_element_into(&mut val, reader, name, version, alloc)?;
-        closure(val)?;
+// impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Cow<'src, [u8], &'alloc A>
+// where
+//     A: Allocator,
+// {
+//     fn handle_element_into(
+//         into: &mut Cow<'src, [u8], &'alloc A>,
+//         reader: &mut NsReader<&'src [u8]>,
+//         name: QName<'_>,
+//         _: XmlVersion,
+//         alloc: &'alloc A,
+//     ) -> Result<(), ParserError> {
+//         read_to_end_in(reader, name, into, alloc)
+//     }
+// }
 
-        Ok(())
-    }
-}
-
-pub struct UintHandler<T> {
-    _marker: PhantomData<T>,
-}
-impl<'alloc, 'src, T, A> HandleElementInto<'alloc, 'src, A, T> for UintHandler<T>
-where
-    T: UnsignedInteger,
-    A: Allocator,
-{
-    fn handle_element_into(
-        val: &mut T,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        _: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        let buf = read_to_end(reader, name, alloc)?;
-        *val = num::parse(buf.as_ref())?;
-
-        Ok(())
-    }
-}
-
-pub struct ReplaceableHandler<const REPLACEABLE: bool, T, U = T> {
-    _marker: PhantomData<(T, U)>,
-}
-impl<'alloc, 'src, const REPLACEABLE: bool, T, U, A>
-    HandleElementInto<'alloc, 'src, A, Replaceable<U>> for ReplaceableHandler<REPLACEABLE, T, U>
-where
-    T: HandleElementInto<'alloc, 'src, A, U>,
-    A: Allocator,
-{
-    fn handle_element_into(
-        replaceable: &mut Replaceable<U>,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        if let Replaceable {
-            replaceable: replaceable @ true,
-            data,
-        } = replaceable
-        {
-            T::handle_element_into(data, reader, name, version, alloc)?;
-            *replaceable = REPLACEABLE;
-            Ok(())
-        } else {
-            reader.read_to_end(name)?;
-            Ok(())
-        }
-    }
-}
-
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A> for Cow<'src, [u8], &'alloc A>
-where
-    A: Allocator,
-{
-    fn handle_element_into(
-        into: &mut Cow<'src, [u8], &'alloc A>,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        _: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        read_to_end_in(reader, name, into, alloc)
-    }
-}
-
-pub struct OptionHandler<T, U = T> {
-    _marker: PhantomData<(T, U)>,
-}
-impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Option<U>> for OptionHandler<T, U>
-where
-    T: HandleElementInto<'alloc, 'src, A, U>,
-    U: Default,
-    A: Allocator,
-{
-    fn handle_element_into(
-        option: &mut Option<U>,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        if let Some(val) = option {
-            T::handle_element_into(val, reader, name, version, alloc)?;
-            Ok(())
-        } else {
-            let mut val = U::default();
-            T::handle_element_into(&mut val, reader, name, version, alloc)?;
-            *option = Some(val);
-            Ok(())
-        }
-    }
-}
-
-#[derive(Debug, Default, PartialEq)]
-pub struct Rfc2822TimestampHandler;
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A, Timestamp> for Rfc2822TimestampHandler
-where
-    A: Allocator,
-{
-    fn handle_element_into(
-        timestamp: &mut Timestamp,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        _: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        let new_timestamp = read_to_end(reader, name, alloc)?;
-        let new_timestamp = rfc2822::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
-        *timestamp = new_timestamp;
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default, PartialEq)]
-pub struct Rfc3339TimestampHandler;
-impl<'alloc, 'src, A> HandleElementInto<'alloc, 'src, A, Timestamp> for Rfc3339TimestampHandler
-where
-    A: Allocator,
-{
-    fn handle_element_into(
-        timestamp: &mut Timestamp,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        _: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
-        let new_timestamp = read_to_end(reader, name, alloc)?;
-        let new_timestamp = temporal::DateTimeParser::new().parse_timestamp(&new_timestamp)?;
-        *timestamp = new_timestamp;
-        Ok(())
-    }
-}
+// pub struct OptionHandler<T, U = T> {
+//     _marker: PhantomData<(T, U)>,
+// }
+// impl<'alloc, 'src, T, U, A> HandleElementInto<'alloc, 'src, A, Option<U>> for OptionHandler<T, U>
+// where
+//     T: HandleElementInto<'alloc, 'src, A, U>,
+//     U: Default,
+//     A: Allocator,
+// {
+//     fn handle_element_into(
+//         option: &mut Option<U>,
+//         reader: &mut NsReader<&'src [u8]>,
+//         name: QName<'_>,
+//         version: XmlVersion,
+//         alloc: &'alloc A,
+//     ) -> Result<(), ParserError> {
+//         if let Some(val) = option {
+//             T::handle_element_into(val, reader, name, version, alloc)?;
+//             Ok(())
+//         } else {
+//             let mut val = U::default();
+//             T::handle_element_into(&mut val, reader, name, version, alloc)?;
+//             *option = Some(val);
+//             Ok(())
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

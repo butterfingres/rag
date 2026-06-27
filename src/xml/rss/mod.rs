@@ -1,11 +1,9 @@
 use {
     crate::{
-        borrow::Cow,
         num,
         xml::{
-            self, Entry, HandleElementInto, OptionHandler, ParserError, PartialEntry, PartialFeed,
-            Replaceable, Rfc2822TimestampHandler, TryFromRootError, UintHandler,
-            get_attribute_when,
+            self, Entry, HandleElementInto, ParserError, PartialEntry, PartialFeed, Replaceable,
+            TryFromRootError, get_attribute_when,
             parser::{Content, TagParser, rfc2822_timestamp},
             read_to_end,
         },
@@ -148,13 +146,9 @@ where
         loop {
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == b"title" => {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut item.title,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    item.title = Content
+                        .parse_tag(reader, tag.name(), version, alloc)
+                        .map(Some)?;
                 }
                 Event::Start(tag) if tag.name().0 == b"link" => {
                     item.link.replace::<false>(
@@ -180,14 +174,7 @@ where
                         }
                     }
 
-                    let mut link = Cow::Borrowed(&b""[..]);
-                    Cow::<'src, [u8], &'alloc A>::handle_element_into(
-                        &mut link,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    let link = Content.parse_tag(reader, tag.name(), version, alloc)?;
                     if is_permalink.unwrap_or(true)
                         && let Replaceable {
                             replaceable: true, ..
@@ -201,13 +188,10 @@ where
                     item.id = Some(link);
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
-                    OptionHandler::<Rfc2822TimestampHandler, _>::handle_element_into(
-                        &mut item.updated,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )?;
+                    item.updated = Content
+                        .flat_map(rfc2822_timestamp)
+                        .parse_tag(reader, tag.name(), version, alloc)
+                        .map(Some)?;
                 }
                 Event::Start(tag) if tag.name().0 == b"enclosure" => {
                     reader.read_to_end(tag.name())?;
@@ -296,14 +280,11 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"title" =>
                 {
-                    OptionHandler::<_>::handle_element_into(
-                        &mut state.title,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
+                    state.title = Content
+                        .parse_tag(reader, tag.name(), version, alloc)
+                        .map(Some)?;
+
+                    Ok(step)
                 }
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"link" =>
@@ -371,14 +352,12 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"ttl" =>
                 {
-                    OptionHandler::<UintHandler<_>, _>::handle_element_into(
-                        &mut state.ttl,
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
+                    state.ttl = Content
+                        .flat_map(|val| num::parse(val).map_err(ParserError::ParseInt))
+                        .map(Some)
+                        .parse_tag(reader, tag.name(), version, alloc)?;
+
+                    Ok(step)
                 }
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"item" =>
@@ -410,7 +389,9 @@ mod tests {
     use {
         super::*,
         crate::{
-            alloc, tz,
+            alloc,
+            borrow::Cow,
+            tz,
             xml::{
                 Feed, SkipDays, SkipHours,
                 tests::{TestParserError, test_parser},

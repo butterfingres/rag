@@ -40,13 +40,15 @@ impl Display for ParseIntError {
         }
     }
 }
-pub fn parse<T>(bytes: &[u8]) -> Result<T, ParseIntError>
+pub fn parse<S, T>(bytes: S) -> Result<T, ParseIntError>
 where
+    S: AsRef<[u8]>,
     T: UnsignedInteger,
 {
     let mut num = T::ZERO;
 
     for digit in bytes
+        .as_ref()
         .iter()
         .map(|b| b.wrapping_sub(b'0'))
         .map(T::from)
@@ -70,9 +72,9 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        assert_matches!(parse::<u8>(b"10"), Ok(10));
-        assert_matches!(parse::<u8>(b"1000"), Err(ParseIntError::Overflow));
-        assert_matches!(parse::<u32>(b"123456789"), Ok(123456789));
-        assert_matches!(parse::<u8>(b"asdf"), Err(ParseIntError::UnknownDigit));
+        assert_matches!(parse::<_, u8>(b"10"), Ok(10));
+        assert_matches!(parse::<_, u8>(b"1000"), Err(ParseIntError::Overflow));
+        assert_matches!(parse::<_, u32>(b"123456789"), Ok(123456789));
+        assert_matches!(parse::<_, u8>(b"asdf"), Err(ParseIntError::UnknownDigit));
     }
 }
