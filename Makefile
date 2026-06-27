@@ -19,6 +19,9 @@ include Makefile.in
 all: ${ELCS}
 check: all
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests -l ert -f ert-run-tests-batch-and-exit
+	${CARGO} ${CARGOFLAGS} fmt --check ${CARGOFMTFLAGS}
+	${CARGO} ${CARGOFLAGS} check ${CARGOCHECKFLAGS}
+	${CARGO} ${CARGOFLAGS} clippy ${CARGOCLIPPYFLAGS}
 	${CARGO} ${CARGOFLAGS} test ${CARGOTESTFLAGS}
 clean:
 	-rm ${ELCS}
