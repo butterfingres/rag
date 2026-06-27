@@ -18,13 +18,19 @@
 (cl-defstruct rag-fetcher-url-retrieve
   "`url-retrieve' backend for fetching.")
 
-(cl-defmethod rag-fetcher-fetch-url (generic-config
-                                     (config rag-fetcher-url-retrieve)
+(cl-defmethod rag-fetcher-fetch-url (_generic-config
+                                     (_config rag-fetcher-url-retrieve)
                                      url
                                      callback)
-  (let ((url-retrieve url
-                      (lambda (status))))
-    ))
+  (letrec ((buffer (url-retrieve url
+                                 (lambda (status)
+                                   (unwind-protect
+                                       (with-current-buffer buffer
+                                         (funcall callback status))
+                                     (kill-buffer buffer)))
+                                 '()
+                                 t)))
+    nil))
 
 (provide 'rag-fetcher-url-retrieve)
 
