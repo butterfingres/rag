@@ -16,3 +16,13 @@ jobs:
         run: |
           ./configure
           make check
+      - name: Compile
+        run: |
+          mkdir opt
+          make install PREFIX=opt
+          cd opt
+          tar -cvf rag.tar *
+          xz rag.tar.xz
+      - uses: actions/upload-artifact@v4
+        with:
+          path: opt/rag.tar.xz
