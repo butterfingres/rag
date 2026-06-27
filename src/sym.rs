@@ -1,5 +1,6 @@
 pub mod fun {
     emacs::use_functions! {
+        MAKE_VECTOR => "make-vector"
         REQUIRE => "require"
         SYMBOL_VALUE => "symbol-value"
     }

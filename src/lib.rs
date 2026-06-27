@@ -65,7 +65,7 @@ fn parse_string<'e>(
     env: &'e emacs::Env,
     string: String,
     alloc: &Bump<Global>,
-    _entry_handler: emacs::Value<'e>,
+    entry_handler: emacs::Value<'e>,
 ) -> Result<emacs::Value<'e>, emacs::Error> {
     let mut reader = NsReader::from_str(&string);
     let (version, root) = get_header(&mut reader)?;
@@ -78,7 +78,11 @@ fn parse_string<'e>(
         ($root:expr, [$car:ty $(, $($cdr:ty),* $(,)?)?]) => {
             match <$car as Parser<'_, '_, &Bump<Global>>>::try_from_root($root, &reader, version) {
                 Ok(parser) => {
-                    let feed = parser.handle_events(&mut reader, |_cb| Ok(()), version, alloc)?;
+                    let feed = parser.handle_events(&mut reader, |entry| {
+                        let entry = entry.into_lisp(env)?;
+                        entry_handler.call((entry,))?;
+                        Ok(())
+                    }, version, alloc)?;
                     return feed.into_lisp(env);
                 }
                 Err(TryFromRootError::UnknownRoot(root)) => {

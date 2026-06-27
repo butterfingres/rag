@@ -13,7 +13,7 @@ use {
     },
     arrayvec::ArrayVec,
     bitvec::BitArr,
-    emacs::IntoLisp,
+    emacs::{FromLisp, IntoLisp},
     jiff::Timestamp,
     quick_xml::{
         XmlVersion,
@@ -126,31 +126,40 @@ where
     A: Allocator,
 {
     fn into_lisp(self, env: &'e emacs::Env) -> Result<emacs::Value<'e>, emacs::Error> {
+        let Self {
+            title,
+            link,
+            skip_days,
+            skip_hours,
+            ttl,
+            last_update,
+        } = self;
+
         let mut args = ArrayVec::<emacs::Value<'e>, { 6 * 2 }>::new();
-        if let Some(val) = self.title {
-            let val = String::from_utf8_lossy(&val);
+        if let Some(val) = title {
+            let val = str::from_utf8(&val).unwrap();
             args.push(sym::key::TITLE.bind(env));
-            args.push(val.as_ref().into_lisp(env)?);
+            args.push(val.into_lisp(env)?);
         }
 
-        if let Some(val) = self.link {
-            let val = String::from_utf8_lossy(&val);
+        if let Some(val) = link {
+            let val = str::from_utf8(&val).unwrap();
             args.push(sym::key::LINK.bind(env));
-            args.push(val.as_ref().into_lisp(env)?);
+            args.push(val.into_lisp(env)?);
         }
 
         args.push(sym::key::SKIP_DAYS.bind(env));
-        args.push(self.skip_days[0].into_lisp(env)?);
+        args.push(skip_days[0].into_lisp(env)?);
 
         args.push(sym::key::SKIP_HOURS.bind(env));
-        args.push(self.skip_hours[0].into_lisp(env)?);
+        args.push(skip_hours[0].into_lisp(env)?);
 
-        if let Some(val) = self.ttl {
+        if let Some(val) = ttl {
             args.push(sym::key::TTL.bind(env));
             args.push(val.into_lisp(env)?);
         }
 
-        if let Some(val) = self.last_update {
+        if let Some(val) = last_update {
             args.push(sym::key::LAST_UPDATE.bind(env));
             args.push(val.as_second().into_lisp(env)?);
         }
@@ -292,6 +301,64 @@ where
                 &fmt::from_fn(|f| debug_iter_bytes(&enclosures, f)),
             )
             .finish()
+    }
+}
+impl<'e, A> IntoLisp<'e> for Entry<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn into_lisp(self, env: &'e emacs::Env) -> Result<emacs::Value<'e>, emacs::Error> {
+        let Self {
+            title,
+            link,
+            description,
+            id,
+            pub_date,
+            enclosures,
+        } = self;
+
+        let mut args = ArrayVec::<emacs::Value, { 6 * 2 }>::new();
+
+        if let Some(val) = title {
+            let val = str::from_utf8(&val).unwrap();
+            args.push(sym::key::TITLE.bind(env));
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = link {
+            let val = str::from_utf8(&val).unwrap();
+            args.push(sym::key::LINK.bind(env));
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = description {
+            let val = str::from_utf8(&val).unwrap();
+            args.push(sym::key::DESCRIPTION.bind(env));
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = id {
+            let val = str::from_utf8(&val).unwrap();
+            args.push(sym::key::ID.bind(env));
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = pub_date {
+            args.push(sym::key::PUB_DATE.bind(env));
+            args.push(val.as_second().into_lisp(env)?);
+        }
+
+        if !enclosures.is_empty() {
+            args.push(sym::key::ENCLOSURES.bind(env));
+            let buf =
+                emacs::Vector::from_lisp(sym::fun::MAKE_VECTOR.call(env, (enclosures.len(), 0))?)?;
+            for (i, enclosure) in enclosures.into_iter().enumerate() {
+                buf.set(i, str::from_utf8(&enclosure).unwrap().into_lisp(env)?)?;
+            }
+            args.push(buf.into_lisp(env)?);
+        }
+
+        sym::val::MAKE_RAG_ENTRY.call(env, args.as_ref())
     }
 }
 impl<'alloc, 'src, A> From<PartialEntry<'alloc, 'src, A>> for Entry<'alloc, 'src, A>

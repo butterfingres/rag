@@ -14,9 +14,14 @@
 (require 'ert)
 (require 'rag-core)
 
-(defun rag-core-test-parse-feed (input output-feed)
-  (let ((feed (rag-core-parse-string input (rag-core-bump-new) (lambda (_entry) nil))))
-    (should (equal feed output-feed))))
+(defun rag-core-test-parse-feed (input output-feed output-entries)
+  (let* ((entries '())
+         (feed (rag-core-parse-string input
+                                      (rag-core-bump-new)
+                                      (lambda (entry)
+                                        (push entry entries)))))
+    (should (equal feed output-feed))
+    (should (equal entries output-entries))))
 
 (ert-deftest rag-core-test-atom-feed ()
   (rag-core-test-parse-feed
@@ -39,7 +44,13 @@
 </feed>"
    (make-rag-feed :title "test feed"
                   :link "https://example.com"
-                  :last-update 1071340202)))
+                  :last-update 1071340202)
+   (list (make-rag-entry :title "first entry"
+                         :link "https://example.com/entry_1"
+                         :id "1"
+                         :description "contents of entry number 1"
+                         :pub-date 1102962602
+                         :enclosures ["https://example.com/entry_1.mp3"]))))
 
 (provide 'rag-core-tests)
 
