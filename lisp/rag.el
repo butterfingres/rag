@@ -14,9 +14,27 @@
 (eval-when-compile (require 'cl-macs))
 (require 'url-queue)
 
+(require 'rag-core)
+
 (defgroup rag '()
   "Rust news AGgragator."
   :group 'news)
+
+;;; Allocator pool
+
+(defvar rag-pool-allocators '()
+  "A list of allocators.")
+
+(defmacro rag-pool-with (var &rest body)
+  "Run BODY with an allocator bound to VAR."
+  (declare (indent 1))
+  `(let ((,var (or (car-safe rag-pool-allocators)
+                   (rag-core-bump-new))))
+     (unwind-protect
+         (progn
+           ,@body
+           (raag-core-bump-reset ,var))
+       (push ,var rag-pool-allocators))))
 
 ;;; Retrieval & progress
 
