@@ -32,8 +32,8 @@
                    (rag-core-bump-new))))
      (unwind-protect
          (progn
-           ,@body
-           (raag-core-bump-reset ,var))
+           (rag-core-bump-reset ,var)
+           ,@body)
        (push ,var rag-pool-allocators))))
 
 ;;; Retrieval & progress
@@ -70,13 +70,10 @@
   url
   tags)
 
-(defun rag-source-parse-buffer ()
-  (goto-char (point-min))
-  (re-search-forward (rx line-start line-end))
-  (forward-line))
-
-(defun rag-source-update-region (start end)
-  nil)
+(defun rag-source-update-region (source start end)
+  (rag-pool-with alloc
+    (let ((string (buffer-substring start end)))
+      nil)))
 
 (defun rag-source-update (source)
   "Update source SOURCE."
@@ -105,7 +102,7 @@
                  (re-search-forward (rx line-start line-end))
                  (forward-line)
 
-                 (rag-source-update-region (point) (point-max))
+                 (rag-source-update-region source (point) (point-max))
 
                  (with-current-buffer (rag-progress-buffer-get)
                    (save-excursion
