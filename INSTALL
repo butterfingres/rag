@@ -27,6 +27,8 @@ Compiling:
 
          # Or configure the directories
          make install SITELISP=/usr/local/share/emacs/site-lisp
+         # ${PREFIX}/lib/emacs is not part of emacs by default but this path
+         # would follow hier(7).
          make install LIBDIR=/usr/local/lib/emacs
 
      Alternatively you can just add the directories at the command-line.
