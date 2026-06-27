@@ -7,8 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: install packages
-        run: |
-          sudo apt-get -y update
-          sudo apt-get -y install emacs rust
+      - uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: emacs rust
+          version: 1.0
       - run: make check
