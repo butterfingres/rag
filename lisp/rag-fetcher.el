@@ -11,6 +11,8 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl-macs))
+
 (cl-defstruct rag-fetcher-config
   "Fetcher generic fetcher configuration."
   timeout)
