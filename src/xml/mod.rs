@@ -421,18 +421,15 @@ where
         mut self,
         reader: &mut NsReader<&'src [u8]>,
         mut cb: F,
+        version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<Feed<'alloc, 'src, A>, ParserError>
     where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        let mut version = XmlVersion::default();
         let mut state = PartialFeed::default();
         loop {
             match reader.read_event()? {
-                Event::Decl(decl) => {
-                    version = decl.xml_version()?;
-                }
                 Event::Eof => break Ok(state.into()),
                 event => {
                     self = self.handle_event(reader, event, &mut state, &mut cb, version, alloc)?
@@ -560,6 +557,21 @@ where
     }
 }
 
+pub fn get_header<'src>(
+    reader: &mut NsReader<&'src [u8]>,
+) -> Result<(XmlVersion, BytesStart<'src>), ParserError> {
+    let mut version = None;
+
+    loop {
+        match reader.read_event()? {
+            Event::Decl(decl) => version = Some(decl.xml_version()?),
+            Event::Start(tag) => break Ok((version.unwrap_or_default(), tag)),
+            Event::Eof => break Err(ParserError::MissingRoot),
+            _ => {}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use {
@@ -569,21 +581,6 @@ mod tests {
         bump_scope::Bump,
         std::{assert_matches, fmt::Debug},
     };
-
-    fn get_header<'src>(
-        reader: &mut NsReader<&'src [u8]>,
-    ) -> Result<(XmlVersion, BytesStart<'src>), ParserError> {
-        let mut version = None;
-
-        loop {
-            match reader.read_event()? {
-                Event::Decl(decl) => version = Some(decl.xml_version()?),
-                Event::Start(tag) => break Ok((version.unwrap_or_default(), tag)),
-                Event::Eof => break Err(ParserError::MissingRoot),
-                _ => {}
-            }
-        }
-    }
 
     #[expect(
         dead_code,
@@ -630,6 +627,7 @@ mod tests {
                 items += 1;
                 Ok(())
             },
+            version,
             alloc,
         )?;
         assert_eq!(state, output_state);
