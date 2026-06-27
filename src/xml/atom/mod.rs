@@ -202,8 +202,8 @@ where
     Ok(())
 }
 
-pub struct AtomParser;
-impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for AtomParser
+pub struct Parser;
+impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator + 'alloc,
 {
@@ -290,7 +290,7 @@ mod tests {
     #[test]
     fn test_atom_parser_all() -> Result<(), TestParserError<'static>> {
         let alloc = Bump::<Global>::try_new()?;
-        test_parser::<_, AtomParser, _>(
+        test_parser::<_, Parser, _>(
             include_str!("./all.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"test feed")),

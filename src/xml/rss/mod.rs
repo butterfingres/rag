@@ -222,12 +222,12 @@ where
 }
 
 #[derive(Default)]
-pub enum Step {
+pub enum Parser {
     #[default]
     OutsideChannel,
     InsideChannel,
 }
-impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Step
+impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator + 'alloc,
 {
@@ -276,12 +276,12 @@ where
     {
         match event {
             Event::Start(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
-                (Step::OutsideChannel, (ResolveResult::Unbound, name))
+                (Parser::OutsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"channel" =>
                 {
-                    Ok(Step::InsideChannel)
+                    Ok(Parser::InsideChannel)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"title" =>
                 {
                     state.title = Content
@@ -290,7 +290,7 @@ where
 
                     Ok(step)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"link" =>
                 {
                     state.link.try_replace_or_skip::<false, _, _>(
@@ -303,7 +303,7 @@ where
 
                     Ok(step)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"pubDate" =>
                 {
                     state.last_update.try_replace_or_skip::<true, _, _>(
@@ -316,7 +316,7 @@ where
 
                     Ok(step)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"lastBuildDate" =>
                 {
                     state.last_update.try_replace_or_skip::<false, _, _>(
@@ -329,7 +329,7 @@ where
 
                     Ok(step)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"skipHours" =>
                 {
                     RssSkipHandler::<RssSkipHour>::parse_tag_into(
@@ -341,7 +341,7 @@ where
                     )
                     .map(|_| step)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"skipDays" =>
                 {
                     RssSkipHandler::<RssSkipDay>::parse_tag_into(
@@ -353,7 +353,7 @@ where
                     )
                     .map(|_| step)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"ttl" =>
                 {
                     state.ttl = Content
@@ -363,7 +363,7 @@ where
 
                     Ok(step)
                 }
-                (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
+                (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"item" =>
                 {
                     RssItem::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
@@ -377,7 +377,7 @@ where
             Event::End(tag)
                 if let (ResolveResult::Unbound, name) =
                     reader.resolver().resolve_element(tag.name())
-                    && let Step::InsideChannel = self
+                    && let Parser::InsideChannel = self
                     && name.as_ref() == b"channel" =>
             {
                 Ok(Self::OutsideChannel)
@@ -409,7 +409,7 @@ mod tests {
     #[test]
     fn test_rss_parser_alloc() -> Result<(), TestParserError<'static>> {
         let mut alloc = Bump::<Global>::try_new()?;
-        test_parser::<_, Step, _>(
+        test_parser::<_, Parser, _>(
             include_str!("./all.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"example feed")),
@@ -454,7 +454,7 @@ mod tests {
         )?;
         alloc.reset_to_start();
 
-        test_parser::<_, Step, _>(
+        test_parser::<_, Parser, _>(
             include_str!("./sample-rss-091.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"WriteTheWeb")),
@@ -518,7 +518,7 @@ mod tests {
         )?;
         alloc.reset_to_start();
 
-        test_parser::<_, Step, _>(
+        test_parser::<_, Parser, _>(
             include_str!("./sample-rss-092.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"Winnemac Daily News")),
@@ -660,7 +660,7 @@ mod tests {
         )?;
         alloc.reset_to_start();
 
-        test_parser::<_, Step, _>(
+        test_parser::<_, Parser, _>(
             include_str!("./sample-rss-2.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"NASA Space Station News")),
@@ -750,7 +750,7 @@ mod tests {
 
     #[test]
     fn test_rss_parser_zero_copy() -> Result<(), TestParserError<'static>> {
-        test_parser::<_, Step, _>(
+        test_parser::<_, Parser, _>(
             include_str!("./alt.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"example feed")),

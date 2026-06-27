@@ -76,11 +76,11 @@ where
     }
 }
 
-pub enum RdfParser {
+pub enum Parser {
     OutsideChannel,
     InsideChannel,
 }
-impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for RdfParser
+impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator,
 {
@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_rdf_parser_sample() -> Result<(), TestParserError<'static>> {
-        test_parser::<_, RdfParser, _>(
+        test_parser::<_, Parser, _>(
             include_str!("./sample.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"XML.com")),
