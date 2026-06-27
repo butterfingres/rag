@@ -11,6 +11,8 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl-macs))
+
 (require 'rag-fetcher)
 
 (defgroup rag-fetcher-curl '()
@@ -35,26 +37,29 @@ This is always given to the process and cannot be overwritten."
   program
   switches)
 
-(cl-defmethod rag-fetcher-fetch-url (backend-config
-                                     (rag-fetcher-curl curl-config)
+(cl-defmethod rag-fetcher-fetch-url (generic-config
+                                     (config rag-fetcher-curl)
                                      url
                                      callback)
   (let ((buffer (generate-new-buffer " *rag-fetcher-curl-temp*")))
     (condition-case _error
         (make-process :name "curl"
                       :buffer buffer
-                      :command (append (or (rag-fetcher-curl-program curl-config)
+                      :command (append (or (rag-fetcher-curl-program config)
                                            rag-fetcher-curl-program)
                                        rag-fetcher-curl-switches
-                                       (rag-fetcher-curl-switches curl-config)
-                                       (when-let* ((timeout (rag-fetcher-config-timeout backend-config)))
+                                       (rag-fetcher-curl-switches config)
+                                       (when-let* ((timeout (rag-fetcher-config-timeout generic-config)))
                                          `("--max-time" ,(number-to-string timeout)))
                                        (list url))
                       :sentinel (lambda (process _status)
                                   (when (memq (process-status process) '(exit signal))
                                     (unwind-protect
                                         (with-current-buffer buffer
-                                          (funcall callback))
+                                          (let ((status (if (= (process-exit-status process) 0)
+                                                            '()
+                                                          `(:error (error . ("%s" ,(buffer-string)))))))
+                                            (funcall callback status)))
                                       (kill-buffer buffer)))))
       (error (kill-buffer buffer)))))
 
