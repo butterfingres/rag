@@ -4,7 +4,7 @@ pub mod rdf;
 pub mod rss;
 
 use {
-    crate::{borrow::Cow, fmt::debug_iter_bytes, num::ParseIntError},
+    crate::{borrow::Cow, fmt::debug_iter_bytes, num::ParseIntError, xml::parser::TagParser},
     allocator_api2::{
         alloc::{AllocError, Allocator},
         boxed::Box,
@@ -157,11 +157,26 @@ pub struct Replaceable<T> {
     replaceable: bool,
 }
 impl<T> Replaceable<T> {
-    fn replace<const REPLACEABLE: bool>(&mut self, data: T) {
+    fn try_replace_or_skip<'alloc, 'src, const REPLACEABLE: bool, P, A>(
+        &mut self,
+        parser: P,
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        version: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError>
+    where
+        P: TagParser<'alloc, 'src, A, Output = T>,
+        A: Allocator,
+    {
         if self.replaceable {
-            self.data = data;
+            self.data = parser.parse_tag(reader, name, version, alloc)?;
             self.replaceable = REPLACEABLE;
+        } else {
+            reader.read_to_end(name)?;
         }
+
+        Ok(())
     }
 }
 impl<T> Default for Replaceable<T>

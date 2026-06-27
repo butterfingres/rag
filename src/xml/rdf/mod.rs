@@ -42,18 +42,22 @@ where
                     entry.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
-                    entry.content.replace::<false>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    entry.content.try_replace_or_skip::<false, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
-                    entry.link.replace::<false>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    entry.link.try_replace_or_skip::<false, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
 
                 (_, Event::Start(tag)) => {
@@ -119,11 +123,13 @@ where
                     Ok(step)
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"link" => {
-                    state.link.replace::<false>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    state.link.try_replace_or_skip::<false, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
 
                     Ok(step)
                 }

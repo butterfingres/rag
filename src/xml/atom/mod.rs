@@ -113,18 +113,22 @@ where
                         .map(Some)?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
-                    entry.content.replace::<false>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    entry.content.try_replace_or_skip::<false, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
-                    entry.content.replace::<true>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    entry.content.try_replace_or_skip::<true, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
                     entry.updated = Content
@@ -234,12 +238,13 @@ where
                     state.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
                 }
                 (NS, name) if name.as_ref() == b"updated" => {
-                    state.last_update.replace::<false>(
-                        Content
-                            .flat_map(rfc3339_timestamp)
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    state.last_update.try_replace_or_skip::<false, _, _>(
+                        Content.flat_map(rfc3339_timestamp).map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
                 (NS, name) if name.as_ref() == b"link" => {
                     feed_handle_link(state, &tag, reader, version, alloc)?;

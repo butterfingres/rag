@@ -51,11 +51,12 @@ where
         F: Fn(Self::Output) -> Result<T, ParserError>,
         Self: Sized,
     {
-        self.map::<F>(f).flatten()
+        self.map(f).flatten()
     }
 
-    fn map<F>(self, f: F) -> Map<F, Self>
+    fn map<F, T>(self, f: F) -> Map<F, Self>
     where
+        F: Fn(Self::Output) -> T,
         Self: Sized,
     {
         Map { f, parser: self }

@@ -151,18 +151,22 @@ where
                         .map(Some)?;
                 }
                 Event::Start(tag) if tag.name().0 == b"link" => {
-                    item.link.replace::<false>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    item.link.try_replace_or_skip::<false, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"description" => {
-                    item.content.replace::<false>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    item.content.try_replace_or_skip::<false, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"guid" => {
                     let mut is_permalink = None;
@@ -289,39 +293,39 @@ where
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"link" =>
                 {
-                    state.link.replace::<false>(
-                        Content
-                            .parse_tag(reader, tag.name(), version, alloc)
-                            .map(Some)?,
-                    );
+                    state.link.try_replace_or_skip::<false, _, _>(
+                        Content.map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
 
                     Ok(step)
                 }
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"pubDate" =>
                 {
-                    state.last_update.replace::<true>(
-                        Content.flat_map(rfc2822_timestamp).map(Some).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )?,
-                    );
+                    state.last_update.try_replace_or_skip::<true, _, _>(
+                        Content.flat_map(rfc2822_timestamp).map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
 
                     Ok(step)
                 }
                 (step @ Step::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"lastBuildDate" =>
                 {
-                    state.last_update.replace::<false>(
-                        Content.flat_map(rfc2822_timestamp).map(Some).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )?,
-                    );
+                    state.last_update.try_replace_or_skip::<false, _, _>(
+                        Content.flat_map(rfc2822_timestamp).map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
 
                     Ok(step)
                 }
