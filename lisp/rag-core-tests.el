@@ -26,6 +26,8 @@
     (should (equal feed output-feed))
     (should (equal entries output-entries))))
 
+;;; Format tests to ensure that all parsers work.
+
 (ert-deftest rag-core-test-atom-feed ()
   (rag-core-test-parse-feed
    "<?xml version=\"1.0\"?>
