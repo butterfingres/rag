@@ -36,6 +36,65 @@
            ,@body)
        (push ,var rag-pool-allocators))))
 
+;;; Database
+
+(defgroup rag-db '()
+  "Rag database."
+  :group 'rag)
+
+(defcustom rag-db-path (expand-file-name "rag.db" user-emacs-directory)
+  "The path to the database."
+  :group 'rag-db
+  :type 'file)
+
+(defconst rag-db-migrations ["CREATE TABLE schema(
+  version INTEGER PRIMARY KEY
+);
+
+CREATE TABLE feed(
+  url PRIMARY KEY STRING,
+  title STRING,
+  skip_days INTEGER,
+  skip_hours INTEGER,
+  ttl INTEGER,
+  last_update INTEGER
+)"]
+  "A list of sql migrations.
+
+Running every sql snippet in this vector should create the newest
+schema.")
+
+(defvar rag-db nil
+  "The sqlite database object.")
+
+(defun rag-db-get ()
+  "Get the `rag-db'."
+  (with-memoization rag-db
+    (let ((new (file-exists-p rag-db-path))
+          (db (sqlite-open rag-db-path)))
+      (if new
+          (progn
+            (sqlite-transaction db)
+            (unwind-protect
+                (cl-loop for migration across rag-db-migrations
+                         do (sqlite-execute-batch db migration))
+              (sqlite-commit db)))
+        (let ((last-version (caar (or (sqlite-select db
+                                                     "SELECT MAX(version) FROM schema")
+                                      `((,(1+ (length rag-db-migrations))))))))
+          (sqlite-transaction db)
+          (unwind-protect
+              (cl-loop for migration across (substring migrations last-version)
+                       with i = 0
+                       for version = (+ i last-version)
+                       do (progn
+                            (sqlite-execute-batch db migration)
+                            (sqlite-execute db
+                                            "INSERT INTO schema(version) VALUES(?1)"
+                                            (list version))
+                            (setq i (1+ i))))
+            (sqlite-commit db)))))))
+
 ;;; Retrieval & progress
 
 (define-derived-mode rag-progress-mode special-mode "RAG Progress"
