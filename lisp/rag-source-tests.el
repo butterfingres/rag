@@ -79,7 +79,9 @@ WHERE id == '1'"))))
                         ;; description
                         "contents of entry number 1"
                         ;; pub date
-                        1102962602))))
+                        1102962602
+                        ;; feed-id
+                        "https://example.com/atom"))))
 
      (let ((enclosures (mapcar #'car
                                (sqlite-select db "SELECT link FROM enclosure

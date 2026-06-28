@@ -61,13 +61,14 @@
                         (let ((id (or (rag-entry-id entry)
                                       (rag-source--uuid))))
                           (sqlite-execute db
-                                          "INSERT OR REPLACE INTO entry(id, title, link, description, pub_date)
-VALUES (?, ?, ?, ?, ?)"
+                                          "INSERT OR REPLACE INTO entry(id, title, link, description, pub_date, feed_id)
+VALUES (?, ?, ?, ?, ?, ?)"
                                           (list id
                                                 (rag-entry-title entry)
                                                 (rag-entry-link entry)
                                                 (rag-entry-description entry)
-                                                (rag-entry-pub-date entry)))
+                                                (rag-entry-pub-date entry)
+                                                (rag-source-url source)))
                           (cl-loop for enclosure across (rag-entry-enclosures entry)
                                    do (sqlite-execute db
                                                       "INSERT INTO enclosure(entry_id, link)
