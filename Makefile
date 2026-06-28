@@ -38,6 +38,7 @@ target/release/${LIB}: ${RUSTFILES}
 target/release/rag-core.${SO}: target/release/librag_core.${SO}
 	cp $< $@
 
+lisp/rag.elc: lisp/rag-lib.elc target/debug/rag-core.so
 lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
 
 install: target/release/rag-core.${SO} ${ELCS}
