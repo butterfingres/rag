@@ -75,40 +75,41 @@ Set to nil if to never exclude entries based on age."
   "Rust news AGgragator."
   :interactive nil
   (let ((db (rag-db-get)))
-    (goto-char (point-min))
-    (dolist (entry (if rag-oldest-entry
-                       (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
+    (save-excursion
+      (goto-char (point-min))
+      (dolist (entry (if rag-oldest-entry
+                         (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
 WHERE pub_date > ?1
 ORDER BY pub_date DESC"
-                                      (list (- (round (float-time)) rag-oldest-entry)))
-                     (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
+                                        (list (- (round (float-time)) rag-oldest-entry)))
+                       (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
 ORDER BY pub_date DESC")))
-      (let* ((title (or (propertize (car entry)
-                                    'face 'rag-unread-entry-title)
-                        (propertize rag-empty-entry-title
-                                    'face 'rag-null)))
-             (pub-date (cadr entry))
+        (let* ((title (or (propertize (car entry)
+                                      'face 'rag-unread-entry-title)
+                          (propertize rag-empty-entry-title
+                                      'face 'rag-null)))
+               (pub-date (cadr entry))
 
-             (date (format-time-string "%Y-%m-%d" pub-date))
+               (date (format-time-string "%Y-%m-%d" pub-date))
 
-             (feed-id (caddr entry))
-             (feed-title (if-let* ((title (car (sqlite-select db "SELECT title FROM feed
+               (feed-id (caddr entry))
+               (feed-title (if-let* ((title (car (sqlite-select db "SELECT title FROM feed
 WHERE url == ?1"
-                                                              (list feed-id)))))
-                             (propertize (car title)
-                                         'face 'rag-feed-title)
-                           (propertize rag-empty-feed-title
-                                       'face 'rag-null)))
+                                                                (list feed-id)))))
+                               (propertize (car title)
+                                           'face 'rag-feed-title)
+                             (propertize rag-empty-feed-title
+                                         'face 'rag-null)))
 
-             (inhibit-read-only t))
-        (insert (propertize date
-                            'face 'rag-date)
-                " "
-                title
-                (propertize " "
-                            'display `(space :align-to ,rag-title-align))
-                feed-title)
-        (newline)))))
+               (inhibit-read-only t))
+          (insert (propertize date
+                              'face 'rag-date)
+                  " "
+                  title
+                  (propertize " "
+                              'display `(space :align-to ,rag-title-align))
+                  feed-title)
+          (newline))))))
 
 (add-hook 'rag-mode-hook #'toggle-truncate-lines)
 
