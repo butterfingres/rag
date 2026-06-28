@@ -55,13 +55,11 @@ Set to nil if to never exclude entries based on age."
   (let ((db (rag-db-get)))
     (save-excursion
       (goto-char (point-min))
-      (dolist (entry (if rag-oldest-entry
-                         (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
+      (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
 WHERE pub_date > ?1
 ORDER BY pub_date DESC"
-                                        (list (- (round (float-time)) rag-oldest-entry)))
-                       (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
-ORDER BY pub_date DESC")))
+                                    (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
+                                              -1.0e+INF))))
         (let* ((title (or (when-let* ((title (car entry)))
                             (propertize title
                                         'face 'rag-unread-entry-title))
@@ -117,19 +115,14 @@ WHERE url == ?1"
   (let ((db (rag-db-get))
         (offset (1- (line-number-at-pos))))
     (cl-destructuring-bind (id title link description pub-date feed-id)
-        (car (if rag-oldest-entry
-                 (sqlite-select db
-                                "SELECT id, title, link, description, pub_date, feed_id FROM ENTRY
+        (car (sqlite-select db
+                            "SELECT id, title, link, description, pub_date, feed_id FROM ENTRY
 WHERE pub_date > ?
 ORDER BY pub_date DESC
 LIMIT 1 OFFSET ?"
-                                (list (- (round (float-time)) rag-oldest-entry)
-                                      offset))
-               (sqlite-select db
-                              "SELECT id, title, link, description, pub_date, feed_id FROM ENTRY
-ORDER BY pub_date DESC
-LIMIT 1 OFFSET ?"
-                              (list offset))))
+                            (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
+                                      -1.0e+INF)
+                                  offset)))
       (let ((enclosures (mapcar #'car
                                 (sqlite-select db
                                                "SELECT link FROM enclosure
