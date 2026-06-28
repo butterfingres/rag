@@ -3,17 +3,25 @@ on:
   pull_request:
 
 jobs:
-  check:
+  rust_check:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cargo_subcommand:
+          - build
+          - check
+          - clippy
+          - fmt --check
+          - test
+        include:
+          - cargo_subcommand: clippy
+            extra_packages: rust-clippy
+          - cargo_subcommand: fmt
+            extra_packages: rustfmt
     steps:
       - uses: actions/checkout@v6
-      - uses: jcs090218/setup-emacs@v3
-        with:
-          version: 30.1
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          components: "clippy, rustfmt"
+      - run: |
+          sudo apt-get install -y rust ${{ matrix.extra_packages }}
       - name: Test
         run: |
-          ./configure
-          make check
+          cargo ${{ matrix.cargo_subcommand }}
