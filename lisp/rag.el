@@ -50,9 +50,8 @@
 (defconst rag-db-migrations ["CREATE TABLE IF NOT EXISTS schema(
   version INTEGER PRIMARY KEY
 );
-
 CREATE TABLE IF NOT EXISTS feed(
-  url PRIMARY KEY STRING,
+  url STRING PRIMARY KEY,
   title STRING,
   link STRING,
   skip_days INTEGER,
