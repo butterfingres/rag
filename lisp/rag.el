@@ -22,6 +22,11 @@
   "Rust news AGgragator."
   :group 'news)
 
+(defcustom rag-title-align 50
+  "How many characters to align the title to."
+  :group 'rag
+  :type 'natnum)
+
 ;; taken from elfeed-search.el
 (defface rag-date
   '((((class color) (background light)) (:foreground "#aaa"))
@@ -64,7 +69,7 @@ WHERE url == ?1"
                 (propertize title
                             'face 'rag-unread-title)
                 (propertize " "
-                            'display '(space :align-to 50))
+                            'display `(space :align-to ,rag-title-align))
                 (propertize feed-title
                             'face 'rag-feed))
         (newline)))))
