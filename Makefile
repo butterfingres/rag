@@ -33,6 +33,7 @@ check: all
 	${EMACS} ${EMACSFLAGS} -l rag-pool-tests -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-source-tests -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-tests -l ert -f ert-run-tests-batch-and-exit
+checkall: check
 	${CARGO} ${CARGOFLAGS} fmt --check ${CARGOFMTFLAGS}
 	${CARGO} ${CARGOFLAGS} check ${CARGOCHECKFLAGS}
 	${CARGO} ${CARGOFLAGS} clippy ${CARGOCLIPPYFLAGS}
@@ -73,4 +74,4 @@ install: target/release/rag-core.${SO} ${ELCS}
 	${EMACS} ${EMACSFLAGS} -l bytecomp -f batch-byte-compile $<
 .SUFFIXES: .el .elc
 
-.PHONY: all check clean
+.PHONY: all check checkall clean
