@@ -39,6 +39,22 @@ CREATE TABLE feed(
 Running every sql snippet in this vector should create the newest
 schema.")
 
+(defmacro rag-db-with-transaction (db &rest body)
+  "Execute BODY in a transaction in DB.
+
+This will `sqlite-commit' the changes on success and `sqlite-rollback'
+on error."
+  (declare (indent 1))
+  `(let ((db ,db))
+     (sqlite-transaction db)
+     (condition-case error-value
+         (progn
+           ,@body
+           (sqlite-commit db))
+       (error
+        (sqlite-rollback db)
+        (signal (car error-value) (cdr error-value))))))
+
 (defvar rag-db nil
   "The sqlite database object.")
 
@@ -48,26 +64,23 @@ schema.")
     (let* ((new (not (file-exists-p rag-db-path)))
            (db (sqlite-open rag-db-path)))
       (if new
-          (progn
-            (sqlite-transaction db)
+          (rag-db-with-transaction db
             (cl-loop for migration across rag-db-migrations
                      do (sqlite-execute-batch db migration)
                      finally do (sqlite-execute db "INSERT INTO schema(version) VALUES(?1)"
-                                                (list (length rag-db-migrations))))
-            (sqlite-commit db))
+                                                (list (length rag-db-migrations)))))
         (let ((last-version (or (caar (sqlite-select db
                                                      "SELECT MAX(version) FROM schema"))
                                 (length rag-db-migrations))))
-          (sqlite-transaction db)
-          (cl-loop for migration across (substring rag-db-migrations last-version)
-                   with i = 0
-                   do (progn
-                        (sqlite-execute-batch db migration)
-                        (sqlite-execute db
-                                        "INSERT INTO schema(version) VALUES(?1)"
-                                        (list (+ i last-version)))
-                        (setq i (1+ i))))
-          (sqlite-commit db)))
+          (rag-db-with-transaction db
+            (cl-loop for migration across (substring rag-db-migrations last-version)
+                     with i = 0
+                     do (progn
+                          (sqlite-execute-batch db migration)
+                          (sqlite-execute db
+                                          "INSERT INTO schema(version) VALUES(?1)"
+                                          (list (+ i last-version)))
+                          (setq i (1+ i)))))))
       db)))
 
 (provide 'rag-db)
