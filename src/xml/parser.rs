@@ -172,6 +172,7 @@ where
     T: AsRef<[u8]>,
 {
     rfc2822::DateTimeParser::new()
+        .relaxed_weekday(true)
         .parse_timestamp(ts)
         .map_err(ParserError::ParseTimestamp)
 }
@@ -182,4 +183,22 @@ where
     temporal::DateTimeParser::new()
         .parse_timestamp(ts)
         .map_err(ParserError::ParseTimestamp)
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, crate::tz, jiff::civil::datetime};
+
+    #[test]
+    fn rfc2822_invalid_weekday() -> Result<(), ParserError> {
+        let ts = rfc2822_timestamp("Wed, 9 Apr 2026 00:18:00 EST")?;
+        assert_eq!(
+            ts,
+            datetime(2026, 04, 09, 00, 18, 00, 00)
+                .to_zoned(tz::EST)?
+                .timestamp()
+                .into(),
+        );
+        Ok(())
+    }
 }
