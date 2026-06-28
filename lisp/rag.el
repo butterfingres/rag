@@ -143,7 +143,7 @@ schema.")
 (defun rag-source-update (source)
   "Update source SOURCE."
   (let* ((progress-buffer (rag-progress-buffer-get))
-         (marker (with-current-buffer (rag-progress-buffer-get)
+         (marker (with-current-buffer progress-buffer
                    (save-excursion
                      (goto-char (point-max))
                      (prog1
