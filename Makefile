@@ -1,7 +1,7 @@
 .POSIX:
 
 # find -not -name '.*' -name '*.el' | sed 's/\.\///g' | sed 's/\.el/\.elc/g' | sort | xargs echo
-ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-lib.elc lisp/rag.elc
+ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc lisp/rag-lib.elc lisp/rag.elc
 
 EMACS = emacs
 EMACSFLAGS = -Q -batch -L target/debug -L lisp
@@ -20,6 +20,7 @@ include Makefile.in
 all: ${ELCS}
 check: all
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-db-tests -l ert -f ert-run-tests-batch-and-exit
 	${CARGO} ${CARGOFLAGS} fmt --check ${CARGOFMTFLAGS}
 	${CARGO} ${CARGOFLAGS} check ${CARGOCHECKFLAGS}
 	${CARGO} ${CARGOFLAGS} clippy ${CARGOCLIPPYFLAGS}
@@ -39,6 +40,7 @@ target/release/rag-core.${SO}: target/release/librag_core.${SO}
 	cp $< $@
 
 lisp/rag.elc: lisp/rag-db.elc lisp/rag-lib.elc target/debug/rag-core.so
+lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-lib.elc target/debug/rag-core.so
 lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
 
 install: target/release/rag-core.${SO} ${ELCS}
