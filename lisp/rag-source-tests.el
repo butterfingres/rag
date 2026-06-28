@@ -80,6 +80,8 @@ WHERE id == '1'"))))
                         "contents of entry number 1"
                         ;; pub date
                         1102962602
+                        ;; hidden
+                        0
                         ;; feed-id
                         "https://example.com/atom"))))
 

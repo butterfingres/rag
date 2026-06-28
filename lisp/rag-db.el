@@ -43,6 +43,7 @@ CREATE TABLE entry(
   link TEXT,
   description TEXT,
   pub_date INTEGER NOT NULL,
+  hidden BOOLEAN NOT NULL DEFAULT FALSE,
   feed_id STRING,
   FOREIGN KEY (feed_id) REFERENCES feed(url)
 );

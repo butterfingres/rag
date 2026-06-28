@@ -119,14 +119,14 @@ WHERE url == ?1"
     (cl-destructuring-bind (id title link description pub-date feed-id)
         (car (if rag-oldest-entry
                  (sqlite-select db
-                                "SELECT * FROM ENTRY
+                                "SELECT id, title, link, description, pub_date, feed_id FROM ENTRY
 WHERE pub_date > ?
 ORDER BY pub_date DESC
 LIMIT 1 OFFSET ?"
                                 (list (- (round (float-time)) rag-oldest-entry)
                                       offset))
                (sqlite-select db
-                              "SELECT * FROM ENTRY
+                              "SELECT id, title, link, description, pub_date, feed_id FROM ENTRY
 ORDER BY pub_date DESC
 LIMIT 1 OFFSET ?"
                               (list offset))))
