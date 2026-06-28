@@ -22,7 +22,8 @@
 (defcustom rag-db-path (expand-file-name "rag.db" user-emacs-directory)
   "The path to the database."
   :group 'rag-db
-  :type 'file)
+  :type '(choice file
+                 (const nil)))
 
 (defconst rag-db-migrations ["CREATE TABLE schema(
   version INTEGER PRIMARY KEY
@@ -47,7 +48,9 @@ schema.")
 (defun rag-db-get ()
   "Get the `rag-db'."
   (with-memoization rag-db
-    (let* ((new (not (file-exists-p rag-db-path)))
+    (let* ((new (if (stringp rag-db-path)
+                    (not (file-exists-p rag-db-path))
+                  t))
            (db (sqlite-open rag-db-path)))
       (if new
           (with-sqlite-transaction db

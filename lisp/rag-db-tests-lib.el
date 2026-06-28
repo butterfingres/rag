@@ -15,13 +15,12 @@
 
 (defmacro rag-db-tests-with (db &rest body)
   (declare (indent 1))
-  `(let ((rag-db-path (make-temp-name (temporary-file-directory)))
-         (rag-db nil)
-         (,db (rag-db-get)))
+  `(let* ((rag-db-path nil)
+          (rag-db nil)
+          (,db (rag-db-get)))
      (unwind-protect
          (progn ,@body)
-       (sqlite-close ,db)
-       (delete-file rag-db-path))))
+       (sqlite-close ,db))))
 
 (provide 'rag-db-tests-lib)
 
