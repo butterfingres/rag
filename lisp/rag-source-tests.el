@@ -51,14 +51,15 @@ WHERE url == 'https://example.com/rdf'"))
                     '("test feed"
                       "https://example.com")))
 
-     (let* ((entry (car (sqlite-select db "SELECT id, title, link, description FROM entry
+     (let* ((entry (car (sqlite-select db "SELECT id, title, link, description, pub_date FROM entry
 LIMIT 1")))
             (id (car entry))
             (body (cdr entry)))
        (should (equal body
                       '("entry 1"
                         "https://example.com/entry_1"
-                        "entry 1 description")))))))
+                        "entry 1 description"
+                        nil)))))))
 
 (provide 'rag-source-tests)
 
