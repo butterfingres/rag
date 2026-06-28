@@ -15,6 +15,7 @@
 (require 'ert)
 
 (eval-when-compile (require 'rag-db-tests-lib))
+(require 'rag-db)
 (require 'rag-source)
 
 (ert-deftest rag-source-tests-update ()
@@ -26,40 +27,65 @@
                   (newline)
                   (newline)
                   (insert "<?xml version=\"1.0\"?>
-<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"
-         xmlns=\"http://purl.org/rss/1.0/\">
-  <channel>
-    <title>test feed</title>
-    <link>https://example.com</link>
-    <description>test feed description</description>
-  </channel>
-  <item>
-    <title>entry 1</title>
-    <link>https://example.com/entry_1</link>
-    <description>entry 1 description</description>
-  </item>
-</rdf:RDF>")
+<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:foo=\"http://example.com/foo\">
+  <title>test feed</title>
+  <updated>2003-12-13T18:30:02Z</updated>
+  <link rel=\"self\" href=\"https://example.com/atom\"/>
+  <link href=\"https://example.com\" rel=\"alternate\"/>
+  <entry>
+    <title>first entry</title>
+    <id>1</id>
+    <description>entry number 1</description>
+    <foo:content>faux contents of entry number 1</foo:content>
+    <content>contents of entry number 1</content>
+    <updated>2004-12-13T18:30:02Z</updated>
+    <link rel=\"alternate\" href=\"https://example.com/entry_1\"/>
+    <link rel=\"enclosure\" href=\"https://example.com/entry_1.mp3\"/>
+  </entry>
+</feed>")
                   (apply cb '() cbargs)))))
-     (rag-source-update (make-rag-source :url "https://example.com/rdf"))
+     (rag-source-update (make-rag-source :url "https://example.com/atom"))
      (with-current-buffer (rag-progress-buffer-get)
        (goto-char (point-min))
        (should (string= (buffer-substring-no-properties (point-min) (point-max))
-                        "fetching https://example.com/rdf... ok\n")))
+                        "fetching https://example.com/atom... ok\n")))
 
-     (should (equal (car (sqlite-select db "SELECT title, link FROM FEED
-WHERE url == 'https://example.com/rdf'"))
-                    '("test feed"
-                      "https://example.com")))
+     (should (equal (car (sqlite-select db "SELECT * FROM FEED
+WHERE url == 'https://example.com/atom'"))
+                    ;; description
+                    '("https://example.com/atom"
+                      ;; title
+                      "test feed"
+                      ;; link
+                      "https://example.com"
+                      ;; skip days
+                      0
+                      ;; skip hours
+                      0
+                      ;; ttl
+                      nil
+                      ;; last-update
+                      1071340202)))
 
-     (let* ((entry (car (sqlite-select db "SELECT id, title, link, description, pub_date FROM entry
-LIMIT 1")))
-            (id (car entry))
-            (body (cdr entry)))
-       (should (equal body
-                      '("entry 1"
+     (let ((entry (car (sqlite-select db "SELECT * FROM entry
+WHERE id == '1'"))))
+       (should (equal entry
+                      ;; id
+                      '("1"
+                        ;; title
+                        "first entry"
+                        ;; link
                         "https://example.com/entry_1"
-                        "entry 1 description"
-                        nil)))))))
+                        ;; description
+                        "contents of entry number 1"
+                        ;; pub date
+                        1102962602))))
+
+     (let ((enclosures (mapcar #'car
+                               (sqlite-select db "SELECT link FROM enclosure
+WHERE entry_id == '1'"))))
+       (should (equal enclosures
+                      '("https://example.com/entry_1.mp3")))))))
 
 (provide 'rag-source-tests)
 
