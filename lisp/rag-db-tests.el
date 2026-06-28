@@ -16,12 +16,12 @@
 (require 'rag-db)
 
 (ert-deftest rag-db-test-schema ()
-  (let ((rag-db-path (make-temp-file (temporary-file-directory)))
-        (db (rag-db-get)))
+  (let* ((rag-db-path (make-temp-name (temporary-file-directory)))
+         (db (rag-db-get)))
     (unwind-protect
         (progn
           (should (= (caar (sqlite-select db "SELECT MAX(version) FROM SCHEMA"))
-                     1))
+                     2))
           (should (= (sqlite-execute db "INSERT INTO feed(url) VALUES('https://example.com/rss')")
                      1)))
       (sqlite-close db)

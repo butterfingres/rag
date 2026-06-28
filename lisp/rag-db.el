@@ -24,8 +24,8 @@
 
 (defconst rag-db-migrations ["CREATE TABLE schema(
   version INTEGER PRIMARY KEY
-);
-CREATE TABLE feed(
+)"
+                             "CREATE TABLE feed(
   url STRING PRIMARY KEY,
   title STRING,
   link STRING,
@@ -50,7 +50,7 @@ schema.")
       (if new
           (progn
             (cl-loop for migration across rag-db-migrations
-                     do (sqlite-execute-batch db migration))
+                     do (sqlite-execute db migration))
             (sqlite-execute db "INSERT INTO schema(version) VALUES(?1)"
                             (list (length rag-db-migrations))))
         (let ((last-version (or (caar (sqlite-select db
@@ -59,7 +59,7 @@ schema.")
           (cl-loop for migration across (substring rag-db-migrations last-version)
                    with i = 0
                    do (progn
-                        (sqlite-execute-batch db migration)
+                        (sqlite-execute db migration)
                         (sqlite-execute db
                                         "INSERT INTO schema(version) VALUES(?1)"
                                         (list (+ i last-version)))
