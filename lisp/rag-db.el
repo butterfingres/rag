@@ -36,6 +36,18 @@ CREATE TABLE feed(
   skip_hours INTEGER,
   ttl INTEGER,
   last_update INTEGER
+);
+CREATE TABLE entry(
+  id TEXT PRIMARY KEY,
+  title TEXT,
+  link TEXT,
+  description TEXT,
+  pub_date INTEGER
+);
+CREATE TABLE enclosure(
+  entry_id TEXT NOT NULL,
+  link TEXT,
+  FOREIGN KEY (entry_id) REFERENCES entry(id)
 )"]
   "A list of sql migrations.
 
