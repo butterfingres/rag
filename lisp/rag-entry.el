@@ -25,22 +25,24 @@
 (defvar rag-entry-mode-entry nil
   "The entry that is currently being viewed.")
 
-(define-derived-mode rag-entry-mode special-mode "RAG Entry"
-  :group 'rag-entry
-  (setq-local rag-entry-mode-entry rag-entry-mode-entry)
+(defun rag-entry-render (entry)
   (save-excursion
-    (when-let* ((description (rag-entry-description rag-entry-mode-entry)))
+    (when-let* ((description (rag-entry-description entry)))
       (let ((inhibit-read-only t)
             (start (point)))
+        (erase-buffer)
         (insert description)
         (shr-render-region start (point))))))
+
+(define-derived-mode rag-entry-mode special-mode "RAG Entry"
+  :group 'rag-entry)
 
 (defun rag-entry-buffer-get (entry)
   (let ((buffer (get-buffer-create rag-entry-buffer-name)))
     (with-current-buffer buffer
       (unless (derived-mode-p '(rag-entry-mode))
-        (let ((rag-entry-mode-entry entry))
-          (rag-entry-mode))))
+        (rag-entry-mode))
+      (rag-entry-render entry))
     buffer))
 
 (defun rag-entry-visit (entry)
