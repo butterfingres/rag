@@ -67,7 +67,8 @@ VALUES (?, ?, ?, ?, ?, ?)"
                                                 (rag-entry-title entry)
                                                 (rag-entry-link entry)
                                                 (rag-entry-description entry)
-                                                (rag-entry-pub-date entry)
+                                                (or (rag-entry-pub-date entry)
+                                                    (round (float-time)))
                                                 (rag-source-url source)))
                           (cl-loop for enclosure across (rag-entry-enclosures entry)
                                    do (sqlite-execute db
