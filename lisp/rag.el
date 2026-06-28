@@ -16,6 +16,7 @@
 
 (require 'rag-core)
 (require 'rag-entry)
+(require 'rag-faces)
 (require 'rag-db)
 (require 'rag-pool)
 
@@ -46,30 +47,6 @@ Set to nil if to never exclude entries based on age."
 (defcustom rag-empty-feed-title "<empty feed title>"
   "The title text of empty"
   :type 'string
-  :group 'rag)
-
-;; taken from elfeed-search.el
-(defface rag-date
-  '((((class color) (background light)) (:foreground "#aaa"))
-    (((class color) (background dark))  (:foreground "#77a")))
-  "Face used in search mode for dates."
-  :group 'rag)
-
-(defface rag-unread-entry-title
-  '((t :weight bold))
-  "Face used in search mode for unread entry titles."
-  :group 'rag)
-
-(defface rag-null
-  '((t :inherit shadow
-       :slant italic))
-  "Face used for null text."
-  :group 'rag)
-
-(defface rag-feed-title
-  '((((class color) (background light)) (:foreground "#aa0"))
-    (((class color) (background dark))  (:foreground "#ff0")))
-  "Face used in search mode for feed titles."
   :group 'rag)
 
 (define-derived-mode rag-mode special-mode "RAG"

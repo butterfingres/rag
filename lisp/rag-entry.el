@@ -11,6 +11,9 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl-macs))
+
+(require 'rag-faces)
 (require 'rag-lib)
 
 (defgroup rag-entry '()
@@ -25,14 +28,27 @@
 (defvar rag-entry-mode-entry nil
   "The entry that is currently being viewed.")
 
+(defun rag-entry-insert-header (name value face)
+  (when value
+    (insert name ": " (propertize value 'face face))
+    (newline)))
+
 (defun rag-entry-render (entry)
   (save-excursion
-    (when-let* ((description (rag-entry-description entry)))
-      (let ((inhibit-read-only t)
-            (start (point)))
-        (erase-buffer)
-        (insert description)
-        (shr-render-region start (point))))))
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (rag-entry-insert-header "Title" (rag-entry-title entry) 'rag-feed-title)
+      (rag-entry-insert-header "Link" (rag-entry-link entry) 'link)
+      (rag-entry-insert-header "Date" (format-time-string "%Y-%m-%d" (rag-entry-pub-date entry)) 'rag-date)
+      (cl-loop for enclosure in (rag-entry-enclosures entry)
+               do (progn
+                    (insert "Enclosure: " (propertize enclosure 'face 'link))
+                    (newline)))
+      (when-let* ((description (rag-entry-description entry)))
+        (newline)
+        (let ((start (point)))
+          (insert description)
+          (shr-render-region start (point)))))))
 
 (define-derived-mode rag-entry-mode special-mode "RAG Entry"
   :group 'rag-entry)
