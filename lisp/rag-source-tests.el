@@ -18,13 +18,14 @@
 (require 'rag-source)
 
 (ert-deftest rag-source-tests-update ()
-  (cl-letf (((symbol-function #'url-queue-retrieve)
-             (lambda (_url cb &optional cbargs _silent _inhibit-cookies)
-               (with-temp-buffer
-                 (insert "HTTP 1.1 OK /")
-                 (newline)
-                 (newline)
-                 (insert "<?xml version=\"1.0\"?>
+  (rag-db-tests-with db
+   (cl-letf (((symbol-function #'url-queue-retrieve)
+              (lambda (_url cb &optional cbargs _silent _inhibit-cookies)
+                (with-temp-buffer
+                  (insert "HTTP 1.1 OK /")
+                  (newline)
+                  (newline)
+                  (insert "<?xml version=\"1.0\"?>
 <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"
          xmlns=\"http://purl.org/rss/1.0/\">
   <channel>
@@ -38,12 +39,17 @@
     <description>entry 1 description</description>
   </item>
 </rdf:RDF>")
-                 (apply cb '() cbargs)))))
-    (rag-source-update (make-rag-source :url "https://example.com/rdf"))
-    (with-current-buffer (rag-progress-buffer-get)
-      (goto-char (point-min))
-      (should (string= (buffer-substring-no-properties (point-min) (point-max))
-                       "fetching https://example.com/rdf... ok\n")))))
+                  (apply cb '() cbargs)))))
+     (rag-source-update (make-rag-source :url "https://example.com/rdf"))
+     (with-current-buffer (rag-progress-buffer-get)
+       (goto-char (point-min))
+       (should (string= (buffer-substring-no-properties (point-min) (point-max))
+                        "fetching https://example.com/rdf... ok\n")))
+
+     (should (equal (car (sqlite-select db "SELECT title, link FROM FEED
+WHERE url == 'https://example.com/rdf'"))
+                    '("test feed"
+                      "https://example.com"))))))
 
 (provide 'rag-source-tests)
 
