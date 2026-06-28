@@ -1,7 +1,9 @@
 .POSIX:
 
 # find -not -name '.*' -name '*.el' | sed 's/\.\///g' | sed 's/\.el/\.elc/g' | sort | xargs echo
-ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag-pool-tests.elc lisp/rag.elc
+ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc	\
+	lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag-pool-tests.elc			\
+	lisp/rag-progress.elc lisp/rag-source.elc lisp/rag.elc
 
 EMACS = emacs
 EMACSFLAGS = -Q -batch -L target/debug -L lisp
@@ -46,6 +48,7 @@ lisp/rag.elc: lisp/rag-db.elc lisp/rag-lib.elc lisp/rag-pool.elc target/debug/ra
 lisp/rag-db-tests.elc: lisp/rag-db.elc
 lisp/rag-pool.elc: target/debug/rag-core.so
 lisp/rag-pool-tests.elc: lisp/rag-pool.elc
+lisp/rag-source.elc: lisp/rag-db.elc lisp/rag-pool.elc target/debug/rag-core.so
 lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
 
 install: target/release/rag-core.${SO} ${ELCS}
