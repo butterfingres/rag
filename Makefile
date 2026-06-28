@@ -1,7 +1,7 @@
 .POSIX:
 
 # find -not -name '.*' -name '*.el' | sed 's/\.\///g' | sed 's/\.el/\.elc/g' | sort | xargs echo
-ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag.elc
+ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag-pool-tests.elc lisp/rag.elc
 
 EMACS = emacs
 EMACSFLAGS = -Q -batch -L target/debug -L lisp
