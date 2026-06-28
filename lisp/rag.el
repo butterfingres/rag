@@ -15,6 +15,7 @@
 (require 'url-queue)
 
 (require 'rag-core)
+(require 'rag-entry)
 (require 'rag-db)
 (require 'rag-pool)
 
@@ -132,8 +133,9 @@ WHERE url == ?1"
 
 (defun rag-entry-at-point ()
   "Get the entry at the current point."
-  (when (and (bobp)
-             (eobp))
+  (when (or (eobp)
+            (and (bobp)
+                 (eobp)))
     (error "Cannot get entry from empty buffer"))
   (let ((db (rag-db-get))
         (offset (1- (line-number-at-pos))))
@@ -163,6 +165,13 @@ WHERE entry_id == ?"
                         :pub-date pub-date
                         :enclosures enclosures
                         :feed-id feed-id)))))
+
+(defun rag-visit-entry-at-point ()
+  (interactive)
+  (let ((entry (rag-entry-at-point)))
+    (rag-entry-visit entry)))
+
+(keymap-set rag-mode-map "<return>" #'rag-visit-entry-at-point)
 
 (provide 'rag)
 
