@@ -84,8 +84,9 @@ ORDER BY pub_date DESC"
                                         (list (- (round (float-time)) rag-oldest-entry)))
                        (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
 ORDER BY pub_date DESC")))
-        (let* ((title (or (propertize (car entry)
-                                      'face 'rag-unread-entry-title)
+        (let* ((title (or (when-let* ((title (car entry)))
+                            (propertize title
+                                        'face 'rag-unread-entry-title))
                           (propertize rag-empty-entry-title
                                       'face 'rag-null)))
                (pub-date (cadr entry))
@@ -93,10 +94,10 @@ ORDER BY pub_date DESC")))
                (date (format-time-string "%Y-%m-%d" pub-date))
 
                (feed-id (caddr entry))
-               (feed-title (if-let* ((title (car (sqlite-select db "SELECT title FROM feed
+               (feed-title (if-let* ((title (caar (sqlite-select db "SELECT title FROM feed
 WHERE url == ?1"
                                                                 (list feed-id)))))
-                               (propertize (car title)
+                               (propertize title
                                            'face 'rag-feed-title)
                              (propertize rag-empty-feed-title
                                          'face 'rag-null)))
