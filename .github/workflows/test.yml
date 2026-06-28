@@ -31,8 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - runs: |
+      - run: |
           sudo apt-get install -y cargo rustc emacs-nox
-      - runs: |
+      - run: |
           ./configure
           make -kj check
