@@ -62,13 +62,25 @@
 
 (ert-deftest rag-tests-entry-at-point ()
   (rag-db-tests-with db
-   (sqlite-execute-batch db "INSERT INTO feed (url, title) VALUES ('https://example.com/feed', 'example feed');
-INSERT INTO entry (id, pub_date, feed_id) VALUES ('1', 1782675986, 'https://example.com/feed')")
+   (sqlite-execute-batch db "INSERT INTO
+  feed (url, title)
+VALUES
+  ('https://example.com/feed', 'example feed');
+INSERT INTO
+  entry (id, pub_date, feed_id)
+VALUES
+  ('1', 1782675986, 'https://example.com/feed'),
+  ('2', 1782675986, 'https://example.com/feed')")
    (rag-tests-with-buffer buffer
      (with-current-buffer buffer
        (goto-char (point-min))
        (should (equal (rag-entry-at-point)
                       (make-rag-entry :id "1"
+                                      :pub-date 1782675986
+                                      :feed-id "https://example.com/feed")))
+       (goto-line 2)
+       (should (equal (rag-entry-at-point)
+                      (make-rag-entry :id "2"
                                       :pub-date 1782675986
                                       :feed-id "https://example.com/feed")))))))
 
