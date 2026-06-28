@@ -3,7 +3,7 @@ rag Installation Guide
 BASIC INSTALLATION
 
 Prerequestites:
- - GNU Emacs version >= 26.2 (tested on 32.0.50).
+ - GNU Emacs version >= 30.1 (tested on 32.0.50).
  - Posix makefile runner (tested with GNU Make).
  - rustc vresion >= 1.97.0 (tested on 1.98.0).
 
