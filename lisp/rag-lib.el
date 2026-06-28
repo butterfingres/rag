@@ -35,7 +35,8 @@ and rust code.")
   description
   id
   pub-date
-  enclosures)
+  enclosures
+  feed-id)
 
 (provide 'rag-lib)
 

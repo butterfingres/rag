@@ -69,7 +69,8 @@ INSERT INTO entry (id, pub_date, feed_id) VALUES ('1', 1782675986, 'https://exam
        (goto-char (point-min))
        (should (equal (rag-entry-at-point)
                       (make-rag-entry :id "1"
-                                      :pub-date 1782675986)))))))
+                                      :pub-date 1782675986
+                                      :feed-id "https://example.com/feed")))))))
 
 (provide 'rag-tests)
 

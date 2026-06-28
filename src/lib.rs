@@ -60,6 +60,10 @@ impl Error for UnknownRootError {}
 /// ALLOC should be a bump allocator created by `rag-core-bump-new'.
 /// ENTRY-HANDLER is a function that will be called with `rag-entry'
 /// objects.
+///
+/// The `rag-entry' objects when passed to ENTRY-HANDLER will not
+/// contain a `rag-entry-feed-id' field, you will need to store the
+/// feed url by capturing it in a closure.
 #[emacs::defun]
 fn parse_string<'e>(
     env: &'e emacs::Env,

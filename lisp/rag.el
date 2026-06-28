@@ -161,7 +161,8 @@ WHERE entry_id == ?"
                         :description description
                         :id id
                         :pub-date pub-date
-                        :enclosures enclosures)))))
+                        :enclosures enclosures
+                        :feed-id feed-id)))))
 
 (provide 'rag)
 
