@@ -22,6 +22,16 @@
   "Rust news AGgragator."
   :group 'news)
 
+(defcustom rag-oldest-entry (* 60 60 24
+                               30
+                               6)
+  "How many seconds to no longer show entries in the feed.
+
+Set to nil if to never exclude entries based on age."
+  :group 'rag
+  :type '(choice natnum
+                 (const nil)))
+
 (defcustom rag-title-align 50
   "How many characters to align the title to."
   :group 'rag
@@ -50,8 +60,13 @@
   :interactive nil
   (let ((db (rag-db-get)))
     (goto-char (point-min))
-    (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
-ORDER BY pub_date DESC"))
+    (dolist (entry (if rag-oldest-entry
+                       (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
+WHERE pub_date > ?1
+ORDER BY pub_date DESC"
+                                      (list (- (round (float-time)) rag-oldest-entry)))
+                     (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
+ORDER BY pub_date DESC")))
       (let* ((title (car entry))
              (pub-date (cadr entry))
 
