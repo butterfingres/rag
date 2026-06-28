@@ -22,10 +22,10 @@
   :group 'rag-db
   :type 'file)
 
-(defconst rag-db-migrations ["CREATE TABLE IF NOT EXISTS schema(
+(defconst rag-db-migrations ["CREATE TABLE schema(
   version INTEGER PRIMARY KEY
 );
-CREATE TABLE IF NOT EXISTS feed(
+CREATE TABLE feed(
   url STRING PRIMARY KEY,
   title STRING,
   link STRING,
