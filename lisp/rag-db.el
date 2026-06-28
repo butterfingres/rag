@@ -24,8 +24,8 @@
 
 (defconst rag-db-migrations ["CREATE TABLE schema(
   version INTEGER PRIMARY KEY
-)"
-                             "CREATE TABLE feed(
+);
+CREATE TABLE feed(
   url STRING PRIMARY KEY,
   title STRING,
   link STRING,
@@ -49,21 +49,25 @@ schema.")
            (db (sqlite-open rag-db-path)))
       (if new
           (progn
+            (sqlite-transaction db)
             (cl-loop for migration across rag-db-migrations
-                     do (sqlite-execute db migration))
-            (sqlite-execute db "INSERT INTO schema(version) VALUES(?1)"
-                            (list (length rag-db-migrations))))
+                     do (sqlite-execute-batch db migration)
+                     finally do (sqlite-execute db "INSERT INTO schema(version) VALUES(?1)"
+                                                (list (length rag-db-migrations))))
+            (sqlite-commit db))
         (let ((last-version (or (caar (sqlite-select db
                                                      "SELECT MAX(version) FROM schema"))
                                 (length rag-db-migrations))))
+          (sqlite-transaction db)
           (cl-loop for migration across (substring rag-db-migrations last-version)
                    with i = 0
                    do (progn
-                        (sqlite-execute db migration)
+                        (sqlite-execute-batch db migration)
                         (sqlite-execute db
                                         "INSERT INTO schema(version) VALUES(?1)"
                                         (list (+ i last-version)))
-                        (setq i (1+ i))))))
+                        (setq i (1+ i))))
+          (sqlite-commit db)))
       db)))
 
 (provide 'rag-db)
