@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: |
-          sudo apt-get install -y rust ${{ matrix.extra_packages }}
+          sudo apt-get install -y cargo rustc ${{ matrix.extra_packages }}
       - name: Test
         run: |
           cargo ${{ matrix.cargo_subcommand }}
