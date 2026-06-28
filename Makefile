@@ -25,13 +25,11 @@ include Makefile.in
 
 all: ${ELCS}
 check: all
-	${EMACS} ${EMACSFLAGS} \
-		-l rag-core-tests \
-		-l rag-db-tests \
-		-l rag-pool-tests \
-		-l rag-source-tests \
-		-l rag-tests \
-		-l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-core-tests -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-db-tests -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-pool-tests -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-source-tests -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-tests -l ert -f ert-run-tests-batch-and-exit
 	${CARGO} ${CARGOFLAGS} fmt --check ${CARGOFMTFLAGS}
 	${CARGO} ${CARGOFLAGS} check ${CARGOCHECKFLAGS}
 	${CARGO} ${CARGOFLAGS} clippy ${CARGOCLIPPYFLAGS}
@@ -50,14 +48,15 @@ target/release/${LIB}: ${RUSTFILES}
 target/release/rag-core.${SO}: target/release/librag_core.${SO}
 	cp $< $@
 
-lisp/rag.elc: lisp/rag-db.elc lisp/rag-lib.elc lisp/rag-pool.elc target/debug/rag-core.so
+lisp/rag.elc: lisp/rag-db.elc lisp/rag-pool.elc target/debug/rag-core.so
 lisp/rag-tests.elc: lisp/rag.elc lisp/rag-db.elc lisp/rag-db-tests-lib.elc
-lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-db-tests-lib.elc
+lisp/rag-source.elc: lisp/rag-db.elc lisp/rag-pool.elc lisp/rag-progress.elc target/debug/rag-core.so
+lisp/rag-source-tests.elc: lisp/rag-source.elc lisp/rag-db.elc lisp/rag-db-tests-lib.elc
 lisp/rag-pool.elc: target/debug/rag-core.so
 lisp/rag-pool-tests.elc: lisp/rag-pool.elc
-lisp/rag-source.elc: lisp/rag-db.elc lisp/rag-pool.elc target/debug/rag-core.so
-lisp/rag-source-tests.elc: lisp/rag-source.elc lisp/rag-db-tests-lib.elc
-lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
+lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-db-tests-lib.elc
+lisp/rag-db-tests-lib.elc: lisp/rag-db.elc
+lisp/rag-core-tests.elc: target/debug/rag-core.so
 
 install: target/release/rag-core.${SO} ${ELCS}
 	install -m 755 -d "${SITELISP}"

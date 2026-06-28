@@ -15,7 +15,7 @@
   (require 'cl-macs)
   (require 'sqlite))
 
-(eval-when-compile (require 'rag-pool))
+(eval-and-compile (require 'rag-pool))
 (require 'rag-db)
 (require 'rag-progress)
 
