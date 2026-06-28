@@ -4,7 +4,7 @@
 ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc	\
 	lisp/rag-db-tests-lib.elc lisp/rag-lib.elc lisp/rag-pool.elc		\
 	lisp/rag-pool-tests.elc lisp/rag-progress.elc lisp/rag-source.elc	\
-	lisp/rag-source-tests.elc lisp/rag.elc
+	lisp/rag-source-tests.elc lisp/rag-tests.elc lisp/rag.elc
 
 EMACS = emacs
 EMACSFLAGS = -Q -batch -L target/debug -L lisp
@@ -30,6 +30,7 @@ check: all
 		-l rag-db-tests \
 		-l rag-pool-tests \
 		-l rag-source-tests \
+		-l rag-tests \
 		-l ert -f ert-run-tests-batch-and-exit
 	${CARGO} ${CARGOFLAGS} fmt --check ${CARGOFMTFLAGS}
 	${CARGO} ${CARGOFLAGS} check ${CARGOCHECKFLAGS}
@@ -50,6 +51,7 @@ target/release/rag-core.${SO}: target/release/librag_core.${SO}
 	cp $< $@
 
 lisp/rag.elc: lisp/rag-db.elc lisp/rag-lib.elc lisp/rag-pool.elc target/debug/rag-core.so
+lisp/rag-tests.elc: lisp/rag.elc lisp/rag-db.elc lisp/rag-db-tests-lib.elc
 lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-db-tests-lib.elc
 lisp/rag-pool.elc: target/debug/rag-core.so
 lisp/rag-pool-tests.elc: lisp/rag-pool.elc
