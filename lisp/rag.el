@@ -22,19 +22,55 @@
   "Rust news AGgragator."
   :group 'news)
 
+;; taken from elfeed-search.el
+(defface rag-date
+  '((((class color) (background light)) (:foreground "#aaa"))
+    (((class color) (background dark))  (:foreground "#77a")))
+  "Face used in search mode for dates."
+  :group 'elfeed)
+
+(defface rag-unread-title
+  '((t :weight bold))
+  "Face used in search mode for unread entry titles."
+  :group 'elfeed)
+
+(defface rag-feed
+  '((((class color) (background light)) (:foreground "#aa0"))
+    (((class color) (background dark))  (:foreground "#ff0")))
+  "Face used in search mode for feed titles."
+  :group 'elfeed)
+
 (define-derived-mode rag-mode special-mode "RAG"
   "Rust news AGgragator."
   :interactive nil
   (let ((db (rag-db-get)))
-    (dolist (entry (sqlite-select db "SELECT title, pub_date FROM entry
+    (goto-char (point-min))
+    (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
 ORDER BY pub_date DESC"))
-      (let ((title (car entry))
-            (pub-date (cadr entry))
-            (inhibit-read-only t))
-        (insert (format-time-string "%Y-%m-%d" pub-date)
+      (let* ((title (car entry))
+             (pub-date (cadr entry))
+
+             (date (format-time-string "%Y-%m-%d" pub-date))
+
+             (feed-id (caddr entry))
+             (feed-title (caar (sqlite-select db "SELECT title FROM feed
+WHERE url == ?1"
+                                              (list feed-id))))
+
+             (inhibit-read-only t))
+        (insert (propertize date
+                            'face 'rag-date)
                 " "
-                title)
+                (propertize title
+                            'face 'rag-unread-title)
+                (propertize " "
+                            'display '(space :align-to 50))
+                (propertize feed-title
+                            'face 'rag-feed))
+
         (newline)))))
+
+(add-hook 'rag-mode-hook #'toggle-truncate-lines)
 
 (defcustom rag-buffer-name "*rag*"
   "The buffer name to use."
