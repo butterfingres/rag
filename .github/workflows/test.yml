@@ -3,36 +3,17 @@ on:
   pull_request:
 
 jobs:
-  rust_check:
+  check:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        cargo_subcommand:
-          - build
-          - check
-          - clippy
-          - fmt --check
-          - test
-        include:
-          - cargo_subcommand: clippy
-            extra_packages: rust-clippy
-          - cargo_subcommand: fmt
-            extra_packages: rustfmt
     steps:
       - uses: actions/checkout@v6
-      - run: |
-          sudo apt-get install -y cargo rustc ${{ matrix.extra_packages }}
+      - uses: jcs090218/setup-emacs@v3
+        with:
+          version: 30.1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: "clippy, rustfmt"
       - name: Test
         run: |
-          cargo ${{ matrix.cargo_subcommand }}
-
-  elisp_check:
-    needs: rust_check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - run: |
-          sudo apt-get install -y cargo rustc emacs-nox
-      - run: |
           ./configure
-          make -kj check
+          make check
