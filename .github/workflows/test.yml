@@ -16,4 +16,4 @@ jobs:
       - name: Test
         run: |
           ./configure
-          make check
+          make check -kj
