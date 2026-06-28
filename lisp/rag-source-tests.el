@@ -14,6 +14,7 @@
 (eval-when-compile (require 'cl-macs))
 (require 'ert)
 
+(eval-when-compile (require 'rag-db-tests-lib))
 (require 'rag-source)
 
 (ert-deftest rag-source-tests-update ()
@@ -41,7 +42,8 @@
     (rag-source-update (make-rag-source :url "https://example.com/rdf"))
     (with-current-buffer (rag-progress-buffer-get)
       (goto-char (point-min))
-      (should (looking-at-p "fetching https://example.com/rdf... ok")))))
+      (should (string= (buffer-substring-no-properties (point-min) (point-max))
+                       "fetching https://example.com/rdf... ok\n")))))
 
 (provide 'rag-source-tests)
 

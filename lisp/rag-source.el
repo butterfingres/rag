@@ -56,7 +56,7 @@
        (unwind-protect
            (condition-case error-value
                (progn
-                 (when (eq (car status) :error)
+                 (when (eq (car-safe status) :error)
                    (signal (cadadr status)
                            (cddadr status)))
 
@@ -70,14 +70,17 @@
                    (save-excursion
                      (goto-char marker)
                      (end-of-line)
-                     (insert " " (propertize "ok" 'face 'success)))))
+                     (let ((inhibit-read-only t))
+                       (insert " " (propertize "ok" 'face 'success))))))
              (error
               (with-current-buffer (rag-progress-buffer-get)
                 (save-excursion
                   (goto-char marker)
                   (end-of-line)
-                  (insert " " (propertize (apply #'format (cdr error-value))
-                                          'face 'error))))))
+                  (let ((inhibit-read-only t))
+                    (insert " " (propertize (apply #'format
+                                                   (cdr error-value))
+                                            'face 'error)))))))
          (kill-buffer (current-buffer))))
      '()
      t)))
