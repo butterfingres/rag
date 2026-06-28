@@ -19,7 +19,8 @@ include Makefile.in
 
 all: ${ELCS}
 check: all
-	${EMACS} ${EMACSFLAGS} -l rag-core-tests \
+	${EMACS} ${EMACSFLAGS} \
+		-l rag-core-tests \
 		-l rag-db-tests \
 		-l rag-pool-tests \
 		-l ert -f ert-run-tests-batch-and-exit
