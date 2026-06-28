@@ -27,18 +27,18 @@
   '((((class color) (background light)) (:foreground "#aaa"))
     (((class color) (background dark))  (:foreground "#77a")))
   "Face used in search mode for dates."
-  :group 'elfeed)
+  :group 'rag)
 
 (defface rag-unread-title
   '((t :weight bold))
   "Face used in search mode for unread entry titles."
-  :group 'elfeed)
+  :group 'rag)
 
 (defface rag-feed
   '((((class color) (background light)) (:foreground "#aa0"))
     (((class color) (background dark))  (:foreground "#ff0")))
   "Face used in search mode for feed titles."
-  :group 'elfeed)
+  :group 'rag)
 
 (define-derived-mode rag-mode special-mode "RAG"
   "Rust news AGgragator."
