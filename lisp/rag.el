@@ -67,7 +67,6 @@ WHERE url == ?1"
                             'display '(space :align-to 50))
                 (propertize feed-title
                             'face 'rag-feed))
-
         (newline)))))
 
 (add-hook 'rag-mode-hook #'toggle-truncate-lines)
