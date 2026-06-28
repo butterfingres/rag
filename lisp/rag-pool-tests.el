@@ -19,7 +19,8 @@
   (let ((alloc (rag-core-bump-new)))
     (push alloc rag-pool-allocators)
     (rag-pool-with pooled-alloc
-      (should (eq alloc pooled-alloc)))))
+      (should (eq alloc pooled-alloc)))
+    (should (eq (car rag-pool-allocators) alloc))))
 
 (provide 'rag-pool-tests)
 

@@ -13,26 +13,21 @@
 
 (require 'ert)
 
+(eval-when-compile (require 'rag-db-tests-lib))
 (require 'rag-db)
 
 (ert-deftest rag-db-test-create ()
-  (let* ((rag-db-path (make-temp-name (temporary-file-directory)))
-         (db (rag-db-get)))
-    (unwind-protect
-        (progn
-          (should (= (caar (sqlite-select db "SELECT MAX(version) FROM SCHEMA"))
-                     (length rag-db-migrations)))
-          (should (= (sqlite-execute db "INSERT INTO feed(url) VALUES('https://example.com/rss')")
-                     1)))
-      (sqlite-close db)
-      (setq rag-db nil)
-      (delete-file rag-db-path))))
+  (rag-db-tests-with db
+    (should (= (caar (sqlite-select db "SELECT MAX(version) FROM SCHEMA"))
+               (length rag-db-migrations)))
+    (should (= (sqlite-execute db "INSERT INTO feed(url) VALUES('https://example.com/rss')")
+               1))))
 
 (ert-deftest rag-db-test-update ()
-  (let* ((rag-db-path (make-temp-name (temporary-file-directory))))
-    (rag-db-get)
+  (rag-db-tests-with db
     (setq rag-db nil)
-    (should (= (caar (sqlite-select (rag-db-get) "SELECT MAX(version) FROM SCHEMA"))
+    (rag-db-get)
+    (should (= (caar (sqlite-select db "SELECT MAX(version) FROM SCHEMA"))
                (length rag-db-migrations)))))
 
 (provide 'rag-db-tests)

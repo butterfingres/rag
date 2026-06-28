@@ -2,8 +2,9 @@
 
 # find -not -name '.*' -name '*.el' | sed 's/\.\///g' | sed 's/\.el/\.elc/g' | sort | xargs echo
 ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc	\
-	lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag-pool-tests.elc			\
-	lisp/rag-progress.elc lisp/rag-source.elc lisp/rag.elc
+	lisp/rag-db-tests-lib.elc lisp/rag-lib.elc lisp/rag-pool.elc		\
+	lisp/rag-pool-tests.elc lisp/rag-progress.elc lisp/rag-source.elc	\
+	lisp/rag-source-tests.elc lisp/rag.elc
 
 EMACS = emacs
 EMACSFLAGS = -Q -batch -L target/debug -L lisp
@@ -28,6 +29,7 @@ check: all
 		-l rag-core-tests \
 		-l rag-db-tests \
 		-l rag-pool-tests \
+		-l rag-source-tests \
 		-l ert -f ert-run-tests-batch-and-exit
 	${CARGO} ${CARGOFLAGS} fmt --check ${CARGOFMTFLAGS}
 	${CARGO} ${CARGOFLAGS} check ${CARGOCHECKFLAGS}
@@ -48,10 +50,11 @@ target/release/rag-core.${SO}: target/release/librag_core.${SO}
 	cp $< $@
 
 lisp/rag.elc: lisp/rag-db.elc lisp/rag-lib.elc lisp/rag-pool.elc target/debug/rag-core.so
-lisp/rag-db-tests.elc: lisp/rag-db.elc
+lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-db-tests-lib.elc
 lisp/rag-pool.elc: target/debug/rag-core.so
 lisp/rag-pool-tests.elc: lisp/rag-pool.elc
 lisp/rag-source.elc: lisp/rag-db.elc lisp/rag-pool.elc target/debug/rag-core.so
+lisp/rag-source-tests.elc: lisp/rag-source.elc lisp/rag-db-tests-lib.elc
 lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.so
 
 install: target/release/rag-core.${SO} ${ELCS}
