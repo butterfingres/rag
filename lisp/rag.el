@@ -130,6 +130,39 @@ WHERE url == ?1"
   (interactive)
   (pop-to-buffer (rag-buffer-get)))
 
+(defun rag-entry-at-point ()
+  "Get the entry at the current point."
+  (when (and (bobp)
+             (eobp))
+    (error "Cannot get entry from empty buffer"))
+  (let ((db (rag-db-get))
+        (offset (1- (line-number-at-pos))))
+    (cl-destructuring-bind (id title link description pub-date feed-id)
+        (car (if rag-oldest-entry
+                 (sqlite-select db
+                                "SELECT * FROM ENTRY
+WHERE pub_date > ?
+ORDER BY pub_date DESC
+LIMIT 1 OFFSET ?"
+                                (list (- (round (float-time)) rag-oldest-entry)
+                                      offset))
+               (sqlite-select db
+                              "SELECT * FROM ENTRY
+ORDER BY pub_date DESC
+LIMIT 1 OFFSET ?"
+                              (list offset))))
+      (let ((enclosures (mapcar #'car
+                                (sqlite-select db
+                                               "SELECT link FROM enclosure
+WHERE entry_id == ?"
+                                               (list id)))))
+        (make-rag-entry :title title
+                        :link link
+                        :description description
+                        :id id
+                        :pub-date pub-date
+                        :enclosures enclosures)))))
+
 (provide 'rag)
 
 ;;; rag.el ends here
