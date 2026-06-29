@@ -60,6 +60,47 @@ Set to nil if to never exclude entries based on age."
   :type 'string
   :group 'rag)
 
+(defun rag-entry-insert (entry)
+  "Insert ENTRY into the current buffer.
+
+ENTRY must at least contain `rag-entry-title', `rag-entry-pub-date',
+`rag-entry-id', and `rag-entry-feed-id'."
+  (let* ((db (rag-db-get))
+         (title (or (when-let* ((title (rag-entry-title entry)))
+                      (propertize title
+                                  'face 'rag-unread-entry-title))
+                    (propertize rag-empty-entry-title
+                                'face 'rag-null)))
+         (pub-date (rag-entry-pub-date entry))
+
+         (date (format-time-string "%Y-%m-%d" pub-date))
+
+         (feed-id (rag-entry-feed-id entry))
+         (feed-title (if-let* ((title (caar (sqlite-select db "SELECT title FROM feed
+WHERE url == ?1"
+                                                           (list feed-id)))))
+                         (propertize title
+                                     'face 'rag-feed-title)
+                       (propertize rag-empty-feed-title
+                                   'face 'rag-null)))
+
+         (id (rag-entry-id entry))
+
+         (start (point)))
+    (insert (propertize date
+                        'face 'rag-date)
+            " "
+            (truncate-string-to-width
+             title
+             rag-title-width
+             0
+             (eval-when-compile (string-to-char " "))
+             "...")
+            " "
+            feed-title)
+    (add-text-properties start (point) `(rag-entry-id ,id))
+    (newline)))
+
 (defun rag-render ()
   (let ((db (rag-db-get))
         (inhibit-read-only t))
@@ -72,40 +113,11 @@ ORDER BY pub_date DESC"
                                     (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
                                               rag-show-all
                                               -1.0e+INF))))
-        (let* ((title (or (when-let* ((title (car entry)))
-                            (propertize title
-                                        'face 'rag-unread-entry-title))
-                          (propertize rag-empty-entry-title
-                                      'face 'rag-null)))
-               (pub-date (cadr entry))
-
-               (date (format-time-string "%Y-%m-%d" pub-date))
-
-               (feed-id (caddr entry))
-               (feed-title (if-let* ((title (caar (sqlite-select db "SELECT title FROM feed
-WHERE url == ?1"
-                                                                 (list feed-id)))))
-                               (propertize title
-                                           'face 'rag-feed-title)
-                             (propertize rag-empty-feed-title
-                                         'face 'rag-null)))
-
-               (id (cadddr entry))
-
-               (start (point)))
-          (insert (propertize date
-                              'face 'rag-date)
-                  " "
-                  (truncate-string-to-width
-                   title
-                   rag-title-width
-                   0
-                   (eval-when-compile (string-to-char " "))
-                   "...")
-                  " "
-                  feed-title)
-          (add-text-properties start (point) `(rag-entry-id ,id))
-          (newline))))))
+        (cl-destructuring-bind (title pub-date feed-id id) entry
+          (rag-entry-insert (make-rag-entry :title title
+                                            :pub-date pub-date
+                                            :feed-id feed-id
+                                            :id id)))))))
 
 (define-derived-mode rag-mode special-mode "RAG"
   "Rust news AGgragator."
