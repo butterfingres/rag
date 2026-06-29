@@ -59,11 +59,11 @@ Set to nil if to never exclude entries based on age."
   :type 'string
   :group 'rag)
 
-(define-derived-mode rag-mode special-mode "RAG"
-  "Rust news AGgragator."
-  :interactive nil
-  (let ((db (rag-db-get)))
+(defun rag-render ()
+  (let ((db (rag-db-get))
+        (inhibit-read-only t))
     (save-excursion
+      (erase-buffer)
       (goto-char (point-min))
       (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id, id FROM entry
 WHERE pub_date > ? AND (? OR NOT hidden)
@@ -83,15 +83,13 @@ ORDER BY pub_date DESC"
                (feed-id (caddr entry))
                (feed-title (if-let* ((title (caar (sqlite-select db "SELECT title FROM feed
 WHERE url == ?1"
-                                                                (list feed-id)))))
+                                                                 (list feed-id)))))
                                (propertize title
                                            'face 'rag-feed-title)
                              (propertize rag-empty-feed-title
                                          'face 'rag-null)))
 
                (id (cadddr entry))
-
-               (inhibit-read-only t)
 
                (start (point)))
           (insert (propertize date
@@ -107,6 +105,16 @@ WHERE url == ?1"
                   feed-title)
           (add-text-properties start (point) `(rag-entry-id ,id))
           (newline))))))
+
+(define-derived-mode rag-mode special-mode "RAG"
+  "Rust news AGgragator."
+  :interactive nil
+  (setq-local revert-buffer-function
+              (lambda (&optional _ignore-auto _noconfirm)
+                (let ((point (point)))
+                  (rag-render)
+                  (goto-char point))))
+  (rag-render))
 
 (add-hook 'rag-mode-hook #'toggle-truncate-lines)
 
