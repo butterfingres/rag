@@ -31,7 +31,8 @@ jobs:
         target:
           # - x86_64-unknown-linux-gnu
           # - aarch64-unknown-linux-gnu
-          - powerpc64le-unknown-linux-gnu
+          # - powerpc64le-unknown-linux-gnu
+          - riscv64gc-unknown-linux-gnu
           # - x86_64-pc-windows-msvc
           # - aarch64-pc-windows-msvc
           # - aarch64-apple-darwin
@@ -49,10 +50,16 @@ jobs:
           #   rustflags: -Clinker=aarch64-linux-gnu-gcc
           #   so-prefix: lib
           #   so-suffix: so
-          - target: powerpc64le-unknown-linux-gnu
+          # - target: powerpc64le-unknown-linux-gnu
+          #   host: ubuntu-latest
+          #   ubuntu-pkg: gcc-powerpc64le-linux-gnu
+          #   rustflags: -Clinker=powerpc64le-linux-gnu-gcc
+          #   so-prefix: lib
+          #   so-suffix: so
+          - target: riscv64gc-unknown-linux-gnu
             host: ubuntu-latest
-            ubuntu-pkg: gcc-powerpc64le-linux-gnu
-            rustflags: -Clinker=powerpc64le-linux-gnu-gcc
+            ubuntu-pkg: gcc-riscv64-linux-gnu
+            rustflags: -Clinker=riscv64-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           # - target: x86_64-pc-windows-msvc
