@@ -44,8 +44,8 @@ Set to nil if to never exclude entries based on age."
   :group 'rag
   :type 'boolean)
 
-(defcustom rag-title-align 50
-  "How many characters to align the title to."
+(defcustom rag-title-width 50
+  "How many glyphs the title can take before being truncated."
   :group 'rag
   :type 'natnum)
 
@@ -95,7 +95,7 @@ WHERE url == ?1"
                   " "
                   (truncate-string-to-width
                    title
-                   rag-title-align
+                   rag-title-width
                    0
                    (eval-when-compile (string-to-char " "))
                    "...")
