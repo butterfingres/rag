@@ -65,7 +65,7 @@ Set to nil if to never exclude entries based on age."
   (let ((db (rag-db-get)))
     (save-excursion
       (goto-char (point-min))
-      (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
+      (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id, id FROM entry
 WHERE pub_date > ? AND (? OR NOT hidden)
 ORDER BY pub_date DESC"
                                     (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
@@ -89,7 +89,11 @@ WHERE url == ?1"
                              (propertize rag-empty-feed-title
                                          'face 'rag-null)))
 
-               (inhibit-read-only t))
+               (id (cadddr entry))
+
+               (inhibit-read-only t)
+
+               (start (point)))
           (insert (propertize date
                               'face 'rag-date)
                   " "
@@ -101,6 +105,7 @@ WHERE url == ?1"
                    "...")
                   " "
                   feed-title)
+          (add-text-properties start (point) `(rag-entry-id ,id))
           (newline))))))
 
 (add-hook 'rag-mode-hook #'toggle-truncate-lines)
@@ -122,17 +127,13 @@ WHERE url == ?1"
             (and (bobp)
                  (eobp)))
     (error "Cannot get entry from empty buffer"))
-  (let ((db (rag-db-get)))
-    (cl-destructuring-bind (id title link description pub-date feed-id)
+  (let ((db (rag-db-get))
+        (id (get-text-property (point) 'rag-entry-id)))
+    (cl-destructuring-bind (title link description pub-date feed-id)
         (car (sqlite-select db
-                            "SELECT id, title, link, description, pub_date, feed_id FROM entry
-WHERE pub_date > ? AND (? OR NOT hidden)
-ORDER BY pub_date DESC
-LIMIT 1 OFFSET ?"
-                            (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
-                                      -1.0e+INF)
-                                  rag-show-all
-                                   (1- (line-number-at-pos)))))
+                            "SELECT title, link, description, pub_date, feed_id FROM entry
+WHERE id == ?"
+                            (list id)))
       (let ((enclosures (mapcar #'car
                                 (sqlite-select db
                                                "SELECT link FROM enclosure
@@ -146,27 +147,17 @@ WHERE entry_id == ?"
                         :enclosures enclosures
                         :feed-id feed-id)))))
 
-(defun rag-entry-set-hidden-at-point (&optional entry)
+(defun rag-entry-set-hidden-at-point (hidden)
   (let* ((db (rag-db-get))
-         (id (or (and entry (rag-entry-id entry))
-                 (caar (sqlite-select db
-                                      "SELECT id FROM entry
-WHERE pub_date > ? AND (? OR NOT hidden)
-ORDER BY pub_date DESC
-LIMIT 1 OFFSET ?"
-                                      (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
-                                                -1.0e+INF)
-                                            rag-show-all
-                                            (1- (line-number-at-pos))))))))
+         (id (get-text-property (point) 'rag-entry-id)))
     (sqlite-execute db
                     "UPDATE entry
-SET hidden = TRUE
+SET hidden = ?
 WHERE id == ?"
-                    (list id)))
-  (save-excursion
-    (let ((inhibit-read-only t))
-      (beginning-of-line)
-      (kill-line 1))))
+                    (list (if hidden
+                              1
+                            0)
+                          id))))
 
 (defun rag-visit-entry-at-point ()
   (interactive)

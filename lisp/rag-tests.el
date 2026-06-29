@@ -69,9 +69,12 @@ VALUES ('1', 1782675986, 'https://example.com/feed')")
     (rag-tests-with-buffer buffer
       (with-current-buffer buffer
         (goto-char (point-min))
-        (rag-entry-set-hidden-at-point)
-        (should (caar (sqlite-select db "SELECT hidden FROM entry")))
-        (should-error (rag-entry-at-point))))))
+        (rag-entry-set-hidden-at-point t)
+        (should (= (caar (sqlite-select db "SELECT hidden FROM entry"))
+                   1))
+        (rag-entry-set-hidden-at-point nil)
+        (should (= (caar (sqlite-select db "SELECT hidden FROM entry"))
+                   0))))))
 
 (ert-deftest rag-tests-entry-at-point ()
   (rag-db-tests-with db
