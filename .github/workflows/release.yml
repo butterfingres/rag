@@ -46,6 +46,8 @@ jobs:
           target: ${{ matrix.target }}
           args: "--locked --release"
           strip: true
+      - run: |
+          ls target
       - uses: actions/upload-artifact@v7.0.1
         with:
-          path: target/release/rag-core.${{ matrix.so-suffix }}
+          path: target/${{ matrix.target }}/release/rag-core.${{ matrix.so-suffix }}
