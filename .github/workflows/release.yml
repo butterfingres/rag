@@ -61,8 +61,7 @@ jobs:
           strip: true
       - shell: bash
         run: |
-          LIB="$(cargo rustc -- --print file-names)"
-          mv target/${{ matrix.target }}/release/"${LIB}" rag-core.${{ matrix.so-suffix }}
+          mv target/${{ matrix.target }}/release/librag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
       - uses: actions/upload-artifact@v7.0.1
         name: ${{ matrix.target }}
         with:
