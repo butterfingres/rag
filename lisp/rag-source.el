@@ -27,6 +27,16 @@
   "Feed sources."
   :group 'rag)
 
+(defcustom rag-source-completion-hook '()
+  "A hook that gets run when all feeds are parsed."
+  :group 'rag-source
+  :type 'hook)
+
+(defcustom rag-source-entry-functions '()
+  "A list of functions that gets called with parsed entries."
+  :group 'rag-source
+  :type 'hook)
+
 (defcustom rag-source-feeds '()
   "A list of feeds to download."
   :type '(repeat string)
@@ -82,7 +92,9 @@ VALUES (?, ?, ?, ?, ?, ?)"
                                    do (sqlite-execute db
                                                       "INSERT INTO enclosure(entry_id, link)
 VALUES (?, ?)"
-                                                      (list id enclosure))))))))
+                                                      (list id enclosure)))
+                          (run-hook-with-args 'rag-source-entry-functions
+                                              entry))))))
           (sqlite-execute db
                           "INSERT OR REPLACE INTO feed(url, title, link, skip_days, skip_hours, ttl, last_update) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)"
                           (list url
@@ -144,7 +156,8 @@ VALUES (?, ?)"
 (defun rag-source-update-all ()
   (interactive)
   (dolist (url rag-source-feeds)
-    (rag-source-update url)))
+    (rag-source-update url))
+  (run-hooks 'rag-source-completion-hook))
 
 (provide 'rag-source)
 
