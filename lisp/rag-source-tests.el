@@ -38,12 +38,13 @@ VALUES ('1', 1782739075, 'https://example.com/feed')")
                                      (setq inserted t)
                                      (should (equal entry
                                                     (make-rag-entry :id "1"
-                                                                    :pub-date 1782739175))))
+                                                                    :pub-date 1782739175
+                                                                    :feed-id "https://example.com/feed"))))
                                    (make-rag-entry :id "1"
                                                    :pub-date 1782739175))
       (should (and inserted deleted)))
     (let ((inserted nil))
-      (rag-source-handle-new-entry "https://example.com"
+      (rag-source-handle-new-entry "https://example.com/feed"
                                    db
                                    (lambda (_entry)
                                      (should nil))
@@ -51,7 +52,8 @@ VALUES ('1', 1782739075, 'https://example.com/feed')")
                                      (setq inserted t)
                                      (should (equal entry
                                                     (make-rag-entry :id "2"
-                                                                    :pub-date 1782739275))))
+                                                                    :pub-date 1782739275
+                                                                    :feed-id "https://example.com/feed"))))
                                    (make-rag-entry :id "2"
                                                    :pub-date 1782739275))
       (should inserted))))

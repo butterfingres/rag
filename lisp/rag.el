@@ -212,52 +212,53 @@ insert VALUE into or the line number of VALUE."
             (setq high (1- mid))))))
       `(not-found . ,low))))
 
-;; (defun rag-entry-find (entry)
-;;   "Find ENTRY entry.
+(defun rag-entry-id-at-point ()
+  (get-text-property (point) 'rag-entry-id))
 
-;; ENTRY should at least have `rag-entry-id' and `rag-entry-pub-date'.
-;; This function returns non-nil if ENTRY is found and the point will be
-;; over the entry."
-;;   (catch 'found
-;;     (let ((db (rag-db-get))
-;;           (low (line-number-at-pos (point-min)))
-;;           (high (1- (line-number-at-pos (point-max)))))
-;;       (while (<= low high)
-;;         (let ((mid (/ (+ low (- high low)) 2)))
-;;           (goto-line mid)
-;;           (let* ((id (get-text-property (point) 'rag-entry-id))
-;;                  (pub-date (caar (sqlite-select db
-;;                                                 "SELECT pub_date FROM entry
-;; WHERE id == ?"
-;;                                                 (list id)))))
-;;             (cond
-;;              ((= pub-date (rag-entry-pub-date entry))
-;;               (when (string= id (rag-entry-id entry))
-;;                 (throw 'found t))
-;;               (while (and (not (bobp))
-;;                           (forward-line -1)
-;;                           (let* ((id (get-text-property (point) 'rag-entry-id))
-;;                                  (pub-date (sqlite-select "SELECT pub_date FROM entry
-;; WHERE id == ?"
-;;                                                           (list id))))
-;;                             (= pub-date (rag-entry-pub-date entry))))
-;;                 (when (string= id (rag-entry-id entry))
-;;                   (throw 'found t)))
-;;               (goto-line mid)
-;;               (while (and (not (eobp))
-;;                           (forward-line)
-;;                           (let* ((id (get-text-property (point) 'rag-entry-id))
-;;                                  (pub-date (sqlite-select "SELECT pub_date FROM entry
-;; WHERE id == ?"
-;;                                                           (list id))))
-;;                             (= pub-date (rag-entry-pub-date entry))))
-;;                 (when (string= id (rag-entry-id entry))
-;;                   (throw 'found t))))
-;;              ((< pub-date (rag-entry-pub-date entry))
-;;               (setq low (1+ mid)))
-;;              ((> pub-date (rag-entry-pub-date entry))
-;;               (setq high (1- mid)))))))
-;;       nil)))
+(defun rag-entry-pub-date-at-point ()
+  (caar (sqlite-select (rag-db-get)
+                       "SELECT pub_date FROM entry WHERE id == ?"
+                       (list (rag-entry-id-at-point)))))
+
+(defun rag-update-function (to-delete to-insert)
+  (save-excursion
+    (dolist (entry to-delete)
+      (pcase (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
+                                            (rag-entry-pub-date entry))
+        (`(found . ,line)
+         (goto-line line)
+         (while (and (not (bobp))
+                     (progn
+                       (forward-line -1)
+                       (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
+           (when (equal (rag-entry-id-at-point)
+                        (rag-entry-id entry))
+             (delete-line)))
+
+         (goto-line line)
+         (while (and (not (eobp))
+                     (progn
+                       (forward-line)
+                       (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
+           (when (equal (rag-entry-id-at-point)
+                        (rag-entry-id entry))
+             (delete-line)))
+
+         (goto-line line)
+         (when (equal (rag-entry-id-at-point)
+                      (rag-entry-id entry))
+           (let ((inhibit-read-only t))
+             (delete-line))))))
+
+    (dolist (entry to-insert)
+      (let ((line (cdr (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
+                                                      (rag-entry-pub-date entry))))
+            (inhibit-read-only t))
+        (goto-line line)
+        (open-line 1)
+        (rag-entry-insert entry)))))
+
+(add-to-list 'rag-source-update-functions #'rag-update-function)
 
 (provide 'rag)
 

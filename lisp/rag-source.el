@@ -32,11 +32,14 @@
   :group 'rag-source
   :type 'hook)
 
-(defcustom rag-source-parse-functions '()
+(defcustom rag-source-update-functions '()
   "A hook that gets ran after parsing a feed.
 
 Functions are called with a list of entries to delete and a list of
-entries to add to update the ui."
+entries to add to update the ui. The list of deleting entries will at
+least have `rag-entry-id' and `rag-entry-pub-date' while to added
+entries will have those and at least `rag-entry-title' and
+`rag-entry-feed-id'."
   :group 'rag-source
   :type 'hook)
 
@@ -107,11 +110,13 @@ VALUES (?, ?)"
     (when old-pub-date
       (funcall delete-entry (make-rag-entry :id id
                                             :pub-date old-pub-date)))
-    (funcall insert-entry (make-rag-entry :id id
-                                          :pub-date (caar (sqlite-select db
-                                                                         "SELECT pub_date FROM entry
+    (cl-destructuring-bind (title pub-date feed-id) (car (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
 WHERE id == ?"
-                                                                         (list id)))))))
+                                                                        (list id)))
+      (funcall insert-entry (make-rag-entry :id id
+                                            :title title
+                                            :pub-date pub-date
+                                            :feed-id feed-id)))))
 
 (defun rag-source-update-region (url start end)
   (rag-pool-with alloc
@@ -140,7 +145,7 @@ WHERE id == ?"
       ;; this is outside the transaction because the feed parsed
       ;; successfully so failing to update the ui shouldn't revert the
       ;; transaction
-      (run-hook-with-args 'rag-source-parse-functions to-delete to-insert))))
+      (run-hook-with-args 'rag-source-update-functions to-delete to-insert))))
 
 (defun rag-source-update (url)
   "Update source URL."

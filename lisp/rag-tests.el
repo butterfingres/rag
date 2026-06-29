@@ -100,6 +100,54 @@ VALUES
                                       :pub-date 1782675986
                                       :feed-id "https://example.com/feed")))))))
 
+(ert-deftest rag-tests-update-function-delete ()
+  (rag-db-tests-with db
+    (sqlite-execute-batch db "INSERT INTO
+  feed (url, title)
+VALUES
+  ('https://example.com/feed', 'example feed');
+INSERT INTO
+  entry (id, pub_date, feed_id)
+VALUES
+  ('1', 1782675986, 'https://example.com/feed')")
+    (rag-tests-with-buffer buffer
+      (with-current-buffer buffer
+        (rag-update-function (list (make-rag-entry :id "1"
+                                                   :pub-date 1782675986))
+                             '())
+        (should (string= (buffer-string) ""))
+        (rag-update-function '()
+                             (list (make-rag-entry :id "1"
+                                                   :title "hello world"
+                                                   :feed-id "https://example.com/feed"
+                                                   :pub-date 1782675986)))))))
+
+(ert-deftest rag-tests-update-function-insert ()
+  (rag-db-tests-with db
+    (sqlite-execute-batch db "INSERT INTO
+  feed (url, title)
+VALUES
+  ('https://example.com/feed', 'example feed');
+INSERT INTO
+  entry (id, title, pub_date, feed_id)
+VALUES
+  ('1', '1', 1782675988, 'https://example.com/feed'),
+  ('2', '2', 1782675987, 'https://example.com/feed'),
+  ('4', '4', 1782675985, 'https://example.com/feed')")
+    (rag-tests-with-buffer buffer
+      (with-current-buffer buffer
+        (rag-update-function '()
+                             (list (make-rag-entry :id "3"
+                                                   :title "3"
+                                                   :feed-id "https://example.com/feed"
+                                                   :pub-date 1782675986)))
+        (should (string= (buffer-substring-no-properties (point-min) (point-max))
+                         "2026-06-28 1                                                  example feed
+2026-06-28 2                                                  example feed
+2026-06-28 3                                                  example feed
+2026-06-28 4                                                  example feed
+"))))))
+
 (provide 'rag-tests)
 
 ;;; rag-tests.el ends here
