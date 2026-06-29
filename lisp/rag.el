@@ -161,7 +161,7 @@ LIMIT 1 OFFSET ?"
     (sqlite-execute "UPDATE entry
 SET hidden = ?
 WHERE id == ?"
-                    (list id hidden)))
+                    (list hidden id)))
   (save-excursion
     (let* ((inhibit-read-only t)
            (start-column (eval-when-compile (length "2000-00-00 ")))
