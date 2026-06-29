@@ -222,42 +222,44 @@ insert VALUE into or the line number of VALUE."
                        (list (rag-entry-id-at-point)))))
 
 (defun rag-update-function (to-delete to-insert)
-  (save-excursion
-    (dolist (entry to-delete)
-      (pcase (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
-                                            (rag-entry-pub-date entry))
-        (`(found . ,line)
-         (goto-line line)
-         (while (and (not (bobp))
-                     (progn
-                       (forward-line -1)
-                       (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
-           (when (equal (rag-entry-id-at-point)
-                        (rag-entry-id entry))
-             (delete-line)))
+  (when-let* ((buffer (get-buffer rag-buffer-name)))
+    (with-current-buffer buffer
+      (save-excursion
+        (dolist (entry to-delete)
+          (pcase (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
+                                                (rag-entry-pub-date entry))
+            (`(found . ,line)
+             (goto-line line)
+             (while (and (not (bobp))
+                         (progn
+                           (forward-line -1)
+                           (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
+               (when (equal (rag-entry-id-at-point)
+                            (rag-entry-id entry))
+                 (delete-line)))
 
-         (goto-line line)
-         (while (and (not (eobp))
-                     (progn
-                       (forward-line)
-                       (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
-           (when (equal (rag-entry-id-at-point)
-                        (rag-entry-id entry))
-             (delete-line)))
+             (goto-line line)
+             (while (and (not (eobp))
+                         (progn
+                           (forward-line)
+                           (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
+               (when (equal (rag-entry-id-at-point)
+                            (rag-entry-id entry))
+                 (delete-line)))
 
-         (goto-line line)
-         (when (equal (rag-entry-id-at-point)
-                      (rag-entry-id entry))
-           (let ((inhibit-read-only t))
-             (delete-line))))))
+             (goto-line line)
+             (when (equal (rag-entry-id-at-point)
+                          (rag-entry-id entry))
+               (let ((inhibit-read-only t))
+                 (delete-line))))))
 
-    (dolist (entry to-insert)
-      (let ((line (cdr (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
-                                                      (rag-entry-pub-date entry))))
-            (inhibit-read-only t))
-        (goto-line line)
-        (open-line 1)
-        (rag-entry-insert entry)))))
+        (dolist (entry to-insert)
+          (let ((line (cdr (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
+                                                          (rag-entry-pub-date entry))))
+                (inhibit-read-only t))
+            (goto-line line)
+            (open-line 1)
+            (rag-entry-insert entry)))))))
 
 (add-to-list 'rag-source-update-functions #'rag-update-function)
 
