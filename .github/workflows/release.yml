@@ -96,11 +96,10 @@ jobs:
 
   release:
     needs: [lisp, rag-core]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    runs-on: ubuntu-latest'
     steps:
       - uses: actions/download-artifact@v8
-      - uses: ncipollo/release-action@v1.21.0
+      - uses: softprops/action-gh-release@v3.0.1
+        if: github.ref_type == 'tag'
         with:
-          artifacts: "*"
+          files: "*"
