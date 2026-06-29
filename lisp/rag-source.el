@@ -32,6 +32,12 @@
   :group 'rag-source
   :type 'hook)
 
+(defcustom rag-source-parse-functions '()
+  "A hook that gets ran after parsing a feed.
+
+Functions are called with a list of entries to delete and a list of
+entries to add to update the ui.")
+
 (defcustom rag-source-entry-functions '()
   "A list of functions that gets called with parsed entries."
   :group 'rag-source
@@ -67,9 +73,12 @@
 	        (substring rnd 18 20)
 	        (substring rnd 20 32))))
 
-(defun rag-source-handle-new-entry (url db entry)
-  (let ((id (or (rag-entry-id entry)
-                (rag-source--uuid))))
+(defun rag-source-handle-new-entry (url db delete-entry insert-entry entry)
+  (let* ((id (or (rag-entry-id entry)
+                 (rag-source--uuid)))
+         (old-pub-date (car-safe (car (sqlite-select db "SELECT pub_date FROM entry
+WHERE id == ?"
+                                                     (list id))))))
     (sqlite-execute db
                     "INSERT OR REPLACE INTO entry(id, title, link, description, pub_date, feed_id)
 VALUES (?, ?, ?, ?, ?, ?)"
@@ -80,6 +89,7 @@ VALUES (?, ?, ?, ?, ?, ?)"
                           (or (rag-entry-pub-date entry)
                               (round (float-time)))
                           url))
+
     (sqlite-execute db
                     "DELETE FROM enclosure
 WHERE entry_id == ?"
@@ -90,17 +100,32 @@ WHERE entry_id == ?"
 VALUES (?, ?)"
                                 (list id enclosure)))
     (run-hook-with-args 'rag-source-entry-functions
-                        entry)))
+                        entry)
+
+    (when old-pub-date
+      (funcall delete-entry (make-rag-entry :id id
+                                            :pub-date old-pub-date)))
+    (funcall insert-entry (make-rag-entry :id id
+                                          :pub-date (sqlite-select db
+                                                                   "SELECT pub_date FROM entry
+WHERE id == ?"
+                                                                   (list id))))))
 
 (defun rag-source-update-region (url start end)
   (rag-pool-with alloc
-    (let ((db (rag-db-get)))
+    (let ((db (rag-db-get))
+          (to-delete '())
+          (to-insert '()))
       (with-sqlite-transaction db
         (let* ((string (buffer-substring start end))
                (feed (rag-core-parse-string
                       string
                       alloc
-                      (apply-partially #'rag-source-handle-new-entry url db))))
+                      (apply-partially #'rag-source-handle-new-entry
+                                       url
+                                       db
+                                       (lambda (entry) (push entry to-delete))
+                                       (lambda (entry) (push entry to-insert))))))
           (sqlite-execute db
                           "INSERT OR REPLACE INTO feed(url, title, link, skip_days, skip_hours, ttl, last_update) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)"
                           (list url
@@ -109,7 +134,11 @@ VALUES (?, ?)"
                                 (rag-feed-skip-days feed)
                                 (rag-feed-skip-hours feed)
                                 (rag-feed-ttl feed)
-                                (rag-feed-last-update feed))))))))
+                                (rag-feed-last-update feed)))))
+      ;; this is outside the transaction because the feed parsed
+      ;; successfully so failing to update the ui shouldn't revert the
+      ;; transaction
+      (run-hook-with-args 'rag-source-parse-functions to-delete to-insert))))
 
 (defun rag-source-update (url)
   "Update source URL."
