@@ -186,6 +186,7 @@ WHERE id == ?"
     (rag-entry-visit entry)))
 
 (keymap-set rag-mode-map "<return>" #'rag-visit-entry-at-point)
+(keymap-set rag-mode-map "G" #'rag-source-update-all)
 
 (defun rag-binary-search-buffer-desc (value-at-point
                                       value)
