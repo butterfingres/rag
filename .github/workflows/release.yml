@@ -27,9 +27,12 @@ jobs:
   binary-artifacts:
     strategy:
       matrix:
-        - target: x86_64-unknown-freebsd
-          host: ubuntu-latest
-          so-suffix: so
+        target:
+          - x86-64-unknown-freebsd
+        include:
+          - target: x86-64-unknown-freebsd
+            host: ubuntu-latest
+            so-suffix: so
     runs-on: ${{ matrix.host }}
     steps:
       - uses: actions/checkout@v6
@@ -39,6 +42,6 @@ jobs:
           target: ${{ matrix.host }}
           args: "--locked --release"
           strip: true
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@v7.0.1
         with:
           path: target/release/rag-core.${{ matri.so-suffix }}
