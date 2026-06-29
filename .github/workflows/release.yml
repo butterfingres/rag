@@ -59,7 +59,8 @@ jobs:
           target: ${{ matrix.target }}
           args: "--locked --release"
           strip: true
-      - run: |
+      - shell: bash
+        run: |
           LIB="$(cargo rustc -- --print file-names)"
           mv target/${{ matrix.target }}/release/"${LIB}" rag-core.${{ matrix.so-suffix }}
       - uses: actions/upload-artifact@v7.0.1
