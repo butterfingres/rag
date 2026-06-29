@@ -101,7 +101,9 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           skip-decompress: true
+      - run: |
+          find
       - uses: softprops/action-gh-release@v3.0.1
         if: github.ref_type == 'tag'
         with:
-          files: "*.zip"
+          files: "*"
