@@ -1,0 +1,57 @@
+* Usage
+Key bindings in this document are described with [[https://www.gnu.org/software/emacs/manual/html_node/efaq/Basic-keys.html][Emacs' key
+notation]]. TLDR; =C-a= means =control+a=, =M-a= means =alt+a=.
+
+These code snippets can be ran with =C-M-x= with your cursor over the
+code.
+
+** Loading
+The modules are not loaded by default. Running the following would
+load it.
+
+#+BEGIN_SRC emacs-lisp
+(require 'rag)
+#+END_SRC
+
+** Add your feeds
+Rag does not have a default value for feeds, so you must configure it.
+
+**** Customize interface
+=M-x customize-option RET rag-source-feeds RET=
+
+**** Elisp
+#+BEGIN_SRC emacs-lisp
+;; example feeds, you should add your own
+(setopt rag-source-feeds '("https://lemire.me/blog/feed/"
+                           "https://this-week-in-rust.org/atom.xml"
+                           "https://sachachua.com/blog/category/emacs-news/feed/atom/index.xml"
+                           "https://kyo.iroiro.party/en/rss.xml"
+                           "https://lwn.net/headlines/rss"
+                           "https://emacsredux.com/atom.xml"
+                           "https://www.jamescherti.com/category/emacs/feed"
+                           "https://www.jamescherti.com/category/unix-linux/feed"
+                           "https://www.jamescherti.com/category/git/feed"
+                           "https://coredumped.dev/index.xml"
+                           "https://blog.guillaume-gomez.fr/rss"
+                           "https://kobzol.github.io/feed.xml"))
+#+END_SRC
+
+** Launch reader
+=M-x rag-buffer-goto RET=
+
+This launches the feed reader buffer. Since the database is likely
+empty, you will not see anything in the buffer.
+
+To get help press =h=.
+** Update feeds
+Pressing =G= updates all feeds found in =rag-sources-feed= if you
+properly configured it. You can monitor the progress by switching to
+the =*rag-progress*= buffer (=C-x b *rag-progress* RET=).
+
+If your internet connection is slow and you see an error you should
+try increasing the value of =url-queue-timeout= (=M-x customize-option
+RET url-queue-timeout=) since the default might be too short.
+** Viewing entries
+Once you have feeds in the buffer, you can press enter (=RET=) to view
+the entry.
+

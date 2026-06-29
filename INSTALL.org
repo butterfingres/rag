@@ -1,0 +1,30 @@
+* Installation
+** Prerequisites
+- Emacs version > 30.1 and built with sqlite support
+** Pre-compiled binaries
+Visit the [[https://github.com/butterfingres/rag/][releases page]] and download the =lisp.zip= file (which is
+platform independent) followed by a =rag-core-*.zip= file that
+corresponds to a triplet describing your host computer. For example,
+on =x86_64= Linux systems with glibc you would download
+=rag-core-x86_64-unknown-linux-gnu.zip=.
+
+Then you need to unzip those archives into a directory. Make sure you
+remember which directory you unzip these artifacts into.
+
+**** Example for a =x86_64= glibc Linux distro
+#+BEGIN_SRC shell
+for URL in https://github.com/butterfingres/rag/releases/download/v1.0.0/lisp.zip \
+           https://github.com/butterfingres/rag/releases/download/v1.0.0/rag-core-x86_64-unknown-linux-gnu.zip
+do
+    curl -LO "${URL}"
+    unzip "$(basename "${URL}")"
+done
+#+END_SRC
+
+** Running
+Next, you would need to run Emacs with the artifacts directory in your
+=load-path=.
+
+#+BEGIN_SRC shell
+emacs -L . # Assuming '.' is the directory with all the artifacts.
+#+END_SRC
