@@ -96,7 +96,7 @@ jobs:
 
   release:
     needs: [lisp, rag-core]
-    runs-on: ubuntu-latest'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
       - uses: softprops/action-gh-release@v3.0.1
