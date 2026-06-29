@@ -80,6 +80,10 @@ VALUES (?, ?, ?, ?, ?, ?)"
                           (or (rag-entry-pub-date entry)
                               (round (float-time)))
                           url))
+    (sqlite-execute db
+                    "DELETE FROM enclosure
+WHERE entry_id == ?"
+                    (list id))
     (cl-loop for enclosure across (rag-entry-enclosures entry)
              do (sqlite-execute db
                                 "INSERT INTO enclosure(entry_id, link)
