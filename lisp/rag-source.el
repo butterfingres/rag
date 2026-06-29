@@ -36,7 +36,9 @@
   "A hook that gets ran after parsing a feed.
 
 Functions are called with a list of entries to delete and a list of
-entries to add to update the ui.")
+entries to add to update the ui."
+  :group 'rag-source
+  :type 'hook)
 
 (defcustom rag-source-entry-functions '()
   "A list of functions that gets called with parsed entries."
