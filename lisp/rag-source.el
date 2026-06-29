@@ -67,6 +67,27 @@
 	        (substring rnd 18 20)
 	        (substring rnd 20 32))))
 
+(defun rag-source-handle-new-entry (url db entry)
+  (let ((id (or (rag-entry-id entry)
+                (rag-source--uuid))))
+    (sqlite-execute db
+                    "INSERT OR REPLACE INTO entry(id, title, link, description, pub_date, feed_id)
+VALUES (?, ?, ?, ?, ?, ?)"
+                    (list id
+                          (rag-entry-title entry)
+                          (rag-entry-link entry)
+                          (rag-entry-description entry)
+                          (or (rag-entry-pub-date entry)
+                              (round (float-time)))
+                          url))
+    (cl-loop for enclosure across (rag-entry-enclosures entry)
+             do (sqlite-execute db
+                                "INSERT INTO enclosure(entry_id, link)
+VALUES (?, ?)"
+                                (list id enclosure)))
+    (run-hook-with-args 'rag-source-entry-functions
+                        entry)))
+
 (defun rag-source-update-region (url start end)
   (rag-pool-with alloc
     (let ((db (rag-db-get)))
@@ -75,26 +96,7 @@
                (feed (rag-core-parse-string
                       string
                       alloc
-                      (lambda (entry)
-                        (let ((id (or (rag-entry-id entry)
-                                      (rag-source--uuid))))
-                          (sqlite-execute db
-                                          "INSERT OR REPLACE INTO entry(id, title, link, description, pub_date, feed_id)
-VALUES (?, ?, ?, ?, ?, ?)"
-                                          (list id
-                                                (rag-entry-title entry)
-                                                (rag-entry-link entry)
-                                                (rag-entry-description entry)
-                                                (or (rag-entry-pub-date entry)
-                                                    (round (float-time)))
-                                                url))
-                          (cl-loop for enclosure across (rag-entry-enclosures entry)
-                                   do (sqlite-execute db
-                                                      "INSERT INTO enclosure(entry_id, link)
-VALUES (?, ?)"
-                                                      (list id enclosure)))
-                          (run-hook-with-args 'rag-source-entry-functions
-                                              entry))))))
+                      (apply-partially #'rag-source-handle-new-entry url db))))
           (sqlite-execute db
                           "INSERT OR REPLACE INTO feed(url, title, link, skip_days, skip_hours, ttl, last_update) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)"
                           (list url
