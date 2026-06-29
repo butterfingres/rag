@@ -187,6 +187,78 @@ WHERE id == ?"
 
 (keymap-set rag-mode-map "<return>" #'rag-visit-entry-at-point)
 
+(defun rag-binary-search-buffer-desc (value-at-point
+                                      value)
+  "Binary search for VALUE in a reverse sorted buffer.
+
+VALUE-AT-POINT is a function that returns the value at point.  If the
+value is found this function returns (found . LINE) otherwise it
+returns (not-found . LINE) where LINE is either the line number to
+insert VALUE into or the line number of VALUE."
+  (catch 'return
+    (let ((low (line-number-at-pos (point-min)))
+          (high (1- (line-number-at-pos (point-max)))))
+      (while (<= low high)
+        (let* ((mid (+ low (/ (- high low) 2)))
+               (point-value (progn
+                              (goto-line mid)
+                              (funcall value-at-point))))
+          (cond
+           ((= point-value value)
+            (throw 'return `(found . ,mid)))
+           ((> point-value value)
+            (setq low (1+ mid)))
+           (t
+            (setq high (1- mid))))))
+      `(not-found . ,low))))
+
+;; (defun rag-entry-find (entry)
+;;   "Find ENTRY entry.
+
+;; ENTRY should at least have `rag-entry-id' and `rag-entry-pub-date'.
+;; This function returns non-nil if ENTRY is found and the point will be
+;; over the entry."
+;;   (catch 'found
+;;     (let ((db (rag-db-get))
+;;           (low (line-number-at-pos (point-min)))
+;;           (high (1- (line-number-at-pos (point-max)))))
+;;       (while (<= low high)
+;;         (let ((mid (/ (+ low (- high low)) 2)))
+;;           (goto-line mid)
+;;           (let* ((id (get-text-property (point) 'rag-entry-id))
+;;                  (pub-date (caar (sqlite-select db
+;;                                                 "SELECT pub_date FROM entry
+;; WHERE id == ?"
+;;                                                 (list id)))))
+;;             (cond
+;;              ((= pub-date (rag-entry-pub-date entry))
+;;               (when (string= id (rag-entry-id entry))
+;;                 (throw 'found t))
+;;               (while (and (not (bobp))
+;;                           (forward-line -1)
+;;                           (let* ((id (get-text-property (point) 'rag-entry-id))
+;;                                  (pub-date (sqlite-select "SELECT pub_date FROM entry
+;; WHERE id == ?"
+;;                                                           (list id))))
+;;                             (= pub-date (rag-entry-pub-date entry))))
+;;                 (when (string= id (rag-entry-id entry))
+;;                   (throw 'found t)))
+;;               (goto-line mid)
+;;               (while (and (not (eobp))
+;;                           (forward-line)
+;;                           (let* ((id (get-text-property (point) 'rag-entry-id))
+;;                                  (pub-date (sqlite-select "SELECT pub_date FROM entry
+;; WHERE id == ?"
+;;                                                           (list id))))
+;;                             (= pub-date (rag-entry-pub-date entry))))
+;;                 (when (string= id (rag-entry-id entry))
+;;                   (throw 'found t))))
+;;              ((< pub-date (rag-entry-pub-date entry))
+;;               (setq low (1+ mid)))
+;;              ((> pub-date (rag-entry-pub-date entry))
+;;               (setq high (1- mid)))))))
+;;       nil)))
+
 (provide 'rag)
 
 ;;; rag.el ends here
