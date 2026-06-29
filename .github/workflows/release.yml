@@ -48,7 +48,7 @@ jobs:
           args: "--locked --release"
           strip: true
       - run: |
-          find target
+          mv ${{ matrix.target }}/release/librag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
       - uses: actions/upload-artifact@v7.0.1
         with:
           path: target/${{ matrix.target }}/release/rag-core.${{ matrix.so-suffix }}
