@@ -18,15 +18,53 @@
 (require 'rag-db)
 (require 'rag-source)
 
+(ert-deftest rag-source-tests-handle-new-entry ()
+  (rag-db-tests-with db
+    (sqlite-execute-batch db
+                          "INSERT INTO feed (url)
+VALUES ('https://example.com/feed');
+INSERT INTO entry (id, pub_date, feed_id)
+VALUES ('1', 1782739075, 'https://example.com/feed')")
+    (let ((inserted nil)
+          (deleted nil))
+      (rag-source-handle-new-entry "https://example.com/feed"
+                                   db
+                                   (lambda (entry)
+                                     (setq deleted t)
+                                     (should (equal entry
+                                                    (make-rag-entry :id "1"
+                                                                    :pub-date 1782739075))))
+                                   (lambda (entry)
+                                     (setq inserted t)
+                                     (should (equal entry
+                                                    (make-rag-entry :id "1"
+                                                                    :pub-date 1782739175))))
+                                   (make-rag-entry :id "1"
+                                                   :pub-date 1782739175))
+      (should (and inserted deleted)))
+    (let ((inserted nil))
+      (rag-source-handle-new-entry "https://example.com"
+                                   db
+                                   (lambda (_entry)
+                                     (should nil))
+                                   (lambda (entry)
+                                     (setq inserted t)
+                                     (should (equal entry
+                                                    (make-rag-entry :id "2"
+                                                                    :pub-date 1782739275))))
+                                   (make-rag-entry :id "2"
+                                                   :pub-date 1782739275))
+      (should inserted))))
+
 (ert-deftest rag-source-tests-update ()
   (rag-db-tests-with db
-   (cl-letf (((symbol-function #'url-queue-retrieve)
-              (lambda (_url cb &optional cbargs _silent _inhibit-cookies)
-                (with-temp-buffer
-                  (insert "HTTP 1.1 OK /")
-                  (newline)
-                  (newline)
-                  (insert "<?xml version=\"1.0\"?>
+    (cl-letf (((symbol-function #'url-queue-retrieve)
+               (lambda (_url cb &optional cbargs _silent _inhibit-cookies)
+                 (with-temp-buffer
+                   (insert "HTTP 1.1 OK /")
+                   (newline)
+                   (newline)
+                   (insert "<?xml version=\"1.0\"?>
 <feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:foo=\"http://example.com/foo\">
   <title>test feed</title>
   <updated>2003-12-13T18:30:02Z</updated>
@@ -43,53 +81,53 @@
     <link rel=\"enclosure\" href=\"https://example.com/entry_1.mp3\"/>
   </entry>
 </feed>")
-                  (apply cb '() cbargs)))))
-     (rag-source-update "https://example.com/atom")
-     (with-current-buffer (rag-progress-buffer-get)
-       (goto-char (point-min))
-       (should (string= (buffer-substring-no-properties (point-min) (point-max))
-                        "fetching https://example.com/atom... ok\n")))
+                   (apply cb '() cbargs)))))
+      (rag-source-update "https://example.com/atom")
+      (with-current-buffer (rag-progress-buffer-get)
+        (goto-char (point-min))
+        (should (string= (buffer-substring-no-properties (point-min) (point-max))
+                         "fetching https://example.com/atom... ok\n")))
 
-     (should (equal (car (sqlite-select db "SELECT * FROM FEED
+      (should (equal (car (sqlite-select db "SELECT * FROM FEED
 WHERE url == 'https://example.com/atom'"))
-                    ;; description
-                    '("https://example.com/atom"
-                      ;; title
-                      "test feed"
-                      ;; link
-                      "https://example.com"
-                      ;; skip days
-                      0
-                      ;; skip hours
-                      0
-                      ;; ttl
-                      nil
-                      ;; last-update
-                      1071340202)))
+                     ;; description
+                     '("https://example.com/atom"
+                       ;; title
+                       "test feed"
+                       ;; link
+                       "https://example.com"
+                       ;; skip days
+                       0
+                       ;; skip hours
+                       0
+                       ;; ttl
+                       nil
+                       ;; last-update
+                       1071340202)))
 
-     (let ((entry (car (sqlite-select db "SELECT * FROM entry
+      (let ((entry (car (sqlite-select db "SELECT * FROM entry
 WHERE id == '1'"))))
-       (should (equal entry
-                      ;; id
-                      '("1"
-                        ;; title
-                        "first entry"
-                        ;; link
-                        "https://example.com/entry_1"
-                        ;; description
-                        "contents of entry number 1"
-                        ;; pub date
-                        1102962602
-                        ;; hidden
-                        0
-                        ;; feed-id
-                        "https://example.com/atom"))))
+        (should (equal entry
+                       ;; id
+                       '("1"
+                         ;; title
+                         "first entry"
+                         ;; link
+                         "https://example.com/entry_1"
+                         ;; description
+                         "contents of entry number 1"
+                         ;; pub date
+                         1102962602
+                         ;; hidden
+                         0
+                         ;; feed-id
+                         "https://example.com/atom"))))
 
-     (let ((enclosures (mapcar #'car
-                               (sqlite-select db "SELECT link FROM enclosure
+      (let ((enclosures (mapcar #'car
+                                (sqlite-select db "SELECT link FROM enclosure
 WHERE entry_id == '1'"))))
-       (should (equal enclosures
-                      '("https://example.com/entry_1.mp3")))))))
+        (should (equal enclosures
+                       '("https://example.com/entry_1.mp3")))))))
 
 (provide 'rag-source-tests)
 

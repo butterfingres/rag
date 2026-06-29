@@ -108,10 +108,10 @@ VALUES (?, ?)"
       (funcall delete-entry (make-rag-entry :id id
                                             :pub-date old-pub-date)))
     (funcall insert-entry (make-rag-entry :id id
-                                          :pub-date (sqlite-select db
-                                                                   "SELECT pub_date FROM entry
+                                          :pub-date (caar (sqlite-select db
+                                                                         "SELECT pub_date FROM entry
 WHERE id == ?"
-                                                                   (list id))))))
+                                                                         (list id)))))))
 
 (defun rag-source-update-region (url start end)
   (rag-pool-with alloc
