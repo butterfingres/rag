@@ -107,4 +107,4 @@ jobs:
       - uses: actions/download-artifact@v8
       - uses: ncipollo/release-action@v1.21.0
         with:
-          artifacts: *
+          artifacts: "*"
