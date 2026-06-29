@@ -34,10 +34,10 @@ Set to nil if to never exclude entries based on age."
   :type '(choice natnum
                  (const nil)))
 
-(defcustom rag-show-all nil
-  "If this is non-nil the reader will show all entries."
+(defcustom rag-title-align 50
+  "How many characters to align the title to."
   :group 'rag
-  :type 'boolean)
+  :type 'natnum)
 
 (defcustom rag-empty-entry-title "<empty entry title>"
   "The title text of empty entries."
@@ -56,11 +56,10 @@ Set to nil if to never exclude entries based on age."
     (save-excursion
       (goto-char (point-min))
       (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
-WHERE pub_date > ?1 AND (?2 OR NOT hidden)
+WHERE pub_date > ?1
 ORDER BY pub_date DESC"
                                     (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
-                                              -1.0e+INF)
-                                          rag-show-all)))
+                                              -1.0e+INF))))
         (let* ((title (or (when-let* ((title (car entry)))
                             (propertize title
                                         'face 'rag-unread-entry-title))
@@ -83,9 +82,10 @@ WHERE url == ?1"
           (insert (propertize date
                               'face 'rag-date)
                   " "
-                  feed-title
-                  " "
-                  title)
+                  title
+                  (propertize " "
+                              'display `(space :align-to ,rag-title-align))
+                  feed-title)
           (newline))))))
 
 (add-hook 'rag-mode-hook #'toggle-truncate-lines)
@@ -117,13 +117,12 @@ WHERE url == ?1"
     (cl-destructuring-bind (id title link description pub-date feed-id)
         (car (sqlite-select db
                             "SELECT id, title, link, description, pub_date, feed_id FROM ENTRY
-WHERE pub_date > ?1 AND (?2 OR NOT hidden)
+WHERE pub_date > ?
 ORDER BY pub_date DESC
-LIMIT 1 OFFSET ?3"
-                            `[,(or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
-                                 -1.0e+INF)
-                             ,rag-show-all
-                             ,offset]))
+LIMIT 1 OFFSET ?"
+                            (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
+                                      -1.0e+INF)
+                                  offset)))
       (let ((enclosures (mapcar #'car
                                 (sqlite-select db
                                                "SELECT link FROM enclosure
