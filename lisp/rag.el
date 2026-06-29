@@ -19,6 +19,7 @@
 (require 'rag-faces)
 (require 'rag-db)
 (require 'rag-pool)
+(require 'rag-source)
 
 (defgroup rag '()
   "Rust news AGgragator."
