@@ -178,15 +178,41 @@ WHERE id == ?"
                     (list (if hidden
                               1
                             0)
-                          id))))
+                          id)))
+
+  (save-excursion
+    (let* ((start-column 11)
+           (start (progn
+                    (move-to-column start-column)
+                    (point)))
+           (end (progn
+                  (move-to-column (+ start-column rag-title-width))
+                  (point)))
+           (inhibit-read-only t))
+      (put-text-property start end
+                         'face
+                         (if hidden
+                             'rag-read-entry-title
+                           'rag-unread-entry-title)))))
+
+(defun rag-entry-hide-at-point ()
+  (interactive)
+  (rag-entry-set-hidden-at-point t))
+
+(defun rag-entry-unhide-at-point ()
+  (interactive)
+  (rag-entry-set-hidden-at-point nil))
 
 (defun rag-visit-entry-at-point ()
   (interactive)
   (let ((entry (rag-entry-at-point)))
+    (rag-entry-set-hidden-at-point t)
     (rag-entry-visit entry)))
 
 (keymap-set rag-mode-map "<return>" #'rag-visit-entry-at-point)
 (keymap-set rag-mode-map "G" #'rag-source-update-all)
+(keymap-set rag-mode-map "r" #'rag-entry-hide-at-point)
+(keymap-set rag-mode-map "u" #'rag-entry-unhide-at-point)
 
 (defun rag-binary-search-buffer-desc (value-at-point
                                       value)
