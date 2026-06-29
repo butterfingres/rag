@@ -150,16 +150,17 @@ WHERE id == ?"
 (defun rag-source-update (url)
   "Update source URL."
   (let* ((progress-buffer (rag-progress-buffer-get))
-         (marker (with-current-buffer progress-buffer
-                   (save-excursion
-                     (goto-char (point-max))
-                     (prog1
-                         (point-marker)
-                       (let ((inhibit-read-only t))
-                         (insert "fetching ")
-                         (insert (propertize url 'face 'link))
-                         (insert "...")
-                         (newline)))))))
+         (marker (when (buffer-live-p progress-buffer)
+                   (with-current-buffer progress-buffer
+                     (save-excursion
+                       (goto-char (point-max))
+                       (prog1
+                           (point-marker)
+                         (let ((inhibit-read-only t))
+                           (insert "fetching ")
+                           (insert (propertize url 'face 'link))
+                           (insert "...")
+                           (newline))))))))
     (url-queue-retrieve
      url
      (lambda (status)
@@ -176,21 +177,23 @@ WHERE id == ?"
 
                  (rag-source-update-region url (point) (point-max))
 
-                 (with-current-buffer (rag-progress-buffer-get)
-                   (save-excursion
-                     (goto-char marker)
-                     (end-of-line)
-                     (let ((inhibit-read-only t))
-                       (insert " " (propertize "ok" 'face 'success))))))
+                 (when (buffer-live-p progress-buffer)
+                   (with-current-buffer progress-buffer
+                     (save-excursion
+                       (goto-char marker)
+                       (end-of-line)
+                       (let ((inhibit-read-only t))
+                         (insert " " (propertize "ok" 'face 'success)))))))
              (error
-              (with-current-buffer (rag-progress-buffer-get)
-                (save-excursion
-                  (goto-char marker)
-                  (end-of-line)
-                  (let ((inhibit-read-only t))
-                    (insert " " (propertize (apply #'format
-                                                   (cdr error-value))
-                                            'face 'error)))))))
+              (when (buffer-live-p progress-buffer)
+                (with-current-buffer progress-buffer
+                  (save-excursion
+                    (goto-char marker)
+                    (end-of-line)
+                    (let ((inhibit-read-only t))
+                      (insert " " (propertize (apply #'format
+                                                     (cdr error-value))
+                                              'face 'error))))))))
          (kill-buffer (current-buffer))))
      '()
      t)))
