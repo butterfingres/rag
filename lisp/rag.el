@@ -146,7 +146,6 @@ WHERE entry_id == ?"
                         :enclosures enclosures
                         :feed-id feed-id)))))
 
-
 (defun rag-entry-set-hidden-at-point (hidden &optional entry)
   (let* ((db (rag-db-get))
          (id (or (and entry (rag-entry-id entry))
@@ -159,22 +158,15 @@ LIMIT 1 OFFSET ?"
                                                 -1.0e+INF)
                                             rag-show-all
                                             (1- (line-number-at-pos))))))))
-    (sqlite-execute "UPDATE entry
+    (sqlite-execute db
+                    "UPDATE entry
 SET hidden = ?
 WHERE id == ?"
                     (list hidden id)))
   (save-excursion
-    (let* ((inhibit-read-only t)
-           (start-column (eval-when-compile (length "2000-00-00 ")))
-           (start (progn
-                    (move-to-column start-column)
-                    (point)))
-           (end (progn
-                  (move-to-column (+ start-column rag-title-width))
-                  (point))))
-      (add-text-properties start end `(face ,(if hidden
-                                                 'rag-unread-entry-title
-                                               'rag-read-entry-title))))))
+    (let ((inhibit-read-only t))
+      (beginning-of-line)
+      (kill-line 1))))
 
 (defun rag-visit-entry-at-point ()
   (interactive)

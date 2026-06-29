@@ -60,6 +60,19 @@
                        `("1" nil ,date "https://example.com/feed")
                        (format-time-string "%Y-%m-%d <empty entry title>                                <empty feed title>\n" date))))
 
+(ert-deftest rag-tests-entry-set-hidden-at-point ()
+  (rag-db-tests-with db
+    (sqlite-execute-batch db "INSERT INTO feed (url, title)
+VALUES ('https://example.com/feed', 'example feed');
+INSERT INTO entry (id, pub_date, feed_id)
+VALUES ('1', 1782675986, 'https://example.com/feed')")
+    (rag-tests-with-buffer buffer
+      (with-current-buffer buffer
+        (goto-char (point-min))
+        (rag-entry-set-hidden-at-point t)
+        (should (caar (sqlite-select db "SELECT hidden FROM entry")))
+        (should-error (rag-entry-at-point))))))
+
 (ert-deftest rag-tests-entry-at-point ()
   (rag-db-tests-with db
    (sqlite-execute-batch db "INSERT INTO
