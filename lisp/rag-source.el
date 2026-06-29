@@ -21,8 +21,7 @@
 
 (cl-defstruct rag-source
   "Feed source."
-  url
-  tags)
+  url)
 
 ;; taken from `org-id-uuid'
 (defun rag-source--uuid ()
