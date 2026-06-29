@@ -93,9 +93,13 @@ WHERE url == ?1"
           (insert (propertize date
                               'face 'rag-date)
                   " "
-                  title
-                  (propertize " "
-                              'display `(space :align-to ,rag-title-align))
+                  (truncate-string-to-width
+                   title
+                   rag-title-align
+                   0
+                   (eval-when-compile (string-to-char " "))
+                   "...")
+                  " "
                   feed-title)
           (newline))))))
 
