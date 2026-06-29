@@ -24,6 +24,11 @@
   "Rust news AGgragator."
   :group 'news)
 
+(defcustom rag-buffer-name "*rag*"
+  "The buffer name to use."
+  :group 'rag
+  :type 'string)
+
 (defcustom rag-oldest-entry (* 60 60 24
                                30
                                6)
@@ -95,11 +100,6 @@ WHERE url == ?1"
           (newline))))))
 
 (add-hook 'rag-mode-hook #'toggle-truncate-lines)
-
-(defcustom rag-buffer-name "*rag*"
-  "The buffer name to use."
-  :group 'rag
-  :type 'string)
 
 (defun rag-buffer-get ()
   (or (get-buffer rag-buffer-name)
