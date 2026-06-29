@@ -120,7 +120,10 @@ VALUES
                              (list (make-rag-entry :id "1"
                                                    :title "hello world"
                                                    :feed-id "https://example.com/feed"
-                                                   :pub-date 1782675986)))))))
+                                                   :pub-date 1782675986)))
+        (should (string= (buffer-substring-no-properties (point-min) (point-max))
+                         "2026-06-28 hello world                                        example feed
+"))))))
 
 (ert-deftest rag-tests-update-function-insert ()
   (rag-db-tests-with db
