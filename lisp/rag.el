@@ -122,8 +122,7 @@ WHERE url == ?1"
             (and (bobp)
                  (eobp)))
     (error "Cannot get entry from empty buffer"))
-  (let ((db (rag-db-get))
-        (offset (1- (line-number-at-pos))))
+  (let ((db (rag-db-get)))
     (cl-destructuring-bind (id title link description pub-date feed-id)
         (car (sqlite-select db
                             "SELECT id, title, link, description, pub_date, feed_id FROM entry
@@ -133,7 +132,7 @@ LIMIT 1 OFFSET ?"
                             (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
                                       -1.0e+INF)
                                   rag-show-all
-                                  offset)))
+                                   (1- (line-number-at-pos)))))
       (let ((enclosures (mapcar #'car
                                 (sqlite-select db
                                                "SELECT link FROM enclosure
@@ -146,6 +145,35 @@ WHERE entry_id == ?"
                         :pub-date pub-date
                         :enclosures enclosures
                         :feed-id feed-id)))))
+
+
+(defun rag-entry-set-hidden-at-point (hidden &optional entry)
+  (let ((id (or (and entry (rag-entry-id entry))
+                (caar (sqlite-select db
+                            "SELECT id FROM entry
+WHERE pub_date > ? AND (? OR NOT hidden)
+ORDER BY pub_date DESC
+LIMIT 1 OFFSET ?"
+                            (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
+                                      -1.0e+INF)
+                                  rag-show-all
+                                  offset))))))
+    (sqlite-execute "UPDATE entry
+SET hidden = ?
+WHERE id == ?"
+                    (list id hidden)))
+  (save-excursion
+    (let* ((inhibit-read-only t)
+           (start-column (eval-when-compile (length "2000-00-00 ")))
+           (start (progn
+                    (move-to-column start-column)
+                    (point)))
+           (end (progn
+                  (move-to-column (+ start-column rag-title-width))
+                  (point))))
+      (add-text-properties start end `(face ,(if hidden
+                                                 ,'rag-unread-entry-title
+                                               ,'rag-read-entry-title))))))
 
 (defun rag-visit-entry-at-point ()
   (interactive)

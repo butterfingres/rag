@@ -24,6 +24,12 @@
   "Face used in search mode for unread entry titles."
   :group 'rag)
 
+(defface rag-read-entry-title
+  '((((class color) (background light)) (:foreground "#000"))
+    (((class color) (background dark))  (:foreground "#fff")))
+  "Face used in search mode for read titles."
+  :group 'elfeed)
+
 (defface rag-null
   '((t :inherit shadow
        :slant italic))
