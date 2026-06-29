@@ -44,7 +44,7 @@
   </entry>
 </feed>")
                   (apply cb '() cbargs)))))
-     (rag-source-update (make-rag-source :url "https://example.com/atom"))
+     (rag-source-update "https://example.com/atom")
      (with-current-buffer (rag-progress-buffer-get)
        (goto-char (point-min))
        (should (string= (buffer-substring-no-properties (point-min) (point-max))

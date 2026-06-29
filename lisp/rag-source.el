@@ -23,6 +23,15 @@
   "Feed source."
   url)
 
+(defgroup rag-source '()
+  "Feed sources."
+  :group 'rag)
+
+(defcustom rag-source-feeds '()
+  "A list of feeds to download."
+  :type '(repeat string)
+  :group 'rag-source)
+
 ;; taken from `org-id-uuid'
 (defun rag-source--uuid ()
   "Return string with random (version 4) UUID."
@@ -48,7 +57,7 @@
 	        (substring rnd 18 20)
 	        (substring rnd 20 32))))
 
-(defun rag-source-update-region (source start end)
+(defun rag-source-update-region (url start end)
   (rag-pool-with alloc
     (let ((db (rag-db-get)))
       (with-sqlite-transaction db
@@ -68,7 +77,7 @@ VALUES (?, ?, ?, ?, ?, ?)"
                                                 (rag-entry-description entry)
                                                 (or (rag-entry-pub-date entry)
                                                     (round (float-time)))
-                                                (rag-source-url source)))
+                                                url))
                           (cl-loop for enclosure across (rag-entry-enclosures entry)
                                    do (sqlite-execute db
                                                       "INSERT INTO enclosure(entry_id, link)
@@ -76,7 +85,7 @@ VALUES (?, ?)"
                                                       (list id enclosure))))))))
           (sqlite-execute db
                           "INSERT OR REPLACE INTO feed(url, title, link, skip_days, skip_hours, ttl, last_update) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)"
-                          (list (rag-source-url source)
+                          (list url
                                 (rag-feed-title feed)
                                 (rag-feed-link feed)
                                 (rag-feed-skip-days feed)
@@ -84,8 +93,8 @@ VALUES (?, ?)"
                                 (rag-feed-ttl feed)
                                 (rag-feed-last-update feed))))))))
 
-(defun rag-source-update (source)
-  "Update source SOURCE."
+(defun rag-source-update (url)
+  "Update source URL."
   (let* ((progress-buffer (rag-progress-buffer-get))
          (marker (with-current-buffer progress-buffer
                    (save-excursion
@@ -94,11 +103,11 @@ VALUES (?, ?)"
                          (point-marker)
                        (let ((inhibit-read-only t))
                          (insert "fetching ")
-                         (insert (propertize (rag-source-url source) 'face 'link))
+                         (insert (propertize url 'face 'link))
                          (insert "...")
                          (newline)))))))
     (url-queue-retrieve
-     (rag-source-url source)
+     url
      (lambda (status)
        (unwind-protect
            (condition-case error-value
@@ -111,7 +120,7 @@ VALUES (?, ?)"
                  (re-search-forward (rx line-start line-end))
                  (forward-line)
 
-                 (rag-source-update-region source (point) (point-max))
+                 (rag-source-update-region url (point) (point-max))
 
                  (with-current-buffer (rag-progress-buffer-get)
                    (save-excursion
@@ -131,6 +140,11 @@ VALUES (?, ?)"
          (kill-buffer (current-buffer))))
      '()
      t)))
+
+(defun rag-source-update-all ()
+  (interactive)
+  (dolist (url rag-source-feeds)
+    (rag-source-update url)))
 
 (provide 'rag-source)
 
