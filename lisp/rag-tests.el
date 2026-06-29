@@ -40,25 +40,25 @@
   (let ((date 1782571353))
     (rag-tests-ui-test '("https://example.com/feed" "example feed")
                        `("1" "entry 1" ,date "https://example.com/feed")
-                       (format-time-string "%Y-%m-%d entry 1 example feed\n" date))))
+                       (format-time-string "%Y-%m-%d example feed entry 1\n" date))))
 
 (ert-deftest rag-tests-empty-feed ()
   (let ((date 1782571353))
     (rag-tests-ui-test '("https://example.com/feed" nil)
                        `("1" "entry 1" ,date "https://example.com/feed")
-                       (format-time-string "%Y-%m-%d entry 1 <empty feed title>\n" date))))
+                       (format-time-string "%Y-%m-%d <empty feed title> entry 1\n" date))))
 
 (ert-deftest rag-tests-empty-entry ()
   (let ((date 1782571353))
     (rag-tests-ui-test '("https://example.com/feed" "example feed")
                        `("1" nil ,date "https://example.com/feed")
-                       (format-time-string "%Y-%m-%d <empty entry title> example feed\n" date))))
+                       (format-time-string "%Y-%m-%d example feed <empty entry title>\n" date))))
 
 (ert-deftest rag-tests-empty ()
   (let ((date 1782571353))
     (rag-tests-ui-test '("https://example.com/feed" nil)
                        `("1" nil ,date "https://example.com/feed")
-                       (format-time-string "%Y-%m-%d <empty entry title> <empty feed title>\n" date))))
+                       (format-time-string "%Y-%m-%d <empty feed title> <empty entry title>\n" date))))
 
 (ert-deftest rag-tests-entry-at-point ()
   (rag-db-tests-with db
