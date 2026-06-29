@@ -31,14 +31,14 @@ jobs:
         target:
           - x86_64-unknown-linux-gnu
           - aarch64-unknown-linux-gnu
-          - loongarch64-unknown-linux-gnu
-          - powerpc64-unknown-linux-gnu
-          - x86_64-pc-windows-msvc
-          - aarch64-pc-windows-msvc
-          - aarch64-apple-darwin
-          - x86_64-apple-darwin
-          - x86_64-unknown-freebsd
-          - x86_64-unknown-netbsd
+          # - loongarch64-unknown-linux-gnu
+          # - powerpc64-unknown-linux-gnu
+          # - x86_64-pc-windows-msvc
+          # - aarch64-pc-windows-msvc
+          # - aarch64-apple-darwin
+          # - x86_64-apple-darwin
+          # - x86_64-unknown-freebsd
+          # - x86_64-unknown-netbsd
         include:
           - target: x86_64-unknown-linux-gnu
             host: ubuntu-latest
@@ -46,42 +46,50 @@ jobs:
             so-suffix: so
           - target: aarch64-unknown-linux-gnu
             host: ubuntu-latest
+            ubuntu-pkg: gcc-aarch64-linux-gnu
+            rustflags: -Clinker=aarch64-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
-          - target: loongarch64-unknown-linux-gnu
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-          - target: powerpc64-unknown-linux-gnu
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-          - target: x86_64-pc-windows-msvc
-            host: windows-latest
-            so-suffix: dll
-          - target: aarch64-pc-windows-msvc
-            host: windows-latest
-            so-suffix: dll
-          - target: aarch64-apple-darwin
-            host: macos-latest
-            so-prefix: lib
-            so-suffix: dylib
-          - target: x86_64-apple-darwin
-            host: macos-latest
-            so-prefix: lib
-            so-suffix: dylib
-          - target: x86_64-unknown-freebsd
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-          - target: x86_64-unknown-netbsd
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
+          # - target: loongarch64-unknown-linux-gnu
+          #   host: ubuntu-latest
+          #   so-prefix: lib
+          #   so-suffix: so
+          # - target: powerpc64-unknown-linux-gnu
+          #   host: ubuntu-latest
+          #   so-prefix: lib
+          #   so-suffix: so
+          # - target: x86_64-pc-windows-msvc
+          #   host: windows-latest
+          #   so-suffix: dll
+          # - target: aarch64-pc-windows-msvc
+          #   host: windows-latest
+          #   so-suffix: dll
+          # - target: aarch64-apple-darwin
+          #   host: macos-latest
+          #   so-prefix: lib
+          #   so-suffix: dylib
+          # - target: x86_64-apple-darwin
+          #   host: macos-latest
+          #   so-prefix: lib
+          #   so-suffix: dylib
+          # - target: x86_64-unknown-freebsd
+          #   host: ubuntu-latest
+          #   so-prefix: lib
+          #   so-suffix: so
+          # - target: x86_64-unknown-netbsd
+          #   host: ubuntu-latest
+          #   so-prefix: lib
+          #   so-suffix: so
+
     runs-on: ${{ matrix.host }}
     steps:
       - uses: actions/checkout@v6
+      - if: ${{ matrix.ubuntu-pkg }}
+        run: |
+          sudo apt-get -y install ${{ matrix.ubuntu-pkg }}
       - uses: houseabsolute/actions-rust-cross@v1
+        env:
+          RUSTFLAGS: "-Ccodegen-units=1 ${{ matrix.rustflags }}"
         with:
           command: build
           target: ${{ matrix.target }}
