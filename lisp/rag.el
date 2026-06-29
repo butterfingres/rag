@@ -148,16 +148,17 @@ WHERE entry_id == ?"
 
 
 (defun rag-entry-set-hidden-at-point (hidden &optional entry)
-  (let ((id (or (and entry (rag-entry-id entry))
-                (caar (sqlite-select db
-                            "SELECT id FROM entry
+  (let* ((db (rag-db-get))
+         (id (or (and entry (rag-entry-id entry))
+                 (caar (sqlite-select db
+                                      "SELECT id FROM entry
 WHERE pub_date > ? AND (? OR NOT hidden)
 ORDER BY pub_date DESC
 LIMIT 1 OFFSET ?"
-                            (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
-                                      -1.0e+INF)
-                                  rag-show-all
-                                  offset))))))
+                                      (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
+                                                -1.0e+INF)
+                                            rag-show-all
+                                            (1- (line-number-at-pos))))))))
     (sqlite-execute "UPDATE entry
 SET hidden = ?
 WHERE id == ?"
@@ -172,8 +173,8 @@ WHERE id == ?"
                   (move-to-column (+ start-column rag-title-width))
                   (point))))
       (add-text-properties start end `(face ,(if hidden
-                                                 ,'rag-unread-entry-title
-                                               ,'rag-read-entry-title))))))
+                                                 'rag-unread-entry-title
+                                               'rag-read-entry-title))))))
 
 (defun rag-visit-entry-at-point ()
   (interactive)
