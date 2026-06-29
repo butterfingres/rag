@@ -71,10 +71,6 @@ jobs:
             host: ubuntu-latest
             so-prefix: lib
             so-suffix: so
-          - target: x86_64-unknown-netbsd
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
 
     runs-on: ${{ matrix.host }}
     steps:
