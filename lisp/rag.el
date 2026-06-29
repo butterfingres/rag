@@ -98,8 +98,7 @@ WHERE url == ?1"
              "...")
             " "
             feed-title)
-    (add-text-properties start (point) `(rag-entry-id ,id))
-    (newline)))
+    (add-text-properties start (point) `(rag-entry-id ,id))))
 
 (defun rag-render ()
   (let ((db (rag-db-get))
@@ -117,7 +116,8 @@ ORDER BY pub_date DESC"
           (rag-entry-insert (make-rag-entry :title title
                                             :pub-date pub-date
                                             :feed-id feed-id
-                                            :id id)))))))
+                                            :id id))
+          (newline))))))
 
 (define-derived-mode rag-mode special-mode "RAG"
   "Rust news AGgragator."
