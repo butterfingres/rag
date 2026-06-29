@@ -78,7 +78,7 @@ To get help press =h=.
 *** Update feeds
 Pressing =G= updates all feeds found in =rag-sources-feed= if you
 properly configured it. You can monitor the progress by switching to
-the =*rag-progress*= buffer (=C-x b \*rag-progress\* RET=). If you see
+the =*rag-progress*= buffer (=C-x b *rag-progress* RET=). If you see
 an error you should try increasing the value of =url-queue-timeout=
 (=M-x customize-option RET url-queue-timeout=) since the default might
 be too short.
