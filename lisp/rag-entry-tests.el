@@ -57,7 +57,7 @@ foo
            (lambda ()
              (should (string= (buffer-substring-no-properties (point-min)
                                                               (point-max))
-                              "Date: 2026-06-28\n")))))
+                              "Date: 2026-06-29\n")))))
 
 (ert-deftest rag-entry-tests-render ()
   (rag-entry-tests-test-renderer
