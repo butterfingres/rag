@@ -39,7 +39,10 @@
       (erase-buffer)
       (rag-entry-insert-header "Title" (rag-entry-title entry) 'rag-feed-title)
       (rag-entry-insert-header "Link" (rag-entry-link entry) 'link)
-      (rag-entry-insert-header "Date" (format-time-string "%Y-%m-%d" (rag-entry-pub-date entry)) 'rag-date)
+      (rag-entry-insert-header "Date"
+                               (when-let* ((pub-date (rag-entry-pub-date entry)))
+                                 (format-time-string "%Y-%m-%d" pub-date))
+                               'rag-date)
       (cl-loop for enclosure in (rag-entry-enclosures entry)
                do (progn
                     (insert "Enclosure: " (propertize enclosure 'face 'link))

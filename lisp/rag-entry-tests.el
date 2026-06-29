@@ -45,19 +45,19 @@ buffer."
            (lambda ()
              (should (string= (buffer-substring-no-properties (point-min)
                                                               (point-max))
-                              "Title: entry
+                              (format-time-string "Title: entry
 Link: https://example.com
-Date: 2026-06-28
+Date: %Y-%m-%d
 Enclosure: https://example.com/entry_1.mp3
 
 foo
-"))))
+" 1782688282)))))
   (funcall cont
            (make-rag-entry)
            (lambda ()
              (should (string= (buffer-substring-no-properties (point-min)
                                                               (point-max))
-                              "Date: 2026-06-29\n")))))
+                              "")))))
 
 (ert-deftest rag-entry-tests-render ()
   (rag-entry-tests-test-renderer
