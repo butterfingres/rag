@@ -48,7 +48,8 @@ jobs:
           args: "--locked --release"
           strip: true
       - run: |
-          mv ${{ matrix.target }}/release/librag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
+          LIB="$(cargo rustc -- --print file-names)"
+          mv target/${{ matrix.target }}/release/"${LIB}" rag-core.${{ matrix.so-suffix }}
       - uses: actions/upload-artifact@v7.0.1
         with:
-          path: target/${{ matrix.target }}/release/rag-core.${{ matrix.so-suffix }}
+          path: rag-core.${{ matrix.so-suffix }}
