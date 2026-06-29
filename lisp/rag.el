@@ -34,6 +34,11 @@ Set to nil if to never exclude entries based on age."
   :type '(choice natnum
                  (const nil)))
 
+(defcustom rag-show-all nil
+  "Whether to show hidden entries."
+  :group 'rag
+  :type 'boolean)
+
 (defcustom rag-title-align 50
   "How many characters to align the title to."
   :group 'rag
@@ -56,9 +61,10 @@ Set to nil if to never exclude entries based on age."
     (save-excursion
       (goto-char (point-min))
       (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id FROM entry
-WHERE pub_date > ?1
+WHERE pub_date > ? AND (? OR NOT hidden)
 ORDER BY pub_date DESC"
                                     (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
+                                              rag-show-all
                                               -1.0e+INF))))
         (let* ((title (or (when-let* ((title (car entry)))
                             (propertize title
@@ -116,12 +122,13 @@ WHERE url == ?1"
         (offset (1- (line-number-at-pos))))
     (cl-destructuring-bind (id title link description pub-date feed-id)
         (car (sqlite-select db
-                            "SELECT id, title, link, description, pub_date, feed_id FROM ENTRY
-WHERE pub_date > ?
+                            "SELECT id, title, link, description, pub_date, feed_id FROM entry
+WHERE pub_date > ? AND (? OR NOT hidden)
 ORDER BY pub_date DESC
 LIMIT 1 OFFSET ?"
                             (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
                                       -1.0e+INF)
+                                  rag-show-all
                                   offset)))
       (let ((enclosures (mapcar #'car
                                 (sqlite-select db
