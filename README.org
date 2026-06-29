@@ -14,11 +14,11 @@ remember which directory you unzip these artifacts into.
 
 **** Example for a =x86_64= glibc Linux distro
 #+BEGIN_SRC shell
-curl -LO https://github.com/butterfingres/rag/releases/download/v1.0.0/lisp.zip
-curl -LO https://github.com/butterfingres/rag/releases/download/v1.0.0/rag-core-x86_64-unknown-linux-gnu.zip
-
-for ZIP in lisp.zip rag-core-x86_64-unknown-linux-gnu.zip; do
-    unzip "${ZIP}"
+for URL in https://github.com/butterfingres/rag/releases/download/v1.0.0/lisp.zip \
+           https://github.com/butterfingres/rag/releases/download/v1.0.0/rag-core-x86_64-unknown-linux-gnu.zip
+do
+    curl -LO "${URL}"
+    unzip "$(basename "${URL}")"
 done
 #+END_SRC
 
