@@ -31,16 +31,18 @@ jobs:
         target:
           # - x86_64-unknown-linux-gnu
           # - aarch64-unknown-linux-gnu
-          - loongarch64-unknown-linux-gnu
-          - powerpc64-unknown-linux-gnu
-          - aarch64-unknown-linux-musl
-          - powerpc64-unknown-linux-musl
+          # - loongarch64-unknown-linux-gnu
+          # - powerpc64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+          # - aarch64-unknown-linux-musl
+          # - loongarch64-unknown-linux-musl
+          # - powerpc64-unknown-linux-musl
           # - x86_64-pc-windows-msvc
           # - aarch64-pc-windows-msvc
           # - aarch64-apple-darwin
-          - x86_64-apple-darwin
+          # - x86_64-apple-darwin
           # - x86_64-unknown-freebsd
-          - x86_64-unknown-netbsd
+          # - x86_64-unknown-netbsd
         include:
           - target: x86_64-unknown-linux-gnu
             host: ubuntu-latest
@@ -58,7 +60,15 @@ jobs:
             host: ubuntu-latest
             so-prefix: lib
             so-suffix: so
+          - target: x86_64-unknown-linux-musl
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
           - target: aarch64-unknown-linux-musl
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
+          - target: loongarch64-unknown-linux-musl
             host: ubuntu-latest
             so-prefix: lib
             so-suffix: so
