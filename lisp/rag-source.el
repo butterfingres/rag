@@ -4,7 +4,7 @@
 
 ;; Author: Andrew Chi <chifamicom@outlook.com>
 ;; Created: 28 Jun 2026
-;; Version: 0.1.0
+;; Version: 1.0.0
 ;; Keywords: data, news
 
 ;;; Commentary:
