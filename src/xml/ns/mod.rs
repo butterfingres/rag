@@ -1,3 +1,4 @@
+pub mod dc;
 pub mod media;
 
 use {
@@ -30,6 +31,7 @@ where
     A: Allocator,
 {
     match ns {
+        dc::NS => Some(&dc::Parser),
         media::NS => Some(&media::Parser),
         _ => None,
     }
