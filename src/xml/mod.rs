@@ -1,7 +1,5 @@
-pub mod atom;
+pub mod fmt;
 pub mod parser;
-pub mod rdf;
-pub mod rss;
 
 use {
     crate::{borrow::Cow, fmt::debug_iter_bytes, num::ParseIntError, sym, xml::parser::TagParser},
@@ -28,7 +26,7 @@ use {
     },
     std::{
         error::Error,
-        fmt::{self, Debug, Display, Formatter},
+        fmt::{Debug, Display, Formatter},
         ptr, str,
     },
 };
@@ -102,7 +100,7 @@ impl<A> Debug for Feed<'_, '_, A>
 where
     A: Allocator,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let Self {
             title,
             link,
@@ -281,7 +279,7 @@ impl<'alloc, 'src, A> Debug for Entry<'alloc, 'src, A>
 where
     A: Allocator,
 {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let Self {
             title,
             link,
@@ -298,7 +296,7 @@ where
             .field("pub_date", &pub_date)
             .field(
                 "enclosures",
-                &fmt::from_fn(|f| debug_iter_bytes(&enclosures, f)),
+                &std::fmt::from_fn(|f| debug_iter_bytes(&enclosures, f)),
             )
             .finish()
     }
@@ -437,7 +435,7 @@ impl ParserError {
     const UNCLOSED_TAG: Self = Self::Xml(quick_xml::Error::Syntax(SyntaxError::UnclosedTag));
 }
 impl Display for ParserError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Alloc(e) => Display::fmt(e, f),
             Self::Emacs(e) => Display::fmt(e, f),

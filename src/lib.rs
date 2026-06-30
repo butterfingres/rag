@@ -10,7 +10,11 @@ pub mod xml;
 emacs::plugin_is_GPL_compatible!();
 
 use {
-    crate::xml::{Parser, TryFromRootError, atom, get_header, rdf, rss},
+    crate::xml::{
+        Parser, TryFromRootError,
+        fmt::{atom, rdf, rss},
+        get_header,
+    },
     allocator_api2::alloc::Global,
     bump_scope::Bump,
     emacs::IntoLisp,
