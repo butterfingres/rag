@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
 <item xmlns:media="http://search.yahoo.com/mrss/">
   <media:title>hello world</media:title>
+  <media:content media:url="https://example.com/hello_world.mp3"/>
 </item>

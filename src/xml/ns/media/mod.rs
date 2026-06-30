@@ -118,7 +118,7 @@ mod tests {
             borrow::Cow,
             xml::{Entry, ns::tests::test_item_parser},
         },
-        allocator_api2::{alloc::Global, vec::Vec},
+        allocator_api2::{alloc::Global, boxed::Box, vec},
     };
 
     #[test]
@@ -134,7 +134,7 @@ mod tests {
                 description: None,
                 id: None,
                 pub_date: None,
-                enclosures: Vec::new_in(&alloc),
+                enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc))],
             },
             &alloc,
         )
