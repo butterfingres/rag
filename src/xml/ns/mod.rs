@@ -31,3 +31,38 @@ where
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::xml::{Entry, get_header},
+    };
+
+    pub fn test_item_parser<'alloc, 'src, T, A>(
+        parser: &T,
+        input: &'src str,
+        output: Entry<'alloc, 'src, A>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError>
+    where
+        T: HandleStart<'alloc, 'src, PartialEntry<'alloc, 'src, A>, A>,
+        A: Allocator,
+    {
+        let mut reader = NsReader::from_str(input);
+        let (version, root) = get_header(&mut reader)?;
+
+        let mut item = PartialEntry::new_in(alloc);
+        loop {
+            match reader.read_event()? {
+                Event::Eof => break,
+                Event::End(tag) if tag.name() == root.name() => break,
+                event => parser.handle_start(&mut reader, event, &mut item, version, alloc)?,
+            }
+        }
+
+        assert_eq!(Entry::from(item), output);
+
+        Ok(())
+    }
+}

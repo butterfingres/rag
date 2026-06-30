@@ -109,3 +109,34 @@ where
         handle_start(reader, start, item, version, alloc, false)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        crate::{
+            borrow::Cow,
+            xml::{Entry, ns::tests::test_item_parser},
+        },
+        allocator_api2::{alloc::Global, vec::Vec},
+    };
+
+    #[test]
+    fn test_media_parser() -> Result<(), ParserError> {
+        let alloc = Global;
+
+        test_item_parser(
+            &Parser,
+            include_str!("./item.xml"),
+            Entry {
+                title: Some(Cow::Borrowed(b"hello world")),
+                link: None,
+                description: None,
+                id: None,
+                pub_date: None,
+                enclosures: Vec::new_in(&alloc),
+            },
+            &alloc,
+        )
+    }
+}
