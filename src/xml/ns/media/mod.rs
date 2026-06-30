@@ -1,9 +1,13 @@
 use {
-    crate::xml::{ParserError, PartialFeed, ns::HandleStart},
+    crate::xml::{
+        ParserError, PartialEntry, get_attribute_when,
+        ns::HandleStart,
+        parser::{Content, TagParser as _},
+    },
     allocator_api2::alloc::Allocator,
     quick_xml::{
         XmlVersion,
-        events::Event,
+        events::{BytesStart, Event},
         name::{Namespace, ResolveResult},
         reader::NsReader,
     },
@@ -11,10 +15,33 @@ use {
 
 pub const NS: &[u8] = b"http://search.yahoo.com/mrss/";
 
+fn handle_url_attribute<'alloc, 'src, A>(
+    reader: &NsReader<&'src [u8]>,
+    start: BytesStart<'src>,
+    item: &mut PartialEntry<'alloc, 'src, A>,
+    version: XmlVersion,
+    alloc: &'alloc A,
+) -> Result<(), ParserError>
+where
+    A: Allocator,
+{
+    if let Some(url) = get_attribute_when(
+        &start,
+        |_| Ok(true),
+        |attr| matches!(reader.resolver().resolve(attr.key, true), (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"url"),
+        version,
+        alloc,
+    )? {
+        item.enclosures.push(url);
+    }
+
+    Ok(())
+}
+
 fn handle_start<'alloc, 'src, A>(
     reader: &mut NsReader<&'src [u8]>,
     start: Event<'src>,
-    feed: &mut PartialFeed<'alloc, 'src, A>,
+    item: &mut PartialEntry<'alloc, 'src, A>,
     version: XmlVersion,
     alloc: &'alloc A,
     recursed: bool,
@@ -23,16 +50,39 @@ where
     A: Allocator,
 {
     match start {
-        Event::Start(tag) if tag.local_name().into_inner() == b"group" && !recursed => loop {
+        Event::Start(tag) if tag.local_name().as_ref() == b"group" && !recursed => loop {
             match reader.read_resolved_event()? {
                 (_, Event::End(end_tag)) if tag.name() == end_tag.name() => break,
                 (_, Event::Eof) => return Err(ParserError::MissingRoot),
                 (ResolveResult::Bound(Namespace(NS)), tag) => {
-                    handle_start(reader, tag, feed, version, alloc, true)?;
+                    handle_start(reader, tag, item, version, alloc, true)?;
                 }
                 _ => {}
             }
         },
+
+        Event::Start(tag) if let b"content" | b"player" = tag.local_name().as_ref() => {
+            reader.read_to_end(tag.name())?;
+            handle_url_attribute(reader, tag, item, version, alloc)?;
+        }
+        Event::Empty(tag) if let b"content" | b"player" = tag.local_name().as_ref() => {
+            handle_url_attribute(reader, tag, item, version, alloc)?;
+        }
+
+        // TODO: handle type
+        Event::Start(tag) if tag.local_name().as_ref() == b"title" => {
+            item.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
+        }
+        Event::Start(tag) if tag.local_name().as_ref() == b"description" => {
+            item.content.try_replace_or_skip::<false, _, _>(
+                Content.map(Some),
+                reader,
+                tag.name(),
+                version,
+                alloc,
+            )?;
+        }
+
         Event::Start(tag) => {
             reader.read_to_end(tag.name())?;
         }
@@ -44,7 +94,7 @@ where
 }
 
 pub struct Parser;
-impl<'alloc, 'src, A> HandleStart<'alloc, 'src, A> for Parser
+impl<'alloc, 'src, A> HandleStart<'alloc, 'src, PartialEntry<'alloc, 'src, A>, A> for Parser
 where
     A: Allocator,
 {
@@ -52,10 +102,10 @@ where
         &self,
         reader: &mut NsReader<&'src [u8]>,
         start: Event<'src>,
-        feed: &mut PartialFeed<'alloc, 'src, A>,
+        item: &mut PartialEntry<'alloc, 'src, A>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
-        handle_start(reader, start, feed, version, alloc, false)
+        handle_start(reader, start, item, version, alloc, false)
     }
 }
