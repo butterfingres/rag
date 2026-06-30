@@ -10,6 +10,9 @@ pub trait HandleStart<'alloc, 'src, T, A>
 where
     A: Allocator,
 {
+    /// Handle a start [Event].
+    ///
+    /// This only needs to handle [Event::Start] and [Event::Empty].
     fn handle_start(
         &self,
         _: &mut NsReader<&'src [u8]>,
