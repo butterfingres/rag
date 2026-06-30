@@ -1,3 +1,7 @@
+//! Rss media namespace handler.
+//!
+//! Documentation for the namespace can be found at https://www.rssboard.org/media-rss.
+
 use {
     crate::xml::{
         ParserError, PartialEntry, get_attribute_when,
