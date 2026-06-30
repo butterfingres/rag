@@ -1,6 +1,6 @@
 //! Dublin core parser.
 //!
-//! See https://www.dublincore.org/specifications/dublin-core/dcmi-terms/.
+//! See <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/>.
 
 use {
     crate::xml::{ParserError, PartialEntry, ns::HandleStart},

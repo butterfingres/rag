@@ -1,6 +1,6 @@
 //! Rss media namespace handler.
 //!
-//! Documentation for the namespace can be found at https://www.rssboard.org/media-rss.
+//! Documentation for the namespace can be found at <https://www.rssboard.org/media-rss>.
 
 use {
     crate::xml::{
