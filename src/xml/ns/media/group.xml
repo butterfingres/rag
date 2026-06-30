@@ -2,6 +2,7 @@
 <item>
   <group xmlns="http://search.yahoo.com/mrss/">
     <title>hello world</title>
+    <description>test description</description>
     <content url="https://example.com/hello_world.mp3"/>
   </group>
 </item>

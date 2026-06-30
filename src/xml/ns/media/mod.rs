@@ -132,7 +132,7 @@ mod tests {
             Entry {
                 title: Some(Cow::Borrowed(b"hello world")),
                 link: None,
-                description: None,
+                description: Some(Cow::Borrowed(b"test description")),
                 id: None,
                 pub_date: None,
                 enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc))],
@@ -147,7 +147,7 @@ mod tests {
             Entry {
                 title: Some(Cow::Borrowed(b"hello world")),
                 link: None,
-                description: None,
+                description: Some(Cow::Borrowed(b"test description")),
                 id: None,
                 pub_date: None,
                 enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc))],
