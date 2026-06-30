@@ -2,5 +2,7 @@
 <item xmlns:media="http://search.yahoo.com/mrss/">
   <media:title>hello world</media:title>
   <media:content media:url="https://example.com/hello_world.mp3"/>
+  <media:player media:url="https://example.com/hello_world.mp4"/>
+  <media:peerLink media:href="https://example.com/hello_world.torrent"/>
   <media:description>test description</media:description>
 </item>

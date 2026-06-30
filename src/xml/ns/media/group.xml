@@ -4,5 +4,7 @@
     <title>hello world</title>
     <description>test description</description>
     <content url="https://example.com/hello_world.mp3"/>
+    <player url="https://example.com/hello_world.mp4"/>
+    <peerLink href="https://example.com/hello_world.torrent"/>
   </group>
 </item>

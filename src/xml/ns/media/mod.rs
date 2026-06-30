@@ -16,6 +16,7 @@ use {
 pub const NS: &[u8] = b"http://search.yahoo.com/mrss/";
 
 fn handle_url_attribute<'alloc, 'src, A>(
+    url_attribute: &str,
     reader: &NsReader<&'src [u8]>,
     start: BytesStart<'src>,
     item: &mut PartialEntry<'alloc, 'src, A>,
@@ -28,7 +29,7 @@ where
     if let Some(url) = get_attribute_when(
         &start,
         |_| Ok(true),
-        |attr| matches!(reader.resolver().resolve(attr.key, true), (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == b"url"),
+        |attr| matches!(reader.resolver().resolve(attr.key, true), (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == url_attribute.as_bytes()),
         version,
         alloc,
     )? {
@@ -63,10 +64,18 @@ where
 
         Event::Start(tag) if let b"content" | b"player" = tag.local_name().as_ref() => {
             reader.read_to_end(tag.name())?;
-            handle_url_attribute(reader, tag, item, version, alloc)?;
+            handle_url_attribute("url", reader, tag, item, version, alloc)?;
         }
         Event::Empty(tag) if let b"content" | b"player" = tag.local_name().as_ref() => {
-            handle_url_attribute(reader, tag, item, version, alloc)?;
+            handle_url_attribute("url", reader, tag, item, version, alloc)?;
+        }
+
+        Event::Start(tag) if let b"peerLink" = tag.local_name().as_ref() => {
+            reader.read_to_end(tag.name())?;
+            handle_url_attribute("href", reader, tag, item, version, alloc)?;
+        }
+        Event::Empty(tag) if let b"peerLink" = tag.local_name().as_ref() => {
+            handle_url_attribute("href", reader, tag, item, version, alloc)?;
         }
 
         // TODO: handle type
@@ -135,7 +144,11 @@ mod tests {
                 description: Some(Cow::Borrowed(b"test description")),
                 id: None,
                 pub_date: None,
-                enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc))],
+                enclosures: vec![in &alloc;
+                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc)),
+                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp4", &alloc)),
+                    Box::slice(Box::new_in(*b"https://example.com/hello_world.torrent", &alloc)),
+                ],
             },
             &alloc,
         )?;
@@ -150,7 +163,11 @@ mod tests {
                 description: Some(Cow::Borrowed(b"test description")),
                 id: None,
                 pub_date: None,
-                enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc))],
+                enclosures: vec![in &alloc;
+                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc)),
+                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp4", &alloc)),
+                    Box::slice(Box::new_in(*b"https://example.com/hello_world.torrent", &alloc)),
+                ],
             },
             &alloc,
         )
