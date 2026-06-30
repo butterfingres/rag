@@ -1,4 +1,5 @@
 pub mod fmt;
+pub mod ns;
 pub mod parser;
 
 use {
