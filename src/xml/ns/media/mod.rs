@@ -1,6 +1,6 @@
 use {
     crate::xml::{
-        ParserError, PartialEntry, get_attribute_when,
+        ParserError, PartialEntry, PartialFeed, get_attribute_when,
         ns::HandleStart,
         parser::{Content, TagParser as _},
     },
@@ -116,6 +116,27 @@ where
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         handle_start(reader, start, item, version, alloc, false)
+    }
+}
+impl<'alloc, 'src, A> HandleStart<'alloc, 'src, PartialFeed<'alloc, 'src, A>, A> for Parser
+where
+    A: Allocator,
+{
+    fn handle_start(
+        &self,
+        reader: &mut NsReader<&'src [u8]>,
+        start: Event<'src>,
+        feed: &mut PartialFeed<'alloc, 'src, A>,
+        version: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        if let Event::Start(tag) = start
+            && tag.local_name().as_ref() == b"title"
+        {
+            feed.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
+        }
+
+        Ok(())
     }
 }
 
