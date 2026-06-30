@@ -119,15 +119,31 @@ mod tests {
             xml::{Entry, ns::tests::test_item_parser},
         },
         allocator_api2::{alloc::Global, boxed::Box, vec},
+        bump_scope::Bump,
     };
 
     #[test]
     fn test_media_parser() -> Result<(), ParserError> {
-        let alloc = Global;
+        let mut alloc = Bump::<Global>::try_new()?;
 
         test_item_parser(
             &Parser,
             include_str!("./item.xml"),
+            Entry {
+                title: Some(Cow::Borrowed(b"hello world")),
+                link: None,
+                description: None,
+                id: None,
+                pub_date: None,
+                enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc))],
+            },
+            &alloc,
+        )?;
+        alloc.reset_to_start();
+
+        test_item_parser(
+            &Parser,
+            include_str!("./group.xml"),
             Entry {
                 title: Some(Cow::Borrowed(b"hello world")),
                 link: None,
