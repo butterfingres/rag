@@ -33,7 +33,7 @@ where
 /// Parse the dublin core date.
 ///
 /// See <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/#date>.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "this function is currently only used in tests")]
 fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
     // If the timestamp contains a slash then it is ambiguous because
     // the publishing date might be anywhere between the range.
@@ -67,38 +67,110 @@ fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::tz, jiff::civil::datetime};
+    use {super::*, arrayvec::ArrayVec, jiff::civil::datetime, std::iter};
 
-    #[test]
-    fn test_parse_date() -> Result<(), ParserError> {
+    const RANGE_TS: &[u8] = b"2001-01-01";
+
+    fn test_parse_date<const BUF: usize>(
+        input: &[u8],
+        output: Timestamp,
+    ) -> Result<(), ParserError> {
+        let mut buf = ArrayVec::<_, BUF>::new();
+        buf.try_extend_from_slice(input).unwrap();
         assert_eq!(
-            parse_date(b"2000-01-01")?,
+            parse_date(&buf)?,
             Replaceable {
-                replaceable: false,
-                data: datetime(2000, 01, 01, 00, 00, 00, 00)
-                    .to_zoned(TimeZone::UTC)?
-                    .timestamp(),
+                data: output,
+                replaceable: false
             }
         );
+
+        buf.push(b'/');
         assert_eq!(
-            parse_date(b"2000-01-01T12:00:00")?,
+            parse_date(&buf)?,
             Replaceable {
-                replaceable: false,
-                data: datetime(2000, 01, 01, 12, 00, 00, 00)
-                    .to_zoned(TimeZone::UTC)?
-                    .timestamp(),
+                data: output,
+                replaceable: true
             }
         );
+
+        buf.clear();
+        buf.extend(iter::once(b'/').chain(input.iter().copied()));
         assert_eq!(
-            parse_date(b"2000-01-01T12:00:00Z")?,
+            parse_date(&buf)?,
             Replaceable {
-                replaceable: false,
-                data: datetime(2000, 01, 01, 12, 00, 00, 00)
-                    .to_zoned(tz::Z)?
-                    .timestamp(),
+                data: output,
+                replaceable: true
             }
+        );
+
+        buf.clear();
+        buf.extend(
+            RANGE_TS
+                .iter()
+                .copied()
+                .chain(iter::once(b'/'))
+                .chain(input.iter().copied()),
+        );
+        assert_eq!(
+            parse_date(&buf)?,
+            Replaceable {
+                data: output,
+                replaceable: true
+            },
+            "the right side should be favored"
+        );
+
+        buf.clear();
+        buf.extend(
+            input
+                .iter()
+                .copied()
+                .chain(iter::once(b'/'))
+                .chain(RANGE_TS.iter().copied()),
+        );
+        assert_eq!(
+            parse_date(&buf)?,
+            Replaceable {
+                data: datetime(2001, 01, 01, 00, 00, 00, 00)
+                    .to_zoned(TimeZone::UTC)?
+                    .timestamp(),
+                replaceable: true
+            },
+            "the right side should be favored"
         );
 
         Ok(())
     }
+
+    macro_rules! test_parse_date {
+        ($name:ident, $input:literal, $output:expr) => {
+            #[test]
+            fn $name() -> Result<(), ParserError> {
+                const INPUT: &[u8] = $input;
+                test_parse_date::<{ INPUT.len() + 1 + RANGE_TS.len() }>(INPUT, $output)
+            }
+        };
+    }
+    test_parse_date!(
+        test_parse_date_date,
+        b"2000-01-01",
+        datetime(2000, 01, 01, 00, 00, 00, 00)
+            .to_zoned(TimeZone::UTC)?
+            .timestamp()
+    );
+    test_parse_date!(
+        test_parse_date_datetime,
+        b"2000-01-01T12:00:00",
+        datetime(2000, 01, 01, 12, 00, 00, 00)
+            .to_zoned(TimeZone::UTC)?
+            .timestamp()
+    );
+    test_parse_date!(
+        test_parse_date_datetime_timezone,
+        b"2000-01-01T12:00:00Z",
+        datetime(2000, 01, 01, 12, 00, 00, 00)
+            .to_zoned(TimeZone::UTC)?
+            .timestamp()
+    );
 }
