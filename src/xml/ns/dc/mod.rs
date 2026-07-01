@@ -47,10 +47,10 @@ fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
         .unwrap_or((false, date));
 
     let timestamp = DateTimeParser::new()
-        .parse_datetime(&date)
+        .parse_datetime(date)
         .and_then(|dt| dt.to_zoned(TimeZone::UTC))
         .map(|zoned| zoned.timestamp())
-        .or_else(|_| DateTimeParser::new().parse_timestamp(&date))?;
+        .or_else(|_| DateTimeParser::new().parse_timestamp(date))?;
 
     Ok(Replaceable {
         replaceable,
