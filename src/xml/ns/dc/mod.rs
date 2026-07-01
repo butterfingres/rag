@@ -5,7 +5,11 @@
 use {
     crate::{
         num::parse,
-        xml::{ParserError, PartialEntry, Replaceable, ns::HandleStart},
+        xml::{
+            ParserError, PartialEntry, Replaceable,
+            ns::HandleStart,
+            parser::{Content, TagParser as _},
+        },
     },
     allocator_api2::alloc::Allocator,
     jiff::{Timestamp, civil::datetime, fmt::temporal::DateTimeParser, tz::TimeZone},
@@ -23,12 +27,28 @@ where
 {
     fn handle_start(
         &self,
-        _reader: &mut NsReader<&'src [u8]>,
-        _start: Event<'src>,
-        _item: &mut PartialEntry<'alloc, 'src, A>,
-        _version: XmlVersion,
-        _alloc: &'alloc A,
+        reader: &mut NsReader<&'src [u8]>,
+        start: Event<'src>,
+        item: &mut PartialEntry<'alloc, 'src, A>,
+        version: XmlVersion,
+        alloc: &'alloc A,
     ) -> Result<(), ParserError> {
+        match start {
+            Event::Start(tag) if tag.local_name().as_ref() == b"date" => {
+                item.updated.try_replace_with(|| {
+                    Content
+                        .flat_map(parse_date)
+                        .map(|replaceable| replaceable.map(Some))
+                        .parse_tag(reader, tag.name(), version, alloc)
+                })?;
+            }
+
+            Event::Start(tag) => {
+                reader.read_to_end(tag.name())?;
+            }
+            _ => {}
+        }
+
         Ok(())
     }
 }
@@ -36,8 +56,12 @@ where
 /// Parse the dublin core date.
 ///
 /// See <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/#date>.
-#[allow(dead_code, reason = "this function is currently only used in tests")]
-fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
+fn parse_date<T>(date: T) -> Result<Replaceable<Timestamp>, ParserError>
+where
+    T: AsRef<[u8]>,
+{
+    let date = date.as_ref();
+
     // If the timestamp contains a slash then it is ambiguous because
     // the publishing date might be anywhere between the range.
     let (replaceable, date) = memchr(b'/', date)

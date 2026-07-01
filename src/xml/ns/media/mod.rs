@@ -4,7 +4,7 @@
 
 use {
     crate::xml::{
-        ParserError, PartialEntry, get_attribute_when,
+        ParserError, PartialEntry, Replaceable, get_attribute_when,
         ns::HandleStart,
         parser::{Content, TagParser as _},
     },
@@ -87,8 +87,8 @@ where
             item.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
         }
         Event::Start(tag) if tag.local_name().as_ref() == b"description" => {
-            item.content.try_replace_or_skip::<false, _, _>(
-                Content.map(Some),
+            item.content.try_replace_or_skip(
+                Content.map(Some).map(Replaceable::irreplaceable),
                 reader,
                 tag.name(),
                 version,

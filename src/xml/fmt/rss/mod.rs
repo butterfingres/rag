@@ -151,8 +151,8 @@ where
                         .map(Some)?;
                 }
                 Event::Start(tag) if tag.name().0 == b"link" => {
-                    item.link.try_replace_or_skip::<false, _, _>(
-                        Content.map(Some),
+                    item.link.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -160,8 +160,8 @@ where
                     )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"description" => {
-                    item.content.try_replace_or_skip::<false, _, _>(
-                        Content.map(Some),
+                    item.content.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -192,8 +192,11 @@ where
                     item.id = Some(link);
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
-                    item.updated.try_replace_or_skip::<false, _, _>(
-                        Content.flat_map(rfc2822_timestamp).map(Some),
+                    item.updated.try_replace_or_skip(
+                        Content
+                            .flat_map(rfc2822_timestamp)
+                            .map(Some)
+                            .map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -296,8 +299,8 @@ where
                 (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"link" =>
                 {
-                    state.link.try_replace_or_skip::<false, _, _>(
-                        Content.map(Some),
+                    state.link.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -309,8 +312,11 @@ where
                 (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"pubDate" =>
                 {
-                    state.last_update.try_replace_or_skip::<true, _, _>(
-                        Content.flat_map(rfc2822_timestamp).map(Some),
+                    state.last_update.try_replace_or_skip(
+                        Content
+                            .flat_map(rfc2822_timestamp)
+                            .map(Some)
+                            .map(Replaceable::replaceable),
                         reader,
                         tag.name(),
                         version,
@@ -322,8 +328,11 @@ where
                 (step @ Parser::InsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"lastBuildDate" =>
                 {
-                    state.last_update.try_replace_or_skip::<false, _, _>(
-                        Content.flat_map(rfc2822_timestamp).map(Some),
+                    state.last_update.try_replace_or_skip(
+                        Content
+                            .flat_map(rfc2822_timestamp)
+                            .map(Some)
+                            .map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,

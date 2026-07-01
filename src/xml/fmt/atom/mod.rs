@@ -113,8 +113,8 @@ where
                         .map(Some)?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
-                    entry.content.try_replace_or_skip::<false, _, _>(
-                        Content.map(Some),
+                    entry.content.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -122,8 +122,8 @@ where
                     )?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
-                    entry.content.try_replace_or_skip::<true, _, _>(
-                        Content.map(Some),
+                    entry.content.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::replaceable),
                         reader,
                         tag.name(),
                         version,
@@ -131,8 +131,11 @@ where
                     )?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
-                    entry.updated.try_replace_or_skip::<false, _, _>(
-                        Content.flat_map(rfc3339_timestamp).map(Some),
+                    entry.updated.try_replace_or_skip(
+                        Content
+                            .flat_map(rfc3339_timestamp)
+                            .map(Some)
+                            .map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -241,8 +244,11 @@ where
                     state.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
                 }
                 (NS, name) if name.as_ref() == b"updated" => {
-                    state.last_update.try_replace_or_skip::<false, _, _>(
-                        Content.flat_map(rfc3339_timestamp).map(Some),
+                    state.last_update.try_replace_or_skip(
+                        Content
+                            .flat_map(rfc3339_timestamp)
+                            .map(Some)
+                            .map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,

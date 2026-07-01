@@ -1,6 +1,6 @@
 use {
     crate::xml::{
-        self, Entry, ParserError, PartialEntry, PartialFeed, TryFromRootError,
+        self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
         parser::{Content, ParseTagInto, TagParser},
     },
     allocator_api2::alloc::Allocator,
@@ -42,8 +42,8 @@ where
                     entry.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
-                    entry.content.try_replace_or_skip::<false, _, _>(
-                        Content.map(Some),
+                    entry.content.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -51,8 +51,8 @@ where
                     )?;
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
-                    entry.link.try_replace_or_skip::<false, _, _>(
-                        Content.map(Some),
+                    entry.link.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -123,8 +123,8 @@ where
                     Ok(step)
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"link" => {
-                    state.link.try_replace_or_skip::<false, _, _>(
-                        Content.map(Some),
+                    state.link.try_replace_or_skip(
+                        Content.map(Some).map(Replaceable::irreplaceable),
                         reader,
                         tag.name(),
                         version,

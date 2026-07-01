@@ -205,7 +205,20 @@ pub struct Replaceable<T> {
     replaceable: bool,
 }
 impl<T> Replaceable<T> {
-    fn try_replace_or_skip<'alloc, 'src, const REPLACEABLE: bool, P, A>(
+    fn replaceable(data: T) -> Self {
+        Self {
+            data,
+            replaceable: true,
+        }
+    }
+    fn irreplaceable(data: T) -> Self {
+        Self {
+            data,
+            replaceable: false,
+        }
+    }
+
+    fn try_replace_or_skip<'alloc, 'src, P, U, A>(
         &mut self,
         parser: P,
         reader: &mut NsReader<&'src [u8]>,
@@ -214,17 +227,37 @@ impl<T> Replaceable<T> {
         alloc: &'alloc A,
     ) -> Result<(), ParserError>
     where
-        P: TagParser<'alloc, 'src, A, Output = T>,
+        P: TagParser<'alloc, 'src, A, Output = U>,
+        U: Into<Replaceable<T>>,
         A: Allocator,
     {
         if self.replaceable {
-            self.data = parser.parse_tag(reader, name, version, alloc)?;
-            self.replaceable = REPLACEABLE;
+            *self = parser.parse_tag(reader, name, version, alloc)?.into();
         } else {
             reader.read_to_end(name)?;
         }
 
         Ok(())
+    }
+    fn try_replace_with<F, E>(&mut self, f: F) -> Result<(), E>
+    where
+        F: FnOnce() -> Result<Self, E>,
+    {
+        if self.replaceable {
+            *self = f()?;
+        }
+
+        Ok(())
+    }
+
+    fn map<F, U>(self, f: F) -> Replaceable<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        Replaceable {
+            data: f(self.data),
+            replaceable: self.replaceable,
+        }
     }
 }
 impl<T> Default for Replaceable<T>
