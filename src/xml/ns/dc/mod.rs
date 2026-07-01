@@ -3,8 +3,10 @@
 //! See <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/>.
 
 use {
-    crate::xml::{ParserError, PartialEntry, ns::HandleStart},
+    crate::xml::{ParserError, PartialEntry, Replaceable, ns::HandleStart},
     allocator_api2::alloc::Allocator,
+    jiff::{Timestamp, civil::DateTime, fmt::temporal::DateTimeParser},
+    memchr::memchr,
     quick_xml::{XmlVersion, events::Event, reader::NsReader},
 };
 
@@ -25,4 +27,29 @@ where
     ) -> Result<(), ParserError> {
         Ok(())
     }
+}
+
+/// Parse the dublin core date.
+///
+/// See <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/#date>.
+fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
+    // If the timestamp contains a slash then it is ambiguous because
+    // the publishing date might be anywhere between the range.
+    let (replaceable, date) = memchr(b'/', date)
+        .map(|idx| {
+            let l = &date[..idx];
+            let r = &date[idx + 1..];
+            // We prefer the right (end time) because we can use
+            // the latest timestamp in If-Modified-Since.
+            (true, if r.is_empty() { l } else { r })
+        })
+        .unwrap_or((false, date));
+
+    // We use the RFC 9557 parser because the Dublin Core specs don't
+    // say that the timestamp won't contain timezones and the
+    // [jiff::civil::DateTime] will return errors for timezones.
+    Ok(Replaceable {
+        replaceable,
+        data: DateTimeParser::new().parse_zoned(date)?.timestamp(),
+    })
 }
