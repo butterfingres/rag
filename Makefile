@@ -27,16 +27,16 @@ include Makefile.in
 
 all: ${ELCS}
 check: all
-	${EMACS} ${EMACSFLAGS} -l rag-core-tests -l ert -f ert-run-tests-batch-and-exit
-	${EMACS} ${EMACSFLAGS} -l rag-db-tests -l ert -f ert-run-tests-batch-and-exit
-	${EMACS} ${EMACSFLAGS} -l rag-entry-tests -l ert -f ert-run-tests-batch-and-exit
-	${EMACS} ${EMACSFLAGS} -l rag-pool-tests -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-core-tests   -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-db-tests     -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-entry-tests  -l ert -f ert-run-tests-batch-and-exit
+	${EMACS} ${EMACSFLAGS} -l rag-pool-tests   -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-source-tests -l ert -f ert-run-tests-batch-and-exit
-	${EMACS} ${EMACSFLAGS} -l rag-tests -l ert -f ert-run-tests-batch-and-exit
-	${CARGO} ${CARGOFLAGS} fmt --check ${CARGOFMTFLAGS}
-	${CARGO} ${CARGOFLAGS} check ${CARGOCHECKFLAGS}
+	${EMACS} ${EMACSFLAGS} -l rag-tests        -l ert -f ert-run-tests-batch-and-exit
+	${CARGO} ${CARGOFLAGS} fmt    ${CARGOFMTFLAGS}    --check
+	${CARGO} ${CARGOFLAGS} check  ${CARGOCHECKFLAGS}
 	${CARGO} ${CARGOFLAGS} clippy ${CARGOCLIPPYFLAGS}
-	${CARGO} ${CARGOFLAGS} test ${CARGOTESTFLAGS}
+	${CARGO} ${CARGOFLAGS} test   ${CARGOTESTFLAGS}
 clean:
 	-rm ${ELCS}
 	-${CARGO} ${CARGOFLAGS} clean ${CARGOCLEANFLAGS}
