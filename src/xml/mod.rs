@@ -111,7 +111,7 @@ where
             skip_days,
             ttl,
         } = self;
-        f.debug_struct("PartialFeed")
+        f.debug_struct("Feed")
             .field("title", &title)
             .field("link", &link)
             .field("last_update", &last_update)
