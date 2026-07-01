@@ -14,6 +14,9 @@ where
     /// Handle a start [Event].
     ///
     /// This only needs to handle [Event::Start] and [Event::Empty].
+    ///
+    /// If the [Event] is an [Event::Start], the reader should be read
+    /// to the end of the element.
     fn handle_start(
         &self,
         _: &mut NsReader<&'src [u8]>,
