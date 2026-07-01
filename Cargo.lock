@@ -250,6 +250,7 @@ dependencies = [
  "bump-scope",
  "emacs",
  "jiff",
+ "memchr",
  "quick-xml",
 ]
 
