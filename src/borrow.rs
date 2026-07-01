@@ -2,7 +2,6 @@ use {
     crate::fmt::debug_bytes,
     allocator_api2::{
         alloc::{Allocator, Global},
-        boxed::Box,
         collections::TryReserveError,
         vec::Vec,
     },
@@ -145,13 +144,4 @@ where
     fn eq(&self, r: &Cow<'a, T, A2>) -> bool {
         self.as_ref() == r.as_ref()
     }
-}
-
-pub enum MaybeOwned<'a, T, A = Global>
-where
-    T: ?Sized,
-    A: Allocator,
-{
-    Borrow(&'a T),
-    Owned(Box<T, A>),
 }

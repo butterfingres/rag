@@ -133,7 +133,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            alloc::tests::with_bump,
+            alloc::with_bump,
             borrow::Cow,
             xml::{Entry, ns::tests::test_item_parser},
         },

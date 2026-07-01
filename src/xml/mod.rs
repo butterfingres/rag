@@ -729,7 +729,7 @@ pub fn get_header<'src>(
 mod tests {
     use {
         super::*,
-        crate::alloc::{self, tests::with_bump},
+        crate::alloc::{self, with_bump},
         std::{assert_matches, fmt::Debug},
     };
 

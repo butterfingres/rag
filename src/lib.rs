@@ -3,13 +3,15 @@
     reason = "dates and times look more clear with a prefixed zero"
 )]
 
-pub mod alloc;
-pub mod borrow;
-pub mod bump;
+#[cfg(test)]
+mod alloc;
+mod borrow;
+mod bump;
 mod fmt;
 mod num;
 mod sym;
-pub mod tz;
+#[cfg(test)]
+mod tz;
 pub mod xml;
 
 emacs::plugin_is_GPL_compatible!();

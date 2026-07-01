@@ -296,7 +296,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            alloc::tests::with_bump,
+            alloc::with_bump,
             tz,
             xml::{
                 Feed, SkipDays, SkipHours,

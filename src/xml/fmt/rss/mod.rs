@@ -411,7 +411,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            alloc::{self, tests::with_bump},
+            alloc::{self, with_bump},
             borrow::Cow,
             tz,
             xml::{
