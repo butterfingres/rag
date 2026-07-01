@@ -6,7 +6,7 @@ use {
     crate::{
         num::parse,
         xml::{
-            ParserError, PartialEntry, Replaceable,
+            ParserError, PartialEntry, PartialFeed, Replaceable,
             ns::HandleStart,
             parser::{Content, TagParser as _},
         },
@@ -61,6 +61,45 @@ where
             // we should prefer native identifier types
             Event::Start(tag) if tag.local_name().as_ref() == b"identifier" => {
                 item.id.try_replace_with(|| {
+                    Content
+                        .map(Replaceable::replaceable)
+                        .map(|replaceable| replaceable.map(Some))
+                        .parse_tag(reader, tag.name(), version, alloc)
+                })?;
+            }
+
+            Event::Start(tag) => {
+                reader.read_to_end(tag.name())?;
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+}
+impl<'alloc, 'src, A> HandleStart<'alloc, 'src, PartialFeed<'alloc, 'src, A>, A> for Parser
+where
+    A: Allocator,
+{
+    fn handle_start(
+        &self,
+        reader: &mut NsReader<&'src [u8]>,
+        start: Event<'src>,
+        feed: &mut PartialFeed<'alloc, 'src, A>,
+        version: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        match start {
+            Event::Start(tag) if tag.local_name().as_ref() == b"date" => {
+                feed.last_update.try_replace_with(|| {
+                    Content
+                        .flat_map(parse_date)
+                        .map(|replaceable| replaceable.map(Some))
+                        .parse_tag(reader, tag.name(), version, alloc)
+                })?;
+            }
+            Event::Start(tag) if tag.local_name().as_ref() == b"title" => {
+                feed.title.try_replace_with(|| {
                     Content
                         .map(Replaceable::replaceable)
                         .map(|replaceable| replaceable.map(Some))

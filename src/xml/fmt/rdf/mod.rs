@@ -123,9 +123,14 @@ where
                     Ok(Self::InsideChannel)
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"title" => {
-                    state.title = Content
-                        .parse_tag(reader, tag.name(), version, alloc)
-                        .map(Some)?;
+                    state.title.try_replace_with(|| {
+                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )
+                    })?;
 
                     Ok(step)
                 }

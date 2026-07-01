@@ -40,7 +40,7 @@ pub struct PartialFeed<'alloc, 'src, A>
 where
     A: Allocator,
 {
-    title: Option<Cow<'src, [u8], &'alloc A>>,
+    title: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     link: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     last_update: Replaceable<Option<Timestamp>>,
     skip_hours: SkipHours,
@@ -53,7 +53,7 @@ where
 {
     fn default() -> Self {
         Self {
-            title: None,
+            title: Replaceable::default(),
             link: Replaceable::default(),
             last_update: Replaceable::default(),
             skip_hours: SkipHours::default(),
@@ -77,7 +77,7 @@ where
         }: PartialFeed<'alloc, 'src, A>,
     ) -> Feed<'alloc, 'src, A> {
         Feed {
-            title,
+            title: title.data,
             link: link.data,
             skip_days,
             skip_hours,

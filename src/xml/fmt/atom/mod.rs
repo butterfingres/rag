@@ -251,7 +251,14 @@ where
         match event {
             Event::Start(tag) => match reader.resolver().resolve_element(tag.name()) {
                 (NS, name) if name.as_ref() == b"title" => {
-                    state.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
+                    state.title.try_replace_with(|| {
+                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )
+                    })?;
                 }
                 (NS, name) if name.as_ref() == b"updated" => {
                     state.last_update.try_replace_or_skip(
