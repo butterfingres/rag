@@ -146,9 +146,14 @@ where
         loop {
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == b"title" => {
-                    item.title = Content
-                        .parse_tag(reader, tag.name(), version, alloc)
-                        .map(Some)?;
+                    item.title.try_replace_with(|| {
+                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )
+                    })?;
                 }
                 Event::Start(tag) if tag.name().0 == b"link" => {
                     item.link.try_replace_or_skip(

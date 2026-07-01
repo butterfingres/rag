@@ -276,7 +276,7 @@ pub struct PartialEntry<'alloc, 'src, A>
 where
     A: Allocator,
 {
-    title: Option<Cow<'src, [u8], &'alloc A>>,
+    title: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     link: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     content: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     id: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
@@ -289,7 +289,7 @@ where
 {
     fn new_in(alloc: &'alloc A) -> Self {
         Self {
-            title: None,
+            title: Replaceable::default(),
             link: Replaceable::default(),
             content: Replaceable::default(),
             id: Replaceable::default(),
@@ -409,7 +409,7 @@ where
         }: PartialEntry<'alloc, 'src, A>,
     ) -> Entry<'alloc, 'src, A> {
         Entry {
-            title,
+            title: title.data,
             link: link.data,
             description: content.data,
             id: id.data,

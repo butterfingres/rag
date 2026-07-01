@@ -84,7 +84,14 @@ where
 
         // TODO: handle type
         Event::Start(tag) if tag.local_name().as_ref() == b"title" => {
-            item.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
+            item.title.try_replace_with(|| {
+                Content.map(Some).map(Replaceable::replaceable).parse_tag(
+                    reader,
+                    tag.name(),
+                    version,
+                    alloc,
+                )
+            })?;
         }
         Event::Start(tag) if tag.local_name().as_ref() == b"description" => {
             item.content.try_replace_or_skip(

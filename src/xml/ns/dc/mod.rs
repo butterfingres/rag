@@ -50,6 +50,14 @@ where
                         .parse_tag(reader, tag.name(), version, alloc)
                 })?;
             }
+            Event::Start(tag) if tag.local_name().as_ref() == b"title" => {
+                item.title.try_replace_with(|| {
+                    Content
+                        .map(Replaceable::replaceable)
+                        .map(|replaceable| replaceable.map(Some))
+                        .parse_tag(reader, tag.name(), version, alloc)
+                })?;
+            }
             // we should prefer native identifier types
             Event::Start(tag) if tag.local_name().as_ref() == b"identifier" => {
                 item.id.try_replace_with(|| {
@@ -259,7 +267,7 @@ mod tests {
             &Parser,
             include_str!("./all.xml"),
             Entry {
-                title: None,
+                title: Some(Cow::Borrowed(b"first entry")),
                 link: None,
                 description: Some(Cow::Borrowed(b"example description")),
                 id: Some(Cow::Borrowed(b"1")),

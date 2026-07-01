@@ -113,9 +113,14 @@ where
                     })?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
-                    entry.title = Content
-                        .parse_tag(reader, tag.name(), version, alloc)
-                        .map(Some)?;
+                    entry.title.try_replace_with(|| {
+                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )
+                    })?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
                     entry.content.try_replace_or_skip(

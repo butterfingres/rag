@@ -39,7 +39,14 @@ where
         loop {
             match reader.read_resolved_event()? {
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
-                    entry.title = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
+                    entry.title.try_replace_with(|| {
+                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )
+                    })?;
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
                     entry.content.try_replace_or_skip(
