@@ -287,7 +287,8 @@ insert VALUE into or the line number of VALUE."
           (let ((line (cdr (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
                                                           (rag-entry-pub-date entry))))
                 (inhibit-read-only t))
-            (goto-line line)
+            (goto-char (point-min))
+            (forward-line (1- line))
             (open-line 1)
             (rag-entry-insert entry)))))))
 
