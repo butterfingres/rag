@@ -28,7 +28,8 @@ use {
     std::{
         error::Error,
         fmt::{Debug, Display, Formatter},
-        ptr, str,
+        ptr,
+        str::{self, Utf8Error},
     },
 };
 
@@ -423,11 +424,12 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     Alloc(AllocError),
+    ChronoParse(chrono::format::ParseError),
     Emacs(emacs::Error),
+    Jiff(jiff::Error),
     MissingRoot,
-    NotUtf8,
+    Utf8(Utf8Error),
     ParseInt(ParseIntError),
-    ParseTimestamp(jiff::Error),
     TryReserve(TryReserveError),
     UnknownWeekday,
     Xml(quick_xml::Error),
@@ -439,12 +441,13 @@ impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Alloc(e) => Display::fmt(e, f),
+            Self::ChronoParse(e) => Display::fmt(e, f),
             Self::Emacs(e) => Display::fmt(e, f),
+            Self::Jiff(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),
-            Self::NotUtf8 => f.write_str("input is not utf8"),
             Self::ParseInt(e) => Display::fmt(e, f),
-            Self::ParseTimestamp(e) => Display::fmt(e, f),
             Self::TryReserve(e) => Display::fmt(e, f),
+            Self::Utf8(e) => Display::fmt(e, f),
             Self::UnknownWeekday => f.write_str("unknown weekday"),
             Self::Xml(e) => Display::fmt(e, f),
         }
@@ -454,6 +457,11 @@ impl Error for ParserError {}
 impl From<AllocError> for ParserError {
     fn from(e: AllocError) -> Self {
         Self::Alloc(e)
+    }
+}
+impl From<chrono::format::ParseError> for ParserError {
+    fn from(e: chrono::format::ParseError) -> Self {
+        Self::ChronoParse(e)
     }
 }
 impl From<bump_scope::alloc::AllocError> for ParserError {
@@ -468,7 +476,7 @@ impl From<emacs::Error> for ParserError {
 }
 impl From<jiff::Error> for ParserError {
     fn from(e: jiff::Error) -> Self {
-        Self::ParseTimestamp(e)
+        Self::Jiff(e)
     }
 }
 impl From<ParseIntError> for ParserError {
@@ -479,6 +487,11 @@ impl From<ParseIntError> for ParserError {
 impl From<TryReserveError> for ParserError {
     fn from(e: TryReserveError) -> Self {
         Self::TryReserve(e)
+    }
+}
+impl From<Utf8Error> for ParserError {
+    fn from(e: Utf8Error) -> Self {
+        Self::Utf8(e)
     }
 }
 impl From<AttrError> for ParserError {

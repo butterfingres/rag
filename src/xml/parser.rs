@@ -174,7 +174,7 @@ where
     rfc2822::DateTimeParser::new()
         .relaxed_weekday(true)
         .parse_timestamp(ts)
-        .map_err(ParserError::ParseTimestamp)
+        .map_err(ParserError::Jiff)
 }
 pub fn rfc3339_timestamp<T>(ts: T) -> Result<Timestamp, ParserError>
 where
@@ -182,7 +182,7 @@ where
 {
     temporal::DateTimeParser::new()
         .parse_timestamp(ts)
-        .map_err(ParserError::ParseTimestamp)
+        .map_err(ParserError::Jiff)
 }
 
 #[cfg(test)]
