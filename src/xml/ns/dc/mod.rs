@@ -5,7 +5,6 @@
 use {
     crate::xml::{ParserError, PartialEntry, Replaceable, ns::HandleStart},
     allocator_api2::alloc::Allocator,
-    chrono::DateTime,
     jiff::{Timestamp, fmt::temporal::DateTimeParser, tz::TimeZone},
     memchr::memchr,
     quick_xml::{XmlVersion, events::Event, reader::NsReader},
@@ -47,17 +46,11 @@ fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
         })
         .unwrap_or((false, date));
 
-    let date = str::from_utf8(date)?;
-    // Neither [chrono] or [jiff] have complete ISO-8601 parsers, so
-    // we must use both.
-    let timestamp = match DateTime::parse_from_rfc3339(date) {
-        Ok(dt) => Timestamp::from_second(dt.timestamp())?,
-        Err(err) if err.kind() == chrono::format::ParseErrorKind::TooShort => DateTimeParser::new()
-            .parse_datetime(&date)?
-            .to_zoned(TimeZone::UTC)?
-            .timestamp(),
-        Err(err) => return Err(ParserError::ChronoParse(err)),
-    };
+    let timestamp = DateTimeParser::new()
+        .parse_datetime(&date)
+        .and_then(|dt| dt.to_zoned(TimeZone::UTC))
+        .map(|zoned| zoned.timestamp())
+        .or_else(|_| DateTimeParser::new().parse_timestamp(&date))?;
 
     Ok(Replaceable {
         replaceable,
@@ -152,6 +145,20 @@ mod tests {
             }
         };
     }
+    test_parse_date!(
+        test_parse_date_y,
+        b"2000",
+        datetime(2000, 01, 01, 00, 00, 00, 00)
+            .to_zoned(TimeZone::UTC)?
+            .timestamp()
+    );
+    test_parse_date!(
+        test_parse_date_ym,
+        b"2000-01",
+        datetime(2000, 01, 01, 00, 00, 00, 00)
+            .to_zoned(TimeZone::UTC)?
+            .timestamp()
+    );
     test_parse_date!(
         test_parse_date_ymd,
         b"2000-01-01",
