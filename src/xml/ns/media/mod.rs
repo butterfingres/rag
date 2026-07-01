@@ -99,7 +99,7 @@ where
         Event::Start(tag) => {
             reader.read_to_end(tag.name())?;
         }
-        Event::Empty(_) => {}
+
         _ => {}
     }
 
