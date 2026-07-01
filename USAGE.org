@@ -2,8 +2,9 @@
 Key bindings in this document are described with [[https://www.gnu.org/software/emacs/manual/html_node/efaq/Basic-keys.html][Emacs' key
 notation]]. TLDR; =C-a= means =control+a=, =M-a= means =alt+a=.
 
-These code snippets can be ran with =C-M-x= with your cursor over the
-code.
+These code snippets can be ran with =C-M-x= (=M-x eval-defun RET=)
+with your cursor over the code or pasted into =M-:= (=M-x
+eval-expression RET=).
 
 ** Loading
 The modules are not loaded by default. Running the following would
