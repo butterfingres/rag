@@ -153,21 +153,21 @@ mod tests {
         };
     }
     test_parse_date!(
-        test_parse_date_date,
+        test_parse_date_ymd,
         b"2000-01-01",
         datetime(2000, 01, 01, 00, 00, 00, 00)
             .to_zoned(TimeZone::UTC)?
             .timestamp()
     );
     test_parse_date!(
-        test_parse_date_datetime,
+        test_parse_date_ymd_dt,
         b"2000-01-01T12:00:00",
         datetime(2000, 01, 01, 12, 00, 00, 00)
             .to_zoned(TimeZone::UTC)?
             .timestamp()
     );
     test_parse_date!(
-        test_parse_date_datetime_timezone,
+        test_parse_date_ymd_dt_timezone,
         b"2000-01-01T12:00:00Z",
         datetime(2000, 01, 01, 12, 00, 00, 00)
             .to_zoned(TimeZone::UTC)?
