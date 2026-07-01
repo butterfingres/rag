@@ -9,7 +9,7 @@ ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc	\
 	lisp/rag.elc
 
 EMACS = emacs
-EMACSFLAGS = -Q -batch -L target/debug -L lisp
+EMACSFLAGS = -Q -batch -L target/debug -L lisp -eval '(setq byte-compile-error-on-warn t)'
 
 CARGO = cargo
 
