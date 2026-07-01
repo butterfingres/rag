@@ -300,11 +300,11 @@ mod tests {
     );
 
     #[test]
-    fn test_dc_parser_all() -> Result<(), ParserError> {
+    fn test_dc_parser_item() -> Result<(), ParserError> {
         let alloc = Dummy;
         test_item_parser(
             &Parser,
-            include_str!("./all.xml"),
+            include_str!("./item.xml"),
             Entry {
                 title: Some(Cow::Borrowed(b"first entry")),
                 link: None,
