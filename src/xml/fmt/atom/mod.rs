@@ -131,10 +131,13 @@ where
                     )?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
-                    entry.updated = Content
-                        .flat_map(rfc3339_timestamp)
-                        .parse_tag(reader, tag.name(), version, alloc)
-                        .map(Some)?;
+                    entry.updated.try_replace_or_skip::<false, _, _>(
+                        Content.flat_map(rfc3339_timestamp).map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
 
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {

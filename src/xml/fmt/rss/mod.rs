@@ -192,10 +192,13 @@ where
                     item.id = Some(link);
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
-                    item.updated = Content
-                        .flat_map(rfc2822_timestamp)
-                        .parse_tag(reader, tag.name(), version, alloc)
-                        .map(Some)?;
+                    item.updated.try_replace_or_skip::<false, _, _>(
+                        Content.flat_map(rfc2822_timestamp).map(Some),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
                 }
                 Event::Start(tag) if tag.name().0 == b"enclosure" => {
                     reader.read_to_end(tag.name())?;

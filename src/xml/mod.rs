@@ -247,7 +247,7 @@ where
     link: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     content: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     id: Option<Cow<'src, [u8], &'alloc A>>,
-    updated: Option<Timestamp>,
+    updated: Replaceable<Option<Timestamp>>,
     enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
 }
 impl<'alloc, 'src, A> PartialEntry<'alloc, 'src, A>
@@ -260,7 +260,7 @@ where
             link: Replaceable::default(),
             content: Replaceable::default(),
             id: None,
-            updated: None,
+            updated: Replaceable::default(),
             enclosures: Vec::new_in(alloc),
         }
     }
@@ -380,7 +380,7 @@ where
             link: link.data,
             description: content.data,
             id,
-            pub_date: updated,
+            pub_date: updated.data,
             enclosures,
         }
     }
