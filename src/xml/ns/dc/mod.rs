@@ -103,7 +103,17 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, arrayvec::ArrayVec, jiff::civil::datetime, std::iter};
+    use {
+        super::*,
+        crate::{
+            alloc::Dummy,
+            xml::{Entry, ns::tests::test_item_parser},
+        },
+        allocator_api2::vec::Vec,
+        arrayvec::ArrayVec,
+        jiff::civil::datetime,
+        std::iter,
+    };
 
     const RANGE_TS: &[u8] = b"2001-01-01";
 
@@ -223,4 +233,26 @@ mod tests {
             .to_zoned(TimeZone::UTC)?
             .timestamp()
     );
+
+    #[test]
+    fn test_dc_parser_all() -> Result<(), ParserError> {
+        let alloc = Dummy;
+        test_item_parser(
+            &Parser,
+            include_str!("./all.xml"),
+            Entry {
+                title: None,
+                link: None,
+                description: None,
+                id: None,
+                pub_date: Some(
+                    datetime(2000, 01, 01, 00, 00, 00, 00)
+                        .to_zoned(TimeZone::UTC)?
+                        .timestamp(),
+                ),
+                enclosures: Vec::new_in(&alloc),
+            },
+            &alloc,
+        )
+    }
 }
