@@ -103,9 +103,14 @@ where
         loop {
             match reader.read_resolved_event()? {
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"id" => {
-                    entry.id = Content
-                        .parse_tag(reader, tag.name(), version, alloc)
-                        .map(Some)?;
+                    entry.id.try_replace_with(|| {
+                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
+                            reader,
+                            tag.name(),
+                            version,
+                            alloc,
+                        )
+                    })?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
                     entry.title = Content

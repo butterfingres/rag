@@ -189,7 +189,7 @@ where
                             replaceable: false,
                         };
                     }
-                    item.id = Some(link);
+                    item.id = Replaceable::irreplaceable(Some(link));
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
                     item.updated.try_replace_or_skip(

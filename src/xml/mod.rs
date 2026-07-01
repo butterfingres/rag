@@ -279,7 +279,7 @@ where
     title: Option<Cow<'src, [u8], &'alloc A>>,
     link: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     content: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
-    id: Option<Cow<'src, [u8], &'alloc A>>,
+    id: Replaceable<Option<Cow<'src, [u8], &'alloc A>>>,
     updated: Replaceable<Option<Timestamp>>,
     enclosures: Vec<Box<[u8], &'alloc A>, &'alloc A>,
 }
@@ -292,7 +292,7 @@ where
             title: None,
             link: Replaceable::default(),
             content: Replaceable::default(),
-            id: None,
+            id: Replaceable::default(),
             updated: Replaceable::default(),
             enclosures: Vec::new_in(alloc),
         }
@@ -412,7 +412,7 @@ where
             title,
             link: link.data,
             description: content.data,
-            id,
+            id: id.data,
             pub_date: updated.data,
             enclosures,
         }

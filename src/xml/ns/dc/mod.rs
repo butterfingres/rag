@@ -50,8 +50,14 @@ where
                         .parse_tag(reader, tag.name(), version, alloc)
                 })?;
             }
+            // we should prefer native identifier types
             Event::Start(tag) if tag.local_name().as_ref() == b"identifier" => {
-                item.id = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
+                item.id.try_replace_with(|| {
+                    Content
+                        .map(Replaceable::replaceable)
+                        .map(|replaceable| replaceable.map(Some))
+                        .parse_tag(reader, tag.name(), version, alloc)
+                })?;
             }
 
             Event::Start(tag) => {
