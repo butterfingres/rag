@@ -3,9 +3,13 @@
 //! See <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/>.
 
 use {
-    crate::xml::{ParserError, PartialEntry, Replaceable, ns::HandleStart},
+    crate::{
+        num::parse,
+        xml::{ParserError, PartialEntry, Replaceable, ns::HandleStart},
+    },
     allocator_api2::alloc::Allocator,
-    jiff::{Timestamp, fmt::temporal::DateTimeParser, tz::TimeZone},
+    jiff::{Timestamp, civil::datetime, fmt::temporal::DateTimeParser, tz::TimeZone},
+    lazy_regex::bytes_regex_captures,
     memchr::memchr,
     quick_xml::{XmlVersion, events::Event, reader::NsReader},
 };
@@ -46,15 +50,30 @@ fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
         })
         .unwrap_or((false, date));
 
-    let timestamp = DateTimeParser::new()
-        .parse_datetime(date)
-        .and_then(|dt| dt.to_zoned(TimeZone::UTC))
-        .map(|zoned| zoned.timestamp())
-        .or_else(|_| DateTimeParser::new().parse_timestamp(date))?;
+    let ts = if let Some((_, year, month)) =
+        bytes_regex_captures!(r#"^([0-9]{4})(-[0-9]{2})?$"#, date)
+    {
+        let year =
+            i16::try_from(parse::<_, u16>(year)?).map_err(|_| ParserError::DateOutOfRange)?;
+        let month = if let [b'-', month @ ..] = month {
+            i8::try_from(parse::<_, u8>(month)?).map_err(|_| ParserError::DateOutOfRange)?
+        } else {
+            01
+        };
+        datetime(year, month, 01, 00, 00, 00, 00)
+            .to_zoned(TimeZone::UTC)?
+            .timestamp()
+    } else {
+        DateTimeParser::new()
+            .parse_datetime(date)
+            .and_then(|dt| dt.to_zoned(TimeZone::UTC))
+            .map(|zoned| zoned.timestamp())
+            .or_else(|_| DateTimeParser::new().parse_timestamp(date))?
+    };
 
     Ok(Replaceable {
         replaceable,
-        data: timestamp,
+        data: ts,
     })
 }
 

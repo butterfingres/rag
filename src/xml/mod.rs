@@ -424,11 +424,12 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     Alloc(AllocError),
+    DateOutOfRange,
     Emacs(emacs::Error),
     Jiff(jiff::Error),
     MissingRoot,
-    Utf8(Utf8Error),
     ParseInt(ParseIntError),
+    Utf8(Utf8Error),
     TryReserve(TryReserveError),
     UnknownWeekday,
     Xml(quick_xml::Error),
@@ -440,6 +441,7 @@ impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Alloc(e) => Display::fmt(e, f),
+            Self::DateOutOfRange => f.write_str("date is out of range"),
             Self::Emacs(e) => Display::fmt(e, f),
             Self::Jiff(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),

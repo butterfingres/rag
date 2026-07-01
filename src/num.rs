@@ -24,6 +24,7 @@ macro_rules! impl_uint {
     };
 }
 impl_uint!(u8);
+impl_uint!(u16);
 impl_uint!(u32);
 impl_uint!(u64);
 
