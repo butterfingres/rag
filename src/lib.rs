@@ -1,3 +1,8 @@
+#![allow(
+    clippy::zero_prefixed_literal,
+    reason = "dates and times look more clear with a prefixed zero"
+)]
+
 pub mod alloc;
 pub mod borrow;
 pub mod bump;
