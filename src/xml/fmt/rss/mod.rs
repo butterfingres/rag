@@ -147,17 +147,15 @@ where
             match reader.read_event()? {
                 Event::Start(tag) if tag.name().0 == b"title" => {
                     item.title.try_replace_with(|| {
-                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
                     })?;
                 }
                 Event::Start(tag) if tag.name().0 == b"link" => {
                     item.link.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::irreplaceable),
+                        Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -166,7 +164,7 @@ where
                 }
                 Event::Start(tag) if tag.name().0 == b"description" => {
                     item.content.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::irreplaceable),
+                        Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -194,14 +192,14 @@ where
                             replaceable: false,
                         };
                     }
-                    item.id = Replaceable::irreplaceable(Some(link));
+                    item.id = Replaceable::new_irreplaceable(Some(link));
                 }
                 Event::Start(tag) if tag.name().0 == b"pubDate" => {
                     item.updated.try_replace_or_skip(
                         Content
                             .flat_map(rfc2822_timestamp)
                             .map(Some)
-                            .map(Replaceable::irreplaceable),
+                            .map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -296,12 +294,10 @@ where
                     if name.as_ref() == b"title" =>
                 {
                     state.title.try_replace_with(|| {
-                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
                     })?;
 
                     Ok(step)
@@ -310,7 +306,7 @@ where
                     if name.as_ref() == b"link" =>
                 {
                     state.link.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::irreplaceable),
+                        Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -326,7 +322,7 @@ where
                         Content
                             .flat_map(rfc2822_timestamp)
                             .map(Some)
-                            .map(Replaceable::replaceable),
+                            .map(Replaceable::new_replaceable),
                         reader,
                         tag.name(),
                         version,
@@ -342,7 +338,7 @@ where
                         Content
                             .flat_map(rfc2822_timestamp)
                             .map(Some)
-                            .map(Replaceable::irreplaceable),
+                            .map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,

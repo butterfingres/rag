@@ -85,17 +85,15 @@ where
         // TODO: handle type
         Event::Start(tag) if tag.local_name().as_ref() == b"title" => {
             item.title.try_replace_with(|| {
-                Content.map(Some).map(Replaceable::replaceable).parse_tag(
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
+                Content
+                    .map(Some)
+                    .map(Replaceable::new_replaceable)
+                    .parse_tag(reader, tag.name(), version, alloc)
             })?;
         }
         Event::Start(tag) if tag.local_name().as_ref() == b"description" => {
             item.content.try_replace_or_skip(
-                Content.map(Some).map(Replaceable::irreplaceable),
+                Content.map(Some).map(Replaceable::new_irreplaceable),
                 reader,
                 tag.name(),
                 version,

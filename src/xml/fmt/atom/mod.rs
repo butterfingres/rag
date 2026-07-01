@@ -104,27 +104,23 @@ where
             match reader.read_resolved_event()? {
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"id" => {
                     entry.id.try_replace_with(|| {
-                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
                     })?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
                     entry.title.try_replace_with(|| {
-                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
                     })?;
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"content" => {
                     entry.content.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::irreplaceable),
+                        Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -133,7 +129,7 @@ where
                 }
                 (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
                     entry.content.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::replaceable),
+                        Content.map(Some).map(Replaceable::new_replaceable),
                         reader,
                         tag.name(),
                         version,
@@ -145,7 +141,7 @@ where
                         Content
                             .flat_map(rfc3339_timestamp)
                             .map(Some)
-                            .map(Replaceable::irreplaceable),
+                            .map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -252,12 +248,10 @@ where
             Event::Start(tag) => match reader.resolver().resolve_element(tag.name()) {
                 (NS, name) if name.as_ref() == b"title" => {
                     state.title.try_replace_with(|| {
-                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
                     })?;
                 }
                 (NS, name) if name.as_ref() == b"updated" => {
@@ -265,7 +259,7 @@ where
                         Content
                             .flat_map(rfc3339_timestamp)
                             .map(Some)
-                            .map(Replaceable::irreplaceable),
+                            .map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,

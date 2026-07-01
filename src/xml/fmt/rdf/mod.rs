@@ -40,17 +40,15 @@ where
             match reader.read_resolved_event()? {
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
                     entry.title.try_replace_with(|| {
-                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
                     })?;
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"description" => {
                     entry.content.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::irreplaceable),
+                        Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -59,7 +57,7 @@ where
                 }
                 (ns::RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
                     entry.link.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::irreplaceable),
+                        Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
@@ -124,19 +122,17 @@ where
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"title" => {
                     state.title.try_replace_with(|| {
-                        Content.map(Some).map(Replaceable::irreplaceable).parse_tag(
-                            reader,
-                            tag.name(),
-                            version,
-                            alloc,
-                        )
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
                     })?;
 
                     Ok(step)
                 }
                 (step @ Self::InsideChannel, (ns::RSS, name)) if name.as_ref() == b"link" => {
                     state.link.try_replace_or_skip(
-                        Content.map(Some).map(Replaceable::irreplaceable),
+                        Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,

@@ -45,7 +45,7 @@ where
             Event::Start(tag) if tag.local_name().as_ref() == b"description" => {
                 item.content.try_replace_with(|| {
                     Content
-                        .map(Replaceable::replaceable)
+                        .map(Replaceable::new_replaceable)
                         .map(|replaceable| replaceable.map(Some))
                         .parse_tag(reader, tag.name(), version, alloc)
                 })?;
@@ -53,7 +53,7 @@ where
             Event::Start(tag) if tag.local_name().as_ref() == b"title" => {
                 item.title.try_replace_with(|| {
                     Content
-                        .map(Replaceable::replaceable)
+                        .map(Replaceable::new_replaceable)
                         .map(|replaceable| replaceable.map(Some))
                         .parse_tag(reader, tag.name(), version, alloc)
                 })?;
@@ -62,7 +62,7 @@ where
             Event::Start(tag) if tag.local_name().as_ref() == b"identifier" => {
                 item.id.try_replace_with(|| {
                     Content
-                        .map(Replaceable::replaceable)
+                        .map(Replaceable::new_replaceable)
                         .map(|replaceable| replaceable.map(Some))
                         .parse_tag(reader, tag.name(), version, alloc)
                 })?;
@@ -101,7 +101,7 @@ where
             Event::Start(tag) if tag.local_name().as_ref() == b"title" => {
                 feed.title.try_replace_with(|| {
                     Content
-                        .map(Replaceable::replaceable)
+                        .map(Replaceable::new_replaceable)
                         .map(|replaceable| replaceable.map(Some))
                         .parse_tag(reader, tag.name(), version, alloc)
                 })?;

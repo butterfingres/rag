@@ -205,13 +205,13 @@ pub struct Replaceable<T> {
     replaceable: bool,
 }
 impl<T> Replaceable<T> {
-    fn replaceable(data: T) -> Self {
+    fn new_replaceable(data: T) -> Self {
         Self {
             data,
             replaceable: true,
         }
     }
-    fn irreplaceable(data: T) -> Self {
+    fn new_irreplaceable(data: T) -> Self {
         Self {
             data,
             replaceable: false,
