@@ -94,7 +94,7 @@ VALUES
                       (make-rag-entry :id "1"
                                       :pub-date 1782675986
                                       :feed-id "https://example.com/feed")))
-       (goto-line 2)
+       (forward-line)
        (should (equal (rag-entry-at-point)
                       (make-rag-entry :id "2"
                                       :pub-date 1782675986

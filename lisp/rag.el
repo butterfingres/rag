@@ -228,7 +228,8 @@ insert VALUE into or the line number of VALUE."
       (while (<= low high)
         (let* ((mid (+ low (/ (- high low) 2)))
                (point-value (progn
-                              (goto-line mid)
+                              (goto-char (point-min))
+                              (forward-line (1- mid))
                               (funcall value-at-point))))
           (cond
            ((= point-value value)
@@ -255,29 +256,32 @@ insert VALUE into or the line number of VALUE."
           (pcase (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
                                                 (rag-entry-pub-date entry))
             (`(found . ,line)
-             (goto-line line)
-             (while (and (not (bobp))
-                         (progn
-                           (forward-line -1)
-                           (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
+             (let ((line-point (progn
+                                 (goto-char (point-min))
+                                 (forward-line (1- line))
+                                 (point))))
+               (while (and (not (eobp))
+                           (progn
+                             (forward-line)
+                             (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
+                 (when (equal (rag-entry-id-at-point)
+                              (rag-entry-id entry))
+                   (delete-line)))
+
+               (goto-char line-point)
                (when (equal (rag-entry-id-at-point)
                             (rag-entry-id entry))
-                 (delete-line)))
+                 (let ((inhibit-read-only t))
+                   (delete-line)))
 
-             (goto-line line)
-             (while (and (not (eobp))
-                         (progn
-                           (forward-line)
-                           (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
-               (when (equal (rag-entry-id-at-point)
-                            (rag-entry-id entry))
-                 (delete-line)))
-
-             (goto-line line)
-             (when (equal (rag-entry-id-at-point)
-                          (rag-entry-id entry))
-               (let ((inhibit-read-only t))
-                 (delete-line))))))
+               (goto-char line-point)
+               (while (and (not (bobp))
+                           (progn
+                             (forward-line -1)
+                             (eql (rag-entry-pub-date-at-point) (rag-entry-pub-date entry))))
+                 (when (equal (rag-entry-id-at-point)
+                              (rag-entry-id entry))
+                   (delete-line)))))))
 
         (dolist (entry to-insert)
           (let ((line (cdr (rag-binary-search-buffer-desc #'rag-entry-pub-date-at-point
