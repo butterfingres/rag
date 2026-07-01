@@ -9,7 +9,7 @@ eval-expression RET=).
 ** Loading
 The modules are not loaded by default. Running the following would
 load it. Make sure the required modules are installed in your
-=load-path=. If not, see [[the installation guide][./INSTALL.org]].
+=load-path=. If not, see [[./INSTALL.org][the installation guide]].
 
 #+BEGIN_SRC emacs-lisp
 (require 'rag)
