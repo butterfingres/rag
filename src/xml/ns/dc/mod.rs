@@ -5,7 +5,7 @@
 use {
     crate::xml::{ParserError, PartialEntry, Replaceable, ns::HandleStart},
     allocator_api2::alloc::Allocator,
-    jiff::{Timestamp, civil::DateTime, fmt::temporal::DateTimeParser},
+    jiff::{Timestamp, fmt::temporal::DateTimeParser},
     memchr::memchr,
     quick_xml::{XmlVersion, events::Event, reader::NsReader},
 };
@@ -32,7 +32,7 @@ where
 /// Parse the dublin core date.
 ///
 /// See <https://www.dublincore.org/specifications/dublin-core/dcmi-terms/#date>.
-fn parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
+fn _parse_date(date: &[u8]) -> Result<Replaceable<Timestamp>, ParserError> {
     // If the timestamp contains a slash then it is ambiguous because
     // the publishing date might be anywhere between the range.
     let (replaceable, date) = memchr(b'/', date)
