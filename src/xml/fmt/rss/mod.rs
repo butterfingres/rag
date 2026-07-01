@@ -411,7 +411,7 @@ mod tests {
     use {
         super::*,
         crate::{
-            alloc,
+            alloc::{self, tests::with_bump},
             borrow::Cow,
             tz,
             xml::{
@@ -419,60 +419,63 @@ mod tests {
                 tests::{TestParserError, test_parser},
             },
         },
-        allocator_api2::{alloc::Global, boxed::Box, vec},
-        bump_scope::Bump,
+        allocator_api2::{boxed::Box, vec},
         jiff::civil::datetime,
     };
 
     #[test]
-    fn test_rss_parser_alloc() -> Result<(), TestParserError<'static>> {
-        let mut alloc = Bump::<Global>::try_new()?;
-        test_parser::<_, Parser, _>(
-            include_str!("./all.xml"),
-            Feed {
-                title: Some(Cow::Borrowed(b"example feed")),
-                link: Some(Cow::Borrowed(b"https://example.com/rss")),
-                // Fri, 21 Jul 2023 09:04 EDT
-                last_update: Some(
-                    datetime(2023, 07, 21, 09, 04, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                ),
-                skip_hours: SkipHours::new([0b1110]),
-                skip_days: SkipDays::new([0b0111_1111]),
-                ttl: Some(30),
-            },
-            [
-                Entry {
-                    title: Some(Cow::Borrowed(b"entry 1")),
-                    link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
-                    description: Some(Cow::Borrowed(b"the first entry")),
-                    id: Some(Cow::Borrowed(b"1")),
-                    // Fri, 20 Jun 2003 09:00:00 GMT
-                    pub_date: datetime(2003, 06, 20, 09, 00, 00, 00)
-                        .to_zoned(tz::GMT)?
-                        .timestamp()
-                        .into(),
-                    enclosures: vec![in &alloc;
-                        Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc)),
-                        Box::slice(Box::new_in(*b"", &alloc))
-                    ],
+    fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
+        with_bump(|alloc| {
+            test_parser::<_, Parser, _>(
+                include_str!("./all.xml"),
+                Feed {
+                    title: Some(Cow::Borrowed(b"example feed")),
+                    link: Some(Cow::Borrowed(b"https://example.com/rss")),
+                    // Fri, 21 Jul 2023 09:04 EDT
+                    last_update: Some(
+                        datetime(2023, 07, 21, 09, 04, 00, 00)
+                            .to_zoned(tz::EDT)?
+                            .timestamp()
+                            .into(),
+                    ),
+                    skip_hours: SkipHours::new([0b1110]),
+                    skip_days: SkipDays::new([0b0111_1111]),
+                    ttl: Some(30),
                 },
-                Entry {
-                    title: None,
-                    link: Some(Cow::Borrowed(b"https://example.com/entry_2")),
-                    description: None,
-                    id: Some(Cow::Borrowed(b"https://example.com/entry_2")),
-                    pub_date: None,
-                    enclosures: vec![in &alloc;],
-                },
-            ],
-            &alloc,
-        )?;
-        alloc.reset_to_start();
+                [
+                    Entry {
+                        title: Some(Cow::Borrowed(b"entry 1")),
+                        link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
+                        description: Some(Cow::Borrowed(b"the first entry")),
+                        id: Some(Cow::Borrowed(b"1")),
+                        // Fri, 20 Jun 2003 09:00:00 GMT
+                        pub_date: datetime(2003, 06, 20, 09, 00, 00, 00)
+                            .to_zoned(tz::GMT)?
+                            .timestamp()
+                            .into(),
+                        enclosures: vec![in &alloc;
+                                         Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc)),
+                                         Box::slice(Box::new_in(*b"", &alloc))
+                        ],
+                    },
+                    Entry {
+                        title: None,
+                        link: Some(Cow::Borrowed(b"https://example.com/entry_2")),
+                        description: None,
+                        id: Some(Cow::Borrowed(b"https://example.com/entry_2")),
+                        pub_date: None,
+                        enclosures: vec![in &alloc;],
+                    },
+                ],
+                &alloc,
+            )
+        })
+    }
 
-        test_parser::<_, Parser, _>(
+    #[test]
+    fn test_rss_parser_sample_v0_91() -> Result<(), TestParserError<'static>> {
+        with_bump(|alloc| {
+            test_parser::<_, Parser, _>(
             include_str!("./sample-rss-091.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"WriteTheWeb")),
@@ -533,237 +536,244 @@ mod tests {
                 },
             ],
             &alloc,
-        )?;
-        alloc.reset_to_start();
+        )
+        })
+    }
 
-        test_parser::<_, Parser, _>(
-            include_str!("./sample-rss-092.xml"),
-            Feed {
-                title: Some(Cow::Borrowed(b"Winnemac Daily News")),
-                link: Some(Cow::Borrowed(b"https://winnemac.example.com/")),
-                // Fri, 13 Apr 2001 09:03:49 GMT
-                last_update: Some(
-                    datetime(2001, 04, 13, 09, 03, 49, 00)
-                        .to_zoned(tz::GMT)?
-                        .timestamp()
-                        .into()
-                ),
-                skip_hours: SkipHours::default(),
-                skip_days: SkipDays::default(),
-                ttl: None,
-            },
-            [
-                Entry {
-                    title: Some(Cow::Borrowed(b"Cats and Dogs Form Unlikely Friendship")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/151")),
-                    description: Some(Cow::Borrowed(b"In a heartwarming turn of events, a cat and a dog were spotted playing together in the park, proving that friendships can transcend species.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc;]
+    #[test]
+    fn test_rss_parser_sample_v0_92() -> Result<(), TestParserError<'static>> {
+        with_bump(|alloc| {
+            test_parser::<_, Parser, _>(
+                include_str!("./sample-rss-092.xml"),
+                Feed {
+                    title: Some(Cow::Borrowed(b"Winnemac Daily News")),
+                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/")),
+                    // Fri, 13 Apr 2001 09:03:49 GMT
+                    last_update: Some(
+                        datetime(2001, 04, 13, 09, 03, 49, 00)
+                            .to_zoned(tz::GMT)?
+                            .timestamp()
+                            .into()
+                    ),
+                    skip_hours: SkipHours::default(),
+                    skip_days: SkipDays::default(),
+                    ttl: None,
                 },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Local Artist\'s Painting Sells for Record Price")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/150")),
-                    description: Some(Cow::Borrowed(b"A painting by a local artist recently sold at an auction for a staggering amount, setting a new record in the art world.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc;]
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"New Movie Breaks Box Office Records")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/149")),
-                    description: Some(Cow::Borrowed(b"The latest blockbuster movie has shattered box office records, becoming the highest-grossing film of all time. Moviegoers can\'t get enough of it.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://winnemac.example.com/audio/movienews.mp3", &alloc))]
-                },
-                Entry {
-                    title: None,
-                    link: None,
-                    description: Some(Cow::Borrowed(b"Our website will be undergoing scheduled maintenance from 2 a.m. to 6 a.m. tomorrow, as we revamp our servers to bring you an even better online news experience.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc]
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"World\'s Largest Ice Cream Sundae Created")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/148")),
-                    description: Some(Cow::Borrowed(b"A team of chefs constructed the world\'s largest ice cream sundae, complete with a variety of toppings and flavors. It\'s a sight to behold.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc]
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Scientists Discover New Species in Amazon Rainforest")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/147")),
-                    description: Some(Cow::Borrowed(b"An expedition into the Amazon rainforest led to the discovery of a new species of colorful birds, captivating the scientific community.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://winnemac.example.com/audio/sciencenews.mp3", &alloc))]
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"World's Longest Bridge Opens to the Public")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/146")),
-                    description: Some(Cow::Borrowed(b"A groundbreaking engineering marvel, the world's longest bridge, has finally opened, connecting two continents and easing transportation.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Scientists Develop Cure for Common Cold")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/145")),
-                    description: Some(Cow::Borrowed(b"After years of research, scientists have unveiled a groundbreaking cure for the common cold, bringing relief to millions of people.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Robotics Competition Sparks Innovation")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/144")),
-                    description: Some(Cow::Borrowed(b"Young minds showcase their creativity at a robotics competition, presenting innovative solutions to real-world challenges.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Ancient City Unearthed in the Desert")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/143")),
-                    description: Some(Cow::Borrowed(b"Archaeologists make a historic discovery as they uncover the ruins of an ancient city buried deep in the desert sands.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"International Space Station Welcomes New Crew")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/142")),
-                    description: Some(Cow::Borrowed(b"The International Space Station receives a fresh crew of astronauts, continuing scientific research and international cooperation in space.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Magical Forest Enchants Visitors")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/141")),
-                    description: Some(Cow::Borrowed(b"A mystical forest with glowing plants and ethereal creatures captivates the imagination of visitors, drawing them into a magical realm.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Record-Breaking Heatwave Hits the Nation")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/140")),
-                    description: Some(Cow::Borrowed(b"A scorching heatwave sweeps across the nation, setting new temperature records and prompting people to find creative ways to stay cool.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"Lost Treasure Found in Sunken Ship")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/139")),
-                    description: Some(Cow::Borrowed(b"Divers stumble upon a sunken pirate ship and recover a long-lost treasure chest, sparking excitement among history enthusiasts.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"World's Largest Ferris Wheel Opens to Visitors")),
-                    link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/138")),
-                    description: Some(Cow::Borrowed(b"Foodies rejoice as the city's famous food festival kicks off, offering a diverse range of mouthwatering cuisines from around the world.")),
-                    id: None,
-                    pub_date: None,
-                    enclosures: vec![in &alloc],
-                },
-            ],
-            &alloc,
-        )?;
-        alloc.reset_to_start();
+                [
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Cats and Dogs Form Unlikely Friendship")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/151")),
+                        description: Some(Cow::Borrowed(b"In a heartwarming turn of events, a cat and a dog were spotted playing together in the park, proving that friendships can transcend species.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc;]
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Local Artist\'s Painting Sells for Record Price")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/150")),
+                        description: Some(Cow::Borrowed(b"A painting by a local artist recently sold at an auction for a staggering amount, setting a new record in the art world.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc;]
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"New Movie Breaks Box Office Records")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/149")),
+                        description: Some(Cow::Borrowed(b"The latest blockbuster movie has shattered box office records, becoming the highest-grossing film of all time. Moviegoers can\'t get enough of it.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://winnemac.example.com/audio/movienews.mp3", &alloc))]
+                    },
+                    Entry {
+                        title: None,
+                        link: None,
+                        description: Some(Cow::Borrowed(b"Our website will be undergoing scheduled maintenance from 2 a.m. to 6 a.m. tomorrow, as we revamp our servers to bring you an even better online news experience.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc]
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"World\'s Largest Ice Cream Sundae Created")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/148")),
+                        description: Some(Cow::Borrowed(b"A team of chefs constructed the world\'s largest ice cream sundae, complete with a variety of toppings and flavors. It\'s a sight to behold.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc]
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Scientists Discover New Species in Amazon Rainforest")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/147")),
+                        description: Some(Cow::Borrowed(b"An expedition into the Amazon rainforest led to the discovery of a new species of colorful birds, captivating the scientific community.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc; Box::slice(Box::new_in(*b"https://winnemac.example.com/audio/sciencenews.mp3", &alloc))]
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"World's Longest Bridge Opens to the Public")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/146")),
+                        description: Some(Cow::Borrowed(b"A groundbreaking engineering marvel, the world's longest bridge, has finally opened, connecting two continents and easing transportation.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Scientists Develop Cure for Common Cold")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/145")),
+                        description: Some(Cow::Borrowed(b"After years of research, scientists have unveiled a groundbreaking cure for the common cold, bringing relief to millions of people.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Robotics Competition Sparks Innovation")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/144")),
+                        description: Some(Cow::Borrowed(b"Young minds showcase their creativity at a robotics competition, presenting innovative solutions to real-world challenges.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Ancient City Unearthed in the Desert")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/143")),
+                        description: Some(Cow::Borrowed(b"Archaeologists make a historic discovery as they uncover the ruins of an ancient city buried deep in the desert sands.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"International Space Station Welcomes New Crew")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/142")),
+                        description: Some(Cow::Borrowed(b"The International Space Station receives a fresh crew of astronauts, continuing scientific research and international cooperation in space.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Magical Forest Enchants Visitors")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/141")),
+                        description: Some(Cow::Borrowed(b"A mystical forest with glowing plants and ethereal creatures captivates the imagination of visitors, drawing them into a magical realm.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Record-Breaking Heatwave Hits the Nation")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/140")),
+                        description: Some(Cow::Borrowed(b"A scorching heatwave sweeps across the nation, setting new temperature records and prompting people to find creative ways to stay cool.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Lost Treasure Found in Sunken Ship")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/139")),
+                        description: Some(Cow::Borrowed(b"Divers stumble upon a sunken pirate ship and recover a long-lost treasure chest, sparking excitement among history enthusiasts.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"World's Largest Ferris Wheel Opens to Visitors")),
+                        link: Some(Cow::Borrowed(b"https://winnemac.example.com/story/138")),
+                        description: Some(Cow::Borrowed(b"Foodies rejoice as the city's famous food festival kicks off, offering a diverse range of mouthwatering cuisines from around the world.")),
+                        id: None,
+                        pub_date: None,
+                        enclosures: vec![in &alloc],
+                    },
+                ],
+                &alloc,
+                    )
+        })
+    }
 
-        test_parser::<_, Parser, _>(
-            include_str!("./sample-rss-2.xml"),
-            Feed {
-                title: Some(Cow::Borrowed(b"NASA Space Station News")),
-                link: Some(Cow::Borrowed(b"http://www.nasa.gov/")),
-                // Fri, 21 Jul 2023 09:04 EDT
-                last_update: Some(
-                    datetime(2023, 07, 21, 09, 04, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into()
-                ),
-                skip_hours: SkipHours::default(),
-                skip_days: SkipDays::default(),
-                ttl: None,
-            },
-            [
-                Entry {
-                    title: Some(Cow::Borrowed(b"Louisiana Students to Hear from NASA Astronauts Aboard Space Station")),
-                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/louisiana-students-to-hear-from-nasa-astronauts-aboard-space-station")),
-                    description: Some(Cow::Borrowed(b"As part of the state's first Earth-to-space call, students from Louisiana will have an opportunity soon to hear from NASA astronauts aboard the International Space Station.")),
-                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/louisiana-students-to-hear-from-nasa-astronauts-aboard-space-station")),
+    #[test]
+    fn test_rss_parser_sample_v2() -> Result<(), TestParserError<'static>> {
+        with_bump(|alloc| {
+            test_parser::<_, Parser, _>(
+                include_str!("./sample-rss-2.xml"),
+                Feed {
+                    title: Some(Cow::Borrowed(b"NASA Space Station News")),
+                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/")),
                     // Fri, 21 Jul 2023 09:04 EDT
-                    pub_date: datetime(2023, 07, 21, 09, 04, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                    enclosures: vec![in &alloc;],
+                    last_update: Some(
+                        datetime(2023, 07, 21, 09, 04, 00, 00)
+                            .to_zoned(tz::EDT)?
+                            .timestamp()
+                            .into()
+                    ),
+                    skip_hours: SkipHours::default(),
+                    skip_days: SkipDays::default(),
+                    ttl: None,
                 },
-                Entry {
-                    title: None,
-                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-awards-integrated-mission-operations-contract-iii")),
-                    description: Some(Cow::Borrowed(b"NASA has selected KBR Wyle Services, LLC, of Fulton, Maryland, to provide mission and flight crew operations support for the International Space Station and future human space exploration.")),
-                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-awards-integrated-mission-operations-contract-iii")),
-                    // Thu, 20 Jul 2023 15:05 EDT
-                    pub_date: datetime(2023, 07, 20, 15, 05, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                    enclosures: vec![in &alloc;]
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"NASA Expands Options for Spacewalking, Moonwalking Suits")),
-                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-expands-options-for-spacewalking-moonwalking-suits-services")),
-                    description: Some(Cow::Borrowed(b"NASA has awarded Axiom Space and Collins Aerospace task orders under existing contracts to advance spacewalking capabilities in low Earth orbit, as well as moonwalking services for Artemis missions.")),
-                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-expands-options-for-spacewalking-moonwalking-suits-services")),
-                    // Mon, 10 Jul 2023 14:14 EDT
-                    pub_date: datetime(2023, 07, 10, 14, 14, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                    enclosures: vec![in &alloc;
-                        Box::slice(Box::new_in(*b"http://www.nasa.gov/sites/default/files/styles/1x1_cardfeed/public/thumbnails/image/iss068e027836orig.jpg?itok=ucNUaaGx", &alloc)),
-                    ],
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"NASA to Provide Coverage as Dragon Departs Station")),
-                    link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-to-provide-coverage-as-dragon-departs-station-with-science")),
-                    description: Some(Cow::Borrowed(b"NASA is set to receive scientific research samples and hardware as a SpaceX Dragon cargo resupply spacecraft departs the International Space Station on Thursday, June 29.")),
-                    id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-to-provide-coverage-as-dragon-departs-station-with-science")),
-                    // Tue, 20 May 2003 08:56:02 GMT
-                    pub_date: datetime(2003, 05, 20, 08, 56, 02, 00)
-                        .to_zoned(tz::GMT)?
-                        .timestamp()
-                        .into(),
-                    enclosures: vec![in &alloc;]
-                },
-                Entry {
-                    title: Some(Cow::Borrowed(b"NASA Plans Coverage of Roscosmos Spacewalk Outside Space Station")),
-                    link: Some(Cow::Borrowed(b"http://liftoff.msfc.nasa.gov/news/2003/news-laundry.asp")),
-                    description: Some(Cow::Borrowed(b"Compared to earlier spacecraft, the International Space Station has many luxuries, but laundry facilities are not one of them.  Instead, astronauts have other options.")),
-                    id: Some(Cow::Borrowed(b"http://liftoff.msfc.nasa.gov/2003/05/20.html#item570")),
-                    // Mon, 26 Jun 2023 12:45 EDT
-                    pub_date: datetime(2023, 06, 26, 12, 45, 00, 00)
-                        .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
-                    enclosures: vec![in &alloc;
-                        Box::slice(Box::new_in(*b"http://www.nasa.gov/sites/default/files/styles/1x1_cardfeed/public/thumbnails/image/spacex_dragon_june_29.jpg?itok=nIYlBLme", &alloc))
-                    ]
-                }
-            ],
-            &alloc,
-        )?;
-
-        Ok(())
+                [
+                    Entry {
+                        title: Some(Cow::Borrowed(b"Louisiana Students to Hear from NASA Astronauts Aboard Space Station")),
+                        link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/louisiana-students-to-hear-from-nasa-astronauts-aboard-space-station")),
+                        description: Some(Cow::Borrowed(b"As part of the state's first Earth-to-space call, students from Louisiana will have an opportunity soon to hear from NASA astronauts aboard the International Space Station.")),
+                        id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/louisiana-students-to-hear-from-nasa-astronauts-aboard-space-station")),
+                        // Fri, 21 Jul 2023 09:04 EDT
+                        pub_date: datetime(2023, 07, 21, 09, 04, 00, 00)
+                            .to_zoned(tz::EDT)?
+                            .timestamp()
+                            .into(),
+                        enclosures: vec![in &alloc;],
+                    },
+                    Entry {
+                        title: None,
+                        link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-awards-integrated-mission-operations-contract-iii")),
+                        description: Some(Cow::Borrowed(b"NASA has selected KBR Wyle Services, LLC, of Fulton, Maryland, to provide mission and flight crew operations support for the International Space Station and future human space exploration.")),
+                        id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-awards-integrated-mission-operations-contract-iii")),
+                        // Thu, 20 Jul 2023 15:05 EDT
+                        pub_date: datetime(2023, 07, 20, 15, 05, 00, 00)
+                            .to_zoned(tz::EDT)?
+                            .timestamp()
+                            .into(),
+                        enclosures: vec![in &alloc;]
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"NASA Expands Options for Spacewalking, Moonwalking Suits")),
+                        link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-expands-options-for-spacewalking-moonwalking-suits-services")),
+                        description: Some(Cow::Borrowed(b"NASA has awarded Axiom Space and Collins Aerospace task orders under existing contracts to advance spacewalking capabilities in low Earth orbit, as well as moonwalking services for Artemis missions.")),
+                        id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-expands-options-for-spacewalking-moonwalking-suits-services")),
+                        // Mon, 10 Jul 2023 14:14 EDT
+                        pub_date: datetime(2023, 07, 10, 14, 14, 00, 00)
+                            .to_zoned(tz::EDT)?
+                            .timestamp()
+                            .into(),
+                        enclosures: vec![in &alloc;
+                                         Box::slice(Box::new_in(*b"http://www.nasa.gov/sites/default/files/styles/1x1_cardfeed/public/thumbnails/image/iss068e027836orig.jpg?itok=ucNUaaGx", &alloc)),
+                        ],
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"NASA to Provide Coverage as Dragon Departs Station")),
+                        link: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-to-provide-coverage-as-dragon-departs-station-with-science")),
+                        description: Some(Cow::Borrowed(b"NASA is set to receive scientific research samples and hardware as a SpaceX Dragon cargo resupply spacecraft departs the International Space Station on Thursday, June 29.")),
+                        id: Some(Cow::Borrowed(b"http://www.nasa.gov/press-release/nasa-to-provide-coverage-as-dragon-departs-station-with-science")),
+                        // Tue, 20 May 2003 08:56:02 GMT
+                        pub_date: datetime(2003, 05, 20, 08, 56, 02, 00)
+                            .to_zoned(tz::GMT)?
+                            .timestamp()
+                            .into(),
+                        enclosures: vec![in &alloc;]
+                    },
+                    Entry {
+                        title: Some(Cow::Borrowed(b"NASA Plans Coverage of Roscosmos Spacewalk Outside Space Station")),
+                        link: Some(Cow::Borrowed(b"http://liftoff.msfc.nasa.gov/news/2003/news-laundry.asp")),
+                        description: Some(Cow::Borrowed(b"Compared to earlier spacecraft, the International Space Station has many luxuries, but laundry facilities are not one of them.  Instead, astronauts have other options.")),
+                        id: Some(Cow::Borrowed(b"http://liftoff.msfc.nasa.gov/2003/05/20.html#item570")),
+                        // Mon, 26 Jun 2023 12:45 EDT
+                        pub_date: datetime(2023, 06, 26, 12, 45, 00, 00)
+                            .to_zoned(tz::EDT)?
+                            .timestamp()
+                            .into(),
+                        enclosures: vec![in &alloc;
+                                         Box::slice(Box::new_in(*b"http://www.nasa.gov/sites/default/files/styles/1x1_cardfeed/public/thumbnails/image/spacex_dragon_june_29.jpg?itok=nIYlBLme", &alloc))
+                        ]
+                    }
+                ],
+                &alloc,
+            )
+        })
     }
 
     #[test]

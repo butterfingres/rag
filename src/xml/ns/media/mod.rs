@@ -133,52 +133,56 @@ mod tests {
     use {
         super::*,
         crate::{
+            alloc::tests::with_bump,
             borrow::Cow,
             xml::{Entry, ns::tests::test_item_parser},
         },
-        allocator_api2::{alloc::Global, boxed::Box, vec},
-        bump_scope::Bump,
+        allocator_api2::{boxed::Box, vec},
     };
 
     #[test]
-    fn test_media_parser() -> Result<(), ParserError> {
-        let mut alloc = Bump::<Global>::try_new()?;
+    fn test_media_item() -> Result<(), ParserError> {
+        with_bump(|alloc| {
+            test_item_parser(
+                &Parser,
+                include_str!("./item.xml"),
+                Entry {
+                    title: Some(Cow::Borrowed(b"hello world")),
+                    link: None,
+                    description: Some(Cow::Borrowed(b"test description")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc;
+                        Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc)),
+                        Box::slice(Box::new_in(*b"https://example.com/hello_world.mp4", &alloc)),
+                        Box::slice(Box::new_in(*b"https://example.com/hello_world.torrent", &alloc)),
+                    ],
+                },
+                &alloc,
+            )
+        })
+    }
 
-        test_item_parser(
-            &Parser,
-            include_str!("./item.xml"),
-            Entry {
-                title: Some(Cow::Borrowed(b"hello world")),
-                link: None,
-                description: Some(Cow::Borrowed(b"test description")),
-                id: None,
-                pub_date: None,
-                enclosures: vec![in &alloc;
-                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc)),
-                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp4", &alloc)),
-                    Box::slice(Box::new_in(*b"https://example.com/hello_world.torrent", &alloc)),
-                ],
-            },
-            &alloc,
-        )?;
-        alloc.reset_to_start();
-
-        test_item_parser(
-            &Parser,
-            include_str!("./group.xml"),
-            Entry {
-                title: Some(Cow::Borrowed(b"hello world")),
-                link: None,
-                description: Some(Cow::Borrowed(b"test description")),
-                id: None,
-                pub_date: None,
-                enclosures: vec![in &alloc;
-                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc)),
-                    Box::slice(Box::new_in(*b"https://example.com/hello_world.mp4", &alloc)),
-                    Box::slice(Box::new_in(*b"https://example.com/hello_world.torrent", &alloc)),
-                ],
-            },
-            &alloc,
-        )
+    #[test]
+    fn test_media_group() -> Result<(), ParserError> {
+        with_bump(|alloc| {
+            test_item_parser(
+                &Parser,
+                include_str!("./group.xml"),
+                Entry {
+                    title: Some(Cow::Borrowed(b"hello world")),
+                    link: None,
+                    description: Some(Cow::Borrowed(b"test description")),
+                    id: None,
+                    pub_date: None,
+                    enclosures: vec![in &alloc;
+                        Box::slice(Box::new_in(*b"https://example.com/hello_world.mp3", &alloc)),
+                        Box::slice(Box::new_in(*b"https://example.com/hello_world.mp4", &alloc)),
+                        Box::slice(Box::new_in(*b"https://example.com/hello_world.torrent", &alloc)),
+                    ],
+                },
+                &alloc,
+            )
+        })
     }
 }

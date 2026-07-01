@@ -296,53 +296,54 @@ mod tests {
     use {
         super::*,
         crate::{
+            alloc::tests::with_bump,
             tz,
             xml::{
                 Feed, SkipDays, SkipHours,
                 tests::{TestParserError, test_parser},
             },
         },
-        allocator_api2::{alloc::Global, boxed::Box, vec},
-        bump_scope::Bump,
+        allocator_api2::{boxed::Box, vec},
         jiff::civil::datetime,
     };
 
     #[test]
     fn test_atom_parser_all() -> Result<(), TestParserError<'static>> {
-        let alloc = Bump::<Global>::try_new()?;
-        test_parser::<_, Parser, _>(
-            include_str!("./all.xml"),
-            Feed {
-                title: Some(Cow::Borrowed(b"test feed")),
-                link: Some(Cow::Borrowed(b"https://example.com")),
-                // 2003-12-13T18:30:02Z
-                last_update: Some(
-                    datetime(2003, 12, 13, 18, 30, 02, 00)
-                        .to_zoned(tz::Z)?
-                        .timestamp()
-                        .into(),
-                ),
-                skip_hours: SkipHours::default(),
-                skip_days: SkipDays::default(),
-                ttl: None,
-            },
-            [xml::Entry {
-                title: Some(Cow::Borrowed(b"first entry")),
-                link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
-                description: Some(Cow::Borrowed(b"contents of entry number 1")),
-                id: Some(Cow::Borrowed(b"1")),
-                // 2004-12-13T18:30:02Z
-                pub_date: Some(
-                    datetime(2004, 12, 13, 18, 30, 02, 00)
-                        .to_zoned(tz::Z)?
-                        .timestamp()
-                        .into(),
-                ),
-                enclosures: vec![in &alloc;
-                   Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc))
-                ],
-            }],
-            &alloc,
-        )
+        with_bump(|alloc| {
+            test_parser::<_, Parser, _>(
+                include_str!("./all.xml"),
+                Feed {
+                    title: Some(Cow::Borrowed(b"test feed")),
+                    link: Some(Cow::Borrowed(b"https://example.com")),
+                    // 2003-12-13T18:30:02Z
+                    last_update: Some(
+                        datetime(2003, 12, 13, 18, 30, 02, 00)
+                            .to_zoned(tz::Z)?
+                            .timestamp()
+                            .into(),
+                    ),
+                    skip_hours: SkipHours::default(),
+                    skip_days: SkipDays::default(),
+                    ttl: None,
+                },
+                [xml::Entry {
+                    title: Some(Cow::Borrowed(b"first entry")),
+                    link: Some(Cow::Borrowed(b"https://example.com/entry_1")),
+                    description: Some(Cow::Borrowed(b"contents of entry number 1")),
+                    id: Some(Cow::Borrowed(b"1")),
+                    // 2004-12-13T18:30:02Z
+                    pub_date: Some(
+                        datetime(2004, 12, 13, 18, 30, 02, 00)
+                            .to_zoned(tz::Z)?
+                            .timestamp()
+                            .into(),
+                    ),
+                    enclosures: vec![in &alloc;
+                       Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc))
+                    ],
+                }],
+                &alloc,
+            )
+        })
     }
 }
