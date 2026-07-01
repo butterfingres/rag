@@ -172,7 +172,10 @@ mod tests {
         crate::{
             alloc::Dummy,
             borrow::Cow,
-            xml::{Entry, ns::tests::test_item_parser},
+            xml::{
+                Entry, Feed, SkipDays, SkipHours,
+                ns::tests::{test_feed_parser, test_item_parser},
+            },
         },
         allocator_api2::vec::Vec,
         arrayvec::ArrayVec,
@@ -316,6 +319,24 @@ mod tests {
                         .timestamp(),
                 ),
                 enclosures: Vec::new_in(&alloc),
+            },
+            &alloc,
+        )
+    }
+
+    #[test]
+    fn test_dc_parser_channel() -> Result<(), ParserError> {
+        let alloc = Dummy;
+        test_feed_parser(
+            &Parser,
+            include_str!("./channel.xml"),
+            Feed {
+                title: None,
+                link: None,
+                skip_days: SkipDays::default(),
+                skip_hours: SkipHours::default(),
+                ttl: None,
+                last_update: None,
             },
             &alloc,
         )

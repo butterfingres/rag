@@ -44,8 +44,38 @@ where
 mod tests {
     use {
         super::*,
-        crate::xml::{Entry, get_header},
+        crate::xml::{Entry, Feed, PartialFeed, get_header},
+        std::fmt::Debug,
     };
+
+    pub fn test_parser<'alloc, 'src, T, U, V, A>(
+        parser: &T,
+        input: &'src str,
+        mut buffer: U,
+        output: V,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError>
+    where
+        T: HandleStart<'alloc, 'src, U, A>,
+        U: Into<V>,
+        V: Debug + PartialEq,
+        A: Allocator,
+    {
+        let mut reader = NsReader::from_str(input);
+        let (version, root) = get_header(&mut reader)?;
+
+        loop {
+            match reader.read_event()? {
+                Event::Eof => break,
+                Event::End(tag) if tag.name() == root.name() => break,
+                event => parser.handle_start(&mut reader, event, &mut buffer, version, alloc)?,
+            }
+        }
+
+        assert_eq!(<U as Into<V>>::into(buffer), output);
+
+        Ok(())
+    }
 
     pub fn test_item_parser<'alloc, 'src, T, A>(
         parser: &T,
@@ -57,20 +87,19 @@ mod tests {
         T: HandleStart<'alloc, 'src, PartialEntry<'alloc, 'src, A>, A>,
         A: Allocator,
     {
-        let mut reader = NsReader::from_str(input);
-        let (version, root) = get_header(&mut reader)?;
+        test_parser(parser, input, PartialEntry::new_in(alloc), output, alloc)
+    }
 
-        let mut item = PartialEntry::new_in(alloc);
-        loop {
-            match reader.read_event()? {
-                Event::Eof => break,
-                Event::End(tag) if tag.name() == root.name() => break,
-                event => parser.handle_start(&mut reader, event, &mut item, version, alloc)?,
-            }
-        }
-
-        assert_eq!(Entry::from(item), output);
-
-        Ok(())
+    pub fn test_feed_parser<'alloc, 'src, T, A>(
+        parser: &T,
+        input: &'src str,
+        output: Feed<'alloc, 'src, A>,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError>
+    where
+        T: HandleStart<'alloc, 'src, PartialFeed<'alloc, 'src, A>, A>,
+        A: Allocator,
+    {
+        test_parser(parser, input, PartialFeed::default(), output, alloc)
     }
 }
