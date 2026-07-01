@@ -424,7 +424,6 @@ where
 #[derive(Debug)]
 pub enum ParserError {
     Alloc(AllocError),
-    ChronoParse(chrono::format::ParseError),
     Emacs(emacs::Error),
     Jiff(jiff::Error),
     MissingRoot,
@@ -441,7 +440,6 @@ impl Display for ParserError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Alloc(e) => Display::fmt(e, f),
-            Self::ChronoParse(e) => Display::fmt(e, f),
             Self::Emacs(e) => Display::fmt(e, f),
             Self::Jiff(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),
@@ -457,11 +455,6 @@ impl Error for ParserError {}
 impl From<AllocError> for ParserError {
     fn from(e: AllocError) -> Self {
         Self::Alloc(e)
-    }
-}
-impl From<chrono::format::ParseError> for ParserError {
-    fn from(e: chrono::format::ParseError) -> Self {
-        Self::ChronoParse(e)
     }
 }
 impl From<bump_scope::alloc::AllocError> for ParserError {
