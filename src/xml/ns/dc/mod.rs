@@ -42,6 +42,17 @@ where
                         .parse_tag(reader, tag.name(), version, alloc)
                 })?;
             }
+            Event::Start(tag) if tag.local_name().as_ref() == b"description" => {
+                item.content.try_replace_with(|| {
+                    Content
+                        .map(Replaceable::replaceable)
+                        .map(|replaceable| replaceable.map(Some))
+                        .parse_tag(reader, tag.name(), version, alloc)
+                })?;
+            }
+            Event::Start(tag) if tag.local_name().as_ref() == b"identifier" => {
+                item.id = Some(Content.parse_tag(reader, tag.name(), version, alloc)?);
+            }
 
             Event::Start(tag) => {
                 reader.read_to_end(tag.name())?;
@@ -107,6 +118,7 @@ mod tests {
         super::*,
         crate::{
             alloc::Dummy,
+            borrow::Cow,
             xml::{Entry, ns::tests::test_item_parser},
         },
         allocator_api2::vec::Vec,
@@ -243,8 +255,8 @@ mod tests {
             Entry {
                 title: None,
                 link: None,
-                description: None,
-                id: None,
+                description: Some(Cow::Borrowed(b"example description")),
+                id: Some(Cow::Borrowed(b"1")),
                 pub_date: Some(
                     datetime(2000, 01, 01, 00, 00, 00, 00)
                         .to_zoned(TimeZone::UTC)?
