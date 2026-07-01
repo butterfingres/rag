@@ -331,12 +331,16 @@ mod tests {
             &Parser,
             include_str!("./channel.xml"),
             Feed {
-                title: None,
+                title: Some(Cow::Borrowed(b"example feed")),
                 link: None,
                 skip_days: SkipDays::default(),
                 skip_hours: SkipHours::default(),
                 ttl: None,
-                last_update: None,
+                last_update: Some(
+                    datetime(2001, 01, 02, 00, 00, 00, 00)
+                        .to_zoned(TimeZone::UTC)?
+                        .timestamp(),
+                ),
             },
             &alloc,
         )
