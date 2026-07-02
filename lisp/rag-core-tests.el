@@ -126,7 +126,7 @@
                   :last-update 1689944640
                   :skip-hours #b00001110
                   :skip-days  #b01111111
-                  :ttl 30)
+                  :ttl "PT30M")
    (list (make-rag-entry :title "entry 1"
                          :link "https://example.com/entry_1"
                          :description "the first entry"

@@ -420,7 +420,7 @@ mod tests {
             },
         },
         allocator_api2::{boxed::Box, vec},
-        jiff::civil::datetime,
+        jiff::{Span, civil::datetime},
     };
 
     #[test]
@@ -440,7 +440,8 @@ mod tests {
                     ),
                     skip_hours: SkipHours::new([0b1110]),
                     skip_days: SkipDays::new([0b0111_1111]),
-                    ttl: Some(30),
+                    ttl: Span::new().try_minutes(30)?,
+                    frequency: None,
                 },
                 [
                     Entry {
@@ -483,7 +484,8 @@ mod tests {
                 last_update: None,
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
-                ttl: None,
+                ttl: Span::new(),
+                frequency: None,
             },
             [
                 Entry {
@@ -557,7 +559,8 @@ mod tests {
                     ),
                     skip_hours: SkipHours::default(),
                     skip_days: SkipDays::default(),
-                    ttl: None,
+                    ttl: Span::new(),
+                    frequency: None,
                 },
                 [
                     Entry {
@@ -703,7 +706,8 @@ mod tests {
                     ),
                     skip_hours: SkipHours::default(),
                     skip_days: SkipDays::default(),
-                    ttl: None,
+                    ttl: Span::new(),
+                    frequency: None,
                 },
                 [
                     Entry {
@@ -792,7 +796,8 @@ mod tests {
                 ),
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
-                ttl: None,
+                ttl: Span::new(),
+                frequency: None,
             },
             [],
             &alloc::Dummy,

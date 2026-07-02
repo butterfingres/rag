@@ -13,7 +13,7 @@ use {
     arrayvec::ArrayVec,
     bitvec::BitArr,
     emacs::{FromLisp, IntoLisp},
-    jiff::Timestamp,
+    jiff::{Span, SpanFieldwise, Timestamp},
     quick_xml::{
         XmlVersion,
         errors::SyntaxError,
@@ -45,7 +45,10 @@ where
     last_update: Replaceable<Option<Timestamp>>,
     skip_hours: SkipHours,
     skip_days: SkipDays,
-    ttl: Option<u64>,
+    ttl: Option<u32>,
+
+    period: Span,
+    frequency: Option<u32>,
 }
 impl<'alloc, 'src, A> Default for PartialFeed<'alloc, 'src, A>
 where
@@ -59,6 +62,9 @@ where
             skip_hours: SkipHours::default(),
             skip_days: SkipDays::default(),
             ttl: None,
+
+            period: Span::new(),
+            frequency: None,
         }
     }
 }
@@ -74,6 +80,9 @@ where
             skip_hours,
             skip_days,
             ttl,
+
+            period,
+            frequency,
         }: PartialFeed<'alloc, 'src, A>,
     ) -> Feed<'alloc, 'src, A> {
         Feed {
@@ -81,7 +90,14 @@ where
             link: link.data,
             skip_days,
             skip_hours,
-            ttl,
+            frequency: frequency.filter(|_| !period.is_zero()),
+            ttl: if period.is_zero()
+                && let Some(ttl) = ttl
+            {
+                Span::new().minutes(ttl)
+            } else {
+                period
+            },
             last_update: last_update.data,
         }
     }
@@ -95,7 +111,8 @@ where
     pub link: Option<Cow<'src, [u8], &'alloc A>>,
     pub skip_days: SkipDays,
     pub skip_hours: SkipHours,
-    pub ttl: Option<u64>,
+    pub ttl: Span,
+    pub frequency: Option<u32>,
     pub last_update: Option<Timestamp>,
 }
 impl<A> Debug for Feed<'_, '_, A>
@@ -110,6 +127,7 @@ where
             skip_hours,
             skip_days,
             ttl,
+            frequency,
         } = self;
         f.debug_struct("Feed")
             .field("title", &title)
@@ -118,6 +136,7 @@ where
             .field("skip_hours", &skip_hours)
             .field("skip_days", &skip_days)
             .field("ttl", &ttl)
+            .field("frequency", &frequency)
             .finish()
     }
 }
@@ -132,6 +151,7 @@ where
             skip_days,
             skip_hours,
             ttl,
+            frequency,
             last_update,
         } = self;
 
@@ -154,8 +174,13 @@ where
         args.push(sym::key::SKIP_HOURS.bind(env));
         args.push(skip_hours.data[0].into_lisp(env)?);
 
-        if let Some(val) = ttl {
+        if !ttl.is_zero() {
             args.push(sym::key::TTL.bind(env));
+            args.push(ttl.to_string().into_lisp(env)?);
+        }
+
+        if let Some(val) = frequency {
+            args.push(sym::key::FREQUENCY.bind(env));
             args.push(val.into_lisp(env)?);
         }
 
@@ -181,6 +206,7 @@ where
             skip_hours,
             skip_days,
             ttl,
+            frequency,
         }: &Feed<'_, '_, A2>,
     ) -> bool {
         self.title.as_deref() == title.as_deref()
@@ -188,7 +214,8 @@ where
             && self.last_update == *last_update
             && self.skip_hours == *skip_hours
             && self.skip_days == *skip_days
-            && self.ttl == *ttl
+            && self.ttl == SpanFieldwise(*ttl)
+            && self.frequency == *frequency
     }
 }
 

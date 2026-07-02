@@ -12,6 +12,7 @@ pub mod key {
         SKIP_DAYS => ":skip-days"
         SKIP_HOURS => ":skip-hours"
         TTL => ":ttl"
+        FREQUENCY => ":frequency"
         LAST_UPDATE => ":last-update"
 
         DESCRIPTION => ":description"

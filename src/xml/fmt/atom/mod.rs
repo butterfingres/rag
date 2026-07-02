@@ -304,7 +304,7 @@ mod tests {
             },
         },
         allocator_api2::{boxed::Box, vec},
-        jiff::civil::datetime,
+        jiff::{Span, civil::datetime},
     };
 
     #[test]
@@ -324,7 +324,8 @@ mod tests {
                     ),
                     skip_hours: SkipHours::default(),
                     skip_days: SkipDays::default(),
-                    ttl: None,
+                    ttl: Span::new(),
+                    frequency: None,
                 },
                 [xml::Entry {
                     title: Some(Cow::Borrowed(b"first entry")),

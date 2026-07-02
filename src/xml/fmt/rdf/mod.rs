@@ -174,6 +174,7 @@ mod tests {
             },
         },
         allocator_api2::vec::Vec,
+        jiff::Span,
     };
 
     #[test]
@@ -186,7 +187,8 @@ mod tests {
                 last_update: None,
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),
-                ttl: None,
+                ttl: Span::new(),
+                frequency: None,
             },
             [
                 Entry {

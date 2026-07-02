@@ -179,7 +179,7 @@ mod tests {
         },
         allocator_api2::vec::Vec,
         arrayvec::ArrayVec,
-        jiff::civil::datetime,
+        jiff::{Span, civil::datetime},
         std::iter,
     };
 
@@ -335,7 +335,8 @@ mod tests {
                 link: None,
                 skip_days: SkipDays::default(),
                 skip_hours: SkipHours::default(),
-                ttl: None,
+                ttl: Span::new(),
+                frequency: None,
                 last_update: Some(
                     datetime(2001, 01, 02, 00, 00, 00, 00)
                         .to_zoned(TimeZone::UTC)?

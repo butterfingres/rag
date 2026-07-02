@@ -26,6 +26,7 @@ and rust code.")
   skip-days
   skip-hours
   ttl
+  frequency
   last-update)
 
 (cl-defstruct rag-entry

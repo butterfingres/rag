@@ -105,7 +105,9 @@ WHERE url == 'https://example.com/atom'"))
                        ;; ttl
                        nil
                        ;; last-update
-                       1071340202)))
+                       1071340202
+                       ;; frequency
+                       nil)))
 
       (let ((entry (car (sqlite-select db "SELECT * FROM entry
 WHERE id == '1'"))))

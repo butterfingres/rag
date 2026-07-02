@@ -51,7 +51,18 @@ CREATE TABLE enclosure(
   entry_id TEXT NOT NULL,
   link TEXT,
   FOREIGN KEY (entry_id) REFERENCES entry(id)
-)"]
+)"
+                             "ALTER TABLE feed
+ADD COLUMN ttl_new TEXT;
+
+UPDATE feed
+WHERE ttl
+SET ttl_new = format('PT%dm', ttl);
+
+ALTER TABLE feed
+DROP COLUMN ttl;
+ALTER TABLE feed
+RENAME COLUMN ttl_new TO ttl"]
   "A list of sql migrations.
 
 Running every sql snippet in this vector should create the newest
