@@ -13,7 +13,8 @@
 
 (eval-when-compile
   (require 'cl-macs)
-  (require 'sqlite))
+  (require 'sqlite)
+  (require 'url-vars))
 
 (eval-and-compile (require 'rag-pool))
 (require 'rag-core)
@@ -143,12 +144,12 @@ WHERE id == ?"
                            (insert "...")
                            (newline)))))))
          (should-fetch (if-let* ((row (car (sqlite-select db
-                                                            "SELECT ttl, frequency, last_update
+                                                          "SELECT ttl, frequency, last_update
 FROM feed
 WHERE url == ?"
-                                                            (list url)))))
-                           (cl-destructuring-bind (ttl frequency last-update) row
-                             (rag-core-feed-fetch-p ttl frequency last-update (round (float-time))))
+                                                          (list url)))))
+                         (cl-destructuring-bind (ttl frequency last-update) row
+                           (rag-core-feed-fetch-p ttl frequency last-update (round (float-time))))
                          t)))
     (if should-fetch
         (url-queue-retrieve
@@ -181,8 +182,7 @@ WHERE url == ?"
                         (goto-char marker)
                         (end-of-line)
                         (let ((inhibit-read-only t))
-                          (insert " " (propertize (apply #'format
-                                                         (cdr error-value))
+                          (insert " " (propertize (format "%S" error-value)
                                                   'face 'error))))))))
              (kill-buffer (current-buffer))))
          '()
