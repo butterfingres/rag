@@ -7,6 +7,7 @@
 mod alloc;
 mod borrow;
 mod bump;
+mod feed;
 mod fmt;
 mod num;
 mod sym;
