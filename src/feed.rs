@@ -18,6 +18,12 @@ impl Display for OverflowError {
 }
 impl Error for OverflowError {}
 
+/// Check if a feed should be fetched.
+///
+/// Returns non-nil when NOW is not in the cache period. TTL is the
+/// `rag-entry-ttl' field, PERIOD is the `rag-entry-period' field,
+/// LAST-UPDATE is the last update unix timestamp and NOW is the
+/// current unix timestamp.
 #[emacs::defun]
 pub fn fetch_p(
     ttl: Option<String>,
