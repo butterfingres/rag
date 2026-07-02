@@ -1,6 +1,7 @@
 pub mod content;
 pub mod dc;
 pub mod media;
+pub mod sy;
 
 use {
     crate::xml::{ParserError, PartialEntry},
