@@ -16,6 +16,7 @@
   (require 'sqlite))
 
 (eval-and-compile (require 'rag-pool))
+(require 'rag-core)
 (require 'rag-db)
 (require 'rag-progress)
 
@@ -141,7 +142,8 @@ WHERE id == ?"
                                 (rag-feed-skip-days feed)
                                 (rag-feed-skip-hours feed)
                                 (rag-feed-ttl feed)
-                                (rag-feed-last-update feed)))))
+                                (or (rag-feed-last-update feed)
+                                    (round (float-time)))))))
       ;; this is outside the transaction because the feed parsed
       ;; successfully so failing to update the ui shouldn't revert the
       ;; transaction
@@ -149,7 +151,8 @@ WHERE id == ?"
 
 (defun rag-source-update (url)
   "Update source URL."
-  (let* ((progress-buffer (rag-progress-buffer-get))
+  (let* ((db (rag-db-get))
+         (progress-buffer (rag-progress-buffer-get))
          (marker (when (buffer-live-p progress-buffer)
                    (with-current-buffer progress-buffer
                      (save-excursion
@@ -160,43 +163,55 @@ WHERE id == ?"
                            (insert "fetching ")
                            (insert (propertize url 'face 'link))
                            (insert "...")
-                           (newline))))))))
-    (url-queue-retrieve
-     url
-     (lambda (status)
-       (unwind-protect
-           (condition-case error-value
-               (progn
-                 (when (eq (car-safe status) :error)
-                   (signal (cadadr status)
-                           (cddadr status)))
+                           (newline)))))))
+         (should-fetch (if-let* ((row (car (sqlite-select db
+                                                            "SELECT ttl, frequency, last_update
+FROM feed
+WHERE url == ?"
+                                                            (list url)))))
+                           (cl-destructuring-bind (ttl frequency last-update) row
+                             (rag-core-feed-fetch-p ttl frequency last-update (round (float-time))))
+                         t)))
+    (if should-fetch
+        (url-queue-retrieve
+         url
+         (lambda (status)
+           (unwind-protect
+               (condition-case error-value
+                   (progn
+                     (when (eq (car-safe status) :error)
+                       (signal (cadadr status)
+                               (cddadr status)))
 
-                 (goto-char (point-min))
-                 (re-search-forward (rx line-start line-end))
-                 (forward-line)
+                     (goto-char (point-min))
+                     (re-search-forward (rx line-start line-end))
+                     (forward-line)
 
-                 (rag-source-update-region url (point) (point-max))
+                     (rag-source-update-region url (point) (point-max))
 
-                 (when (buffer-live-p progress-buffer)
-                   (with-current-buffer progress-buffer
-                     (save-excursion
-                       (goto-char marker)
-                       (end-of-line)
-                       (let ((inhibit-read-only t))
-                         (insert " " (propertize "ok" 'face 'success)))))))
-             (error
-              (when (buffer-live-p progress-buffer)
-                (with-current-buffer progress-buffer
-                  (save-excursion
-                    (goto-char marker)
-                    (end-of-line)
-                    (let ((inhibit-read-only t))
-                      (insert " " (propertize (apply #'format
-                                                     (cdr error-value))
-                                              'face 'error))))))))
-         (kill-buffer (current-buffer))))
-     '()
-     t)))
+                     (when (buffer-live-p progress-buffer)
+                       (with-current-buffer progress-buffer
+                         (save-excursion
+                           (goto-char marker)
+                           (end-of-line)
+                           (let ((inhibit-read-only t))
+                             (insert " " (propertize "ok" 'face 'success)))))))
+                 (error
+                  (when (buffer-live-p progress-buffer)
+                    (with-current-buffer progress-buffer
+                      (save-excursion
+                        (goto-char marker)
+                        (end-of-line)
+                        (let ((inhibit-read-only t))
+                          (insert " " (propertize (apply #'format
+                                                         (cdr error-value))
+                                                  'face 'error))))))))
+             (kill-buffer (current-buffer))))
+         '()
+         t)
+      (with-current-buffer progress-buffer
+        (goto-char marker)
+        (insert " " (propertize "cached" 'face 'success))))))
 
 (defun rag-source-update-all ()
   (interactive)

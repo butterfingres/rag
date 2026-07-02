@@ -102,10 +102,10 @@ WHERE url == 'https://example.com/atom'"))
                        0
                        ;; skip hours
                        0
-                       ;; ttl
-                       nil
                        ;; last-update
                        1071340202
+                       ;; ttl
+                       nil
                        ;; frequency
                        nil)))
 

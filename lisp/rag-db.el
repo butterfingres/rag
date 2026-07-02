@@ -56,13 +56,16 @@ CREATE TABLE enclosure(
 ADD COLUMN ttl_new TEXT;
 
 UPDATE feed
-WHERE ttl
-SET ttl_new = format('PT%dm', ttl);
+SET ttl_new = format('PT%dm', ttl)
+WHERE ttl;
 
 ALTER TABLE feed
 DROP COLUMN ttl;
 ALTER TABLE feed
-RENAME COLUMN ttl_new TO ttl"]
+RENAME COLUMN ttl_new TO ttl;
+
+ALTER TABLE feed
+ADD COLUMN frequency INTEGER"]
   "A list of sql migrations.
 
 Running every sql snippet in this vector should create the newest

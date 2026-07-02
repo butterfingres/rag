@@ -27,20 +27,22 @@ impl Error for OverflowError {}
 #[emacs::defun]
 pub fn fetch_p(
     ttl: Option<String>,
-    period: Option<i32>,
-    last_update: i64,
+    frequency: Option<i32>,
+    last_update: Option<i64>,
     now: i64,
 ) -> Result<bool, emacs::Error> {
-    if let Some(ttl) = ttl {
+    if let Some(ttl) = ttl
+        && let Some(last_update) = last_update
+    {
         let ttl = Span::from_str(&ttl)?;
         let last_update = Timestamp::from_second(last_update)?;
         let now = Timestamp::from_second(now)?;
 
         let mut duration = ttl.to_duration(&last_update.to_zoned(TimeZone::UTC))?;
-        if let Some(period) = period {
+        if let Some(frequency) = frequency {
             duration = duration
-                .checked_div(period)
-                .ok_or(OverflowError(duration, period))?;
+                .checked_div(frequency)
+                .ok_or(OverflowError(duration, frequency))?;
         }
 
         Ok(now > last_update.checked_add(duration)?)
