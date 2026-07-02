@@ -59,7 +59,8 @@ mod tests {
     ) -> Result<(), ParserError>
     where
         T: HandleStart<'alloc, 'src, U, A>,
-        U: Into<V>,
+        U: TryInto<V>,
+        <U as TryInto<V>>::Error: Into<ParserError>,
         V: Debug + PartialEq,
         A: Allocator,
     {
@@ -74,7 +75,11 @@ mod tests {
             }
         }
 
-        assert_eq!(<U as Into<V>>::into(buffer), output);
+        assert_eq!(
+            <U as TryInto<V>>::try_into(buffer)
+                .map_err(<<U as TryInto<V>>::Error as Into<ParserError>>::into)?,
+            output
+        );
 
         Ok(())
     }

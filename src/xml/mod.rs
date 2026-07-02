@@ -26,6 +26,7 @@ use {
         reader::NsReader,
     },
     std::{
+        convert::Infallible,
         error::Error,
         fmt::{Debug, Display, Formatter},
         ptr,
@@ -68,11 +69,13 @@ where
         }
     }
 }
-impl<'alloc, 'src, A> From<PartialFeed<'alloc, 'src, A>> for Feed<'alloc, 'src, A>
+impl<'alloc, 'src, A> TryFrom<PartialFeed<'alloc, 'src, A>> for Feed<'alloc, 'src, A>
 where
     A: Allocator,
 {
-    fn from(
+    type Error = ParserError;
+
+    fn try_from(
         PartialFeed {
             title,
             link,
@@ -84,8 +87,8 @@ where
             period,
             frequency,
         }: PartialFeed<'alloc, 'src, A>,
-    ) -> Feed<'alloc, 'src, A> {
-        Feed {
+    ) -> Result<Feed<'alloc, 'src, A>, ParserError> {
+        Ok(Feed {
             title: title.data,
             link: link.data,
             skip_days,
@@ -99,7 +102,7 @@ where
                 period
             },
             last_update: last_update.data,
-        }
+        })
     }
 }
 
@@ -534,6 +537,11 @@ impl From<jiff::Error> for ParserError {
         Self::Jiff(e)
     }
 }
+impl From<Infallible> for ParserError {
+    fn from(e: Infallible) -> Self {
+        match e {}
+    }
+}
 impl From<ParseIntError> for ParserError {
     fn from(e: ParseIntError) -> Self {
         Self::ParseInt(e)
@@ -610,7 +618,7 @@ where
         let mut state = PartialFeed::default();
         loop {
             match reader.read_event()? {
-                Event::Eof => break Ok(state.into()),
+                Event::Eof => break Ok(state.try_into()?),
                 event => {
                     self = self.handle_event(reader, event, &mut state, &mut cb, version, alloc)?
                 }
