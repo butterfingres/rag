@@ -54,34 +54,12 @@ entries will have those and at least `rag-entry-title' and
   :type '(repeat string)
   :group 'rag-source)
 
-;; taken from `org-id-uuid'
-(defun rag-source--uuid ()
-  "Return string with random (version 4) UUID."
-  (let ((rnd (md5 (format "%s%s%s%s%s%s%s"
-			              (random)
-			              (time-convert nil 'list)
-			              (user-uid)
-			              (emacs-pid)
-			              (user-full-name)
-			              user-mail-address
-			              (recent-keys)))))
-    (format "%s-%s-4%s-%s%s-%s"
-	        (substring rnd 0 8)
-	        (substring rnd 8 12)
-	        (substring rnd 13 16)
-	        (format "%x"
-		            (logior
-		             #b10000000
-		             (logand
-		              #b10111111
-		              (string-to-number
-		               (substring rnd 16 18) 16))))
-	        (substring rnd 18 20)
-	        (substring rnd 20 32))))
-
 (defun rag-source-handle-new-entry (url db delete-entry insert-entry entry)
   (let* ((id (or (rag-entry-id entry)
-                 (rag-source--uuid)))
+                 (rag-entry-link entry)
+                 (format "urn:sha1:%s"
+                         (sha1 (or (rag-entry-description entry)
+                                   (float-time))))))
          (old-pub-date (car-safe (car (sqlite-select db "SELECT pub_date FROM entry
 WHERE id == ?"
                                                      (list id))))))
@@ -211,7 +189,8 @@ WHERE url == ?"
          t)
       (with-current-buffer progress-buffer
         (goto-char marker)
-        (insert " " (propertize "cached" 'face 'success))))))
+        (let ((inhibit-read-only t))
+          (insert " " (propertize "cached" 'face 'success)))))))
 
 (defun rag-source-update-all ()
   (interactive)
