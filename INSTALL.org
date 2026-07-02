@@ -28,3 +28,5 @@ Next, you would need to run Emacs with the artifacts directory in your
 #+BEGIN_SRC shell
 emacs -L . # Assuming '.' is the directory with all the artifacts.
 #+END_SRC
+
+Now see [[./USAGE.org][./USAGE.org]] for usage instructions.
