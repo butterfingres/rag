@@ -68,9 +68,9 @@ mod tests {
                         id: None,
                         pub_date: None,
                         enclosures: vec![in &alloc;
-                                         Box::slice(Box::new_in(*b"https://example.com/media.mp3", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media.mp4", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media.torrent", &alloc)),
+                                         Box::slice(Box::new_in(*b"https://example.com/media.mp3", alloc)),
+                                         Box::slice(Box::new_in(*b"https://example.com/media.mp4", alloc)),
+                                         Box::slice(Box::new_in(*b"https://example.com/media.torrent", alloc)),
                         ],
                     },
                     Entry {
@@ -80,13 +80,13 @@ mod tests {
                         id: None,
                         pub_date: None,
                         enclosures: vec![in &alloc;
-                                         Box::slice(Box::new_in(*b"https://example.com/media_group.mp3", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media_group.mp4", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media_group.torrent", &alloc)),
+                                         Box::slice(Box::new_in(*b"https://example.com/media_group.mp3", alloc)),
+                                         Box::slice(Box::new_in(*b"https://example.com/media_group.mp4", alloc)),
+                                         Box::slice(Box::new_in(*b"https://example.com/media_group.torrent", alloc)),
                         ],
                     },
                 ],
-                &alloc,
+                alloc,
             )
         })
     }
