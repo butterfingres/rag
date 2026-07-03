@@ -11,7 +11,7 @@ EMACS = emacs
 EMACSFLAGS = -Q -batch -L target/debug -L lisp -eval '(setq byte-compile-error-on-warn t)'
 
 CARGO = cargo
-CARGOCLIPPYFLAGS = --all-targets --all-features
+CARGOCLIPPYFLAGS = --all-targets --all-features -- -D warnings
 
 PREFIX = /usr/local
 SITELISP = ${PREFIX}/share/emacs/site-lisp
