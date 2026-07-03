@@ -26,13 +26,13 @@
       <media:peerLink href="https://example.com/media.torrent"/>
     </item>
     <item>
-      <media:group>
-        <media:title>media group entry</media:title>
-        <media:description>media group description</media:description>
-        <media:content url="https://example.com/media_group.mp3"/>
-        <media:player url="https://example.com/media_group.mp4"/>
-        <media:peerLink href="https://example.com/media_group.torrent"/>
-      </media:group>
+      <group xmlns="http://search.yahoo.com/mrss/">
+        <title>media group entry</title>
+        <description>media group description</description>
+        <content url="https://example.com/media_group.mp3"/>
+        <player url="https://example.com/media_group.mp4"/>
+        <peerLink href="https://example.com/media_group.torrent"/>
+      </group>
     </item>
   </channel>
 </rss>
