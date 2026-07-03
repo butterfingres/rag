@@ -319,6 +319,7 @@ mod tests {
             tz,
             xml::{
                 Feed, SkipDays, SkipHours,
+                fmt::tests::test_parser_ns,
                 tests::{TestParserError, test_parser},
             },
         },
@@ -363,5 +364,10 @@ mod tests {
                 &alloc,
             )
         })
+    }
+
+    #[test]
+    fn test_atom_parser_ns() -> Result<(), TestParserError<'static>> {
+        test_parser_ns::<Parser>(include_str!("./ns.xml"))
     }
 }

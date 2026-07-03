@@ -437,12 +437,13 @@ mod tests {
             borrow::Cow,
             tz,
             xml::{
-                Feed, SkipDays, SkipHours,
+                Entry, Feed, SkipDays, SkipHours,
+                fmt::tests::test_parser_ns,
                 tests::{TestParserError, test_parser},
             },
         },
         allocator_api2::{boxed::Box, vec},
-        jiff::{Span, civil::datetime, tz::TimeZone},
+        jiff::{Span, civil::datetime},
     };
 
     #[test]
@@ -801,73 +802,7 @@ mod tests {
 
     #[test]
     fn test_rss_parser_ns() -> Result<(), TestParserError<'static>> {
-        with_bump(|alloc| {
-            test_parser::<_, Parser, _>(
-                include_str!("./ns.xml"),
-                Feed {
-                    title: Some(Cow::Borrowed(b"dc title")),
-                    link: None,
-                    // 2026-07-03
-                    last_update: Some(
-                        datetime(2026, 07, 03, 00, 00, 00, 00)
-                            .to_zoned(TimeZone::UTC)?
-                            .timestamp(),
-                    ),
-                    skip_hours: SkipHours::default(),
-                    skip_days: SkipDays::default(),
-                    ttl: Span::new().try_hours(1)?,
-                    frequency: Some(2),
-                },
-                [
-                    Entry {
-                        title: Some(Cow::Borrowed(b"dublin core entry")),
-                        link: None,
-                        description: Some(Cow::Borrowed(b"dublin core entry description")),
-                        id: Some(Cow::Borrowed(b"1")),
-                        // 2026-07-03
-                        pub_date: Some(
-                            datetime(2026, 07, 03, 00, 00, 00, 00)
-                                .to_zoned(TimeZone::UTC)?
-                                .timestamp(),
-                        ),
-                        enclosures: vec![in &alloc;],
-                    },
-                    Entry {
-                        title: None,
-                        link: None,
-                        description: Some(Cow::Borrowed(b"content description")),
-                        id: None,
-                        pub_date: None,
-                        enclosures: vec![in &alloc;],
-                    },
-                    Entry {
-                        title: Some(Cow::Borrowed(b"media entry")),
-                        link: None,
-                        description: Some(Cow::Borrowed(b"media description")),
-                        id: None,
-                        pub_date: None,
-                        enclosures: vec![in &alloc;
-                                         Box::slice(Box::new_in(*b"https://example.com/media.mp3", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media.mp4", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media.torrent", &alloc)),
-                        ],
-                    },
-                    Entry {
-                        title: Some(Cow::Borrowed(b"media group entry")),
-                        link: None,
-                        description: Some(Cow::Borrowed(b"media group description")),
-                        id: None,
-                        pub_date: None,
-                        enclosures: vec![in &alloc;
-                                         Box::slice(Box::new_in(*b"https://example.com/media_group.mp3", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media_group.mp4", &alloc)),
-                                         Box::slice(Box::new_in(*b"https://example.com/media_group.torrent", &alloc)),
-                        ],
-                    },
-                ],
-                &alloc,
-            )
-        })
+        test_parser_ns::<Parser>(include_str!("./ns.xml"))
     }
 
     #[test]
