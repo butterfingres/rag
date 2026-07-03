@@ -29,7 +29,7 @@ where
     ) -> Result<(), ParserError>;
 }
 
-pub const fn namespace_item_handler<'alloc, 'src, A>(
+pub const fn item_handler<'alloc, 'src, A>(
     ns: &[u8],
 ) -> Option<&'static dyn HandleStart<'alloc, 'src, PartialEntry<'alloc, 'src, A>, A>>
 where
@@ -43,7 +43,7 @@ where
     }
 }
 
-pub const fn namespace_feed_handler<'alloc, 'src, A>(
+pub const fn feed_handler<'alloc, 'src, A>(
     ns: &[u8],
 ) -> Option<&'static dyn HandleStart<'alloc, 'src, PartialFeed<'alloc, 'src, A>, A>>
 where
