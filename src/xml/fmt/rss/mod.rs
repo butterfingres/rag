@@ -457,8 +457,7 @@ mod tests {
                     last_update: Some(
                         datetime(2023, 07, 21, 09, 04, 00, 00)
                             .to_zoned(tz::EDT)?
-                            .timestamp()
-                            .into(),
+                            .timestamp(),
                     ),
                     skip_hours: SkipHours::new([0b1110]),
                     skip_days: SkipDays::new([0b0111_1111]),
@@ -577,7 +576,6 @@ mod tests {
                         datetime(2001, 04, 13, 09, 03, 49, 00)
                             .to_zoned(tz::GMT)?
                             .timestamp()
-                            .into()
                     ),
                     skip_hours: SkipHours::default(),
                     skip_days: SkipDays::default(),
@@ -724,7 +722,6 @@ mod tests {
                         datetime(2023, 07, 21, 09, 04, 00, 00)
                             .to_zoned(tz::EDT)?
                             .timestamp()
-                            .into()
                     ),
                     skip_hours: SkipHours::default(),
                     skip_days: SkipDays::default(),
@@ -814,8 +811,7 @@ mod tests {
                     last_update: Some(
                         datetime(2026, 07, 03, 00, 00, 00, 00)
                             .to_zoned(TimeZone::UTC)?
-                            .timestamp()
-                            .into(),
+                            .timestamp(),
                     ),
                     skip_hours: SkipHours::default(),
                     skip_days: SkipDays::default(),
@@ -832,8 +828,7 @@ mod tests {
                         pub_date: Some(
                             datetime(2026, 07, 03, 00, 00, 00, 00)
                                 .to_zoned(TimeZone::UTC)?
-                                .timestamp()
-                                .into(),
+                                .timestamp(),
                         ),
                         enclosures: vec![in &alloc;],
                     },
@@ -886,8 +881,7 @@ mod tests {
                 last_update: Some(
                     datetime(2023, 07, 21, 09, 04, 00, 00)
                         .to_zoned(tz::EDT)?
-                        .timestamp()
-                        .into(),
+                        .timestamp(),
                 ),
                 skip_hours: SkipHours::default(),
                 skip_days: SkipDays::default(),

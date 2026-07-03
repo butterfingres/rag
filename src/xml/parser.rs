@@ -152,8 +152,7 @@ mod tests {
             ts,
             datetime(2026, 04, 09, 00, 18, 00, 00)
                 .to_zoned(tz::EST)?
-                .timestamp()
-                .into(),
+                .timestamp(),
         );
         Ok(())
     }

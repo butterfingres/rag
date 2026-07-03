@@ -338,8 +338,7 @@ mod tests {
                     last_update: Some(
                         datetime(2003, 12, 13, 18, 30, 02, 00)
                             .to_zoned(tz::Z)?
-                            .timestamp()
-                            .into(),
+                            .timestamp(),
                     ),
                     skip_hours: SkipHours::default(),
                     skip_days: SkipDays::default(),
@@ -355,8 +354,7 @@ mod tests {
                     pub_date: Some(
                         datetime(2004, 12, 13, 18, 30, 02, 00)
                             .to_zoned(tz::Z)?
-                            .timestamp()
-                            .into(),
+                            .timestamp(),
                     ),
                     enclosures: vec![in &alloc;
                        Box::slice(Box::new_in(*b"https://example.com/entry_1.mp3", &alloc))
