@@ -1,11 +1,11 @@
 .POSIX:
 
 # find -not -name '.*' -name '*.el' | sed 's/\.\///g' | sed 's/\.el/\.elc/g' | sort | xargs echo
-ELCS = lisp/rag-core-tests.elc lisp/rag-db.elc lisp/rag-db-tests.elc	\
-	lisp/rag-db-tests-lib.elc lisp/rag-entry.elc						\
-	lisp/rag-entry-tests.elc lisp/rag-faces.elc lisp/rag-lib.elc		\
-	lisp/rag-pool.elc lisp/rag-pool-tests.elc lisp/rag-progress.elc		\
-	lisp/rag-source.elc lisp/rag-source-tests.elc lisp/rag-tests.elc	\
+ELCS = lisp/rag-core-tests.elc lisp/rag-db-tests-lib.elc				\
+	lisp/rag-db-tests.elc lisp/rag-db.elc lisp/rag-entry-tests.elc		\
+	lisp/rag-entry.elc lisp/rag-faces.elc lisp/rag-lib.elc				\
+	lisp/rag-pool-tests.elc lisp/rag-pool.elc lisp/rag-progress.elc		\
+	lisp/rag-source-tests.elc lisp/rag-source.elc lisp/rag-tests.elc	\
 	lisp/rag.elc
 
 EMACS = emacs
@@ -20,10 +20,11 @@ LIBDIR = ${PREFIX}/share/emacs/site-lisp
 
 # find -name '*.toml' -o -name '*.rs' | sed 's/\.\///g' | sort | xargs echo
 RUSTFILES = Cargo.toml src/alloc.rs src/borrow.rs src/bump.rs			\
-	src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs				\
+	src/feed.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs	\
 	src/xml/fmt/atom/mod.rs src/xml/fmt/mod.rs src/xml/fmt/rdf/mod.rs	\
-	src/xml/fmt/rss/mod.rs src/xml/mod.rs src/xml/ns/dc/mod.rs			\
-	src/xml/ns/media/mod.rs src/xml/ns/mod.rs src/xml/parser.rs
+	src/xml/fmt/rss/mod.rs src/xml/mod.rs src/xml/ns/content/mod.rs		\
+	src/xml/ns/dc/mod.rs src/xml/ns/media/mod.rs src/xml/ns/mod.rs		\
+	src/xml/ns/sy/mod.rs src/xml/parser.rs
 
 include Makefile.in
 
