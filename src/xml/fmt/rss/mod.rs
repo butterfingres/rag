@@ -144,8 +144,8 @@ where
     ) -> Result<(), ParserError> {
         let mut item = PartialEntry::new_in(alloc);
         loop {
-            match reader.read_event()? {
-                Event::Start(tag) if tag.name().0 == b"title" => {
+            match reader.read_resolved_event()? {
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().0 == b"title" => {
                     item.title.try_replace_with(|| {
                         Content
                             .map(Some)
@@ -153,7 +153,7 @@ where
                             .parse_tag(reader, tag.name(), version, alloc)
                     })?;
                 }
-                Event::Start(tag) if tag.name().0 == b"link" => {
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().0 == b"link" => {
                     item.link.try_replace_or_skip(
                         Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
@@ -162,7 +162,7 @@ where
                         alloc,
                     )?;
                 }
-                Event::Start(tag) if tag.name().0 == b"description" => {
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().0 == b"description" => {
                     item.content.try_replace_or_skip(
                         Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
@@ -171,7 +171,7 @@ where
                         alloc,
                     )?;
                 }
-                Event::Start(tag) if tag.name().0 == b"guid" => {
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().0 == b"guid" => {
                     let mut is_permalink = None;
                     for attr in tag.attributes() {
                         let attr = attr?;
@@ -194,7 +194,7 @@ where
                     }
                     item.id = Replaceable::new_irreplaceable(Some(link));
                 }
-                Event::Start(tag) if tag.name().0 == b"pubDate" => {
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().0 == b"pubDate" => {
                     item.updated.try_replace_or_skip(
                         Content
                             .flat_map(rfc2822_timestamp)
@@ -206,23 +206,29 @@ where
                         alloc,
                     )?;
                 }
-                Event::Start(tag) if tag.name().0 == b"enclosure" => {
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().0 == b"enclosure" => {
                     reader.read_to_end(tag.name())?;
                     handle_enclosure(&mut item, tag, version, alloc)?;
                 }
-                Event::Empty(tag) if tag.name().0 == b"enclosure" => {
+                (ResolveResult::Unbound, Event::Empty(tag)) if tag.name().0 == b"enclosure" => {
                     handle_enclosure(&mut item, tag, version, alloc)?;
                 }
 
-                Event::Start(tag) => {
+                (
+                    ResolveResult::Bound(Namespace(ns)),
+                    event @ Event::Start(_) | event @ Event::Empty(_),
+                ) if let Some(handler) = ns::item_handler(ns) => {
+                    handler.handle_start(reader, event, &mut item, version, alloc)?;
+                }
+                (_, Event::Start(tag)) => {
                     reader.read_to_end(tag.name())?;
                 }
 
-                Event::End(tag) if tag.name() == name => {
+                (_, Event::End(tag)) if tag.name() == name => {
                     cb(item.into()).into()?;
                     return Ok(());
                 }
-                Event::Eof => return Err(ParserError::UNCLOSED_TAG),
+                (_, Event::Eof) => return Err(ParserError::UNCLOSED_TAG),
 
                 _ => {}
             }
