@@ -157,6 +157,13 @@ where
                     handle_link(&mut entry, &tag, reader, version, alloc)?;
                 }
 
+                (
+                    ResolveResult::Bound(Namespace(ns)),
+                    start @ Event::Start(_) | start @ Event::Empty(_),
+                ) if let Some(handler) = ns::item_handler(ns) => {
+                    handler.handle_start(reader, start, &mut entry, version, alloc)?;
+                }
+
                 (_, Event::Start(tag)) => {
                     reader.read_to_end(tag.name())?;
                 }
