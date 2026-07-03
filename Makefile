@@ -1,6 +1,5 @@
 .POSIX:
 
-# find -not -name '.*' -name '*.el' | sed 's/\.\///g' | sed 's/\.el/\.elc/g' | sort | xargs echo
 ELCS = lisp/rag-core-tests.elc lisp/rag-db-tests-lib.elc				\
 	lisp/rag-db-tests.elc lisp/rag-db.elc lisp/rag-entry-tests.elc		\
 	lisp/rag-entry.elc lisp/rag-faces.elc lisp/rag-lib.elc				\
@@ -18,7 +17,6 @@ PREFIX = /usr/local
 SITELISP = ${PREFIX}/share/emacs/site-lisp
 LIBDIR = ${PREFIX}/share/emacs/site-lisp
 
-# find -name '*.toml' -o -name '*.rs' | sed 's/\.\///g' | sort | xargs echo
 RUSTFILES = Cargo.toml src/alloc.rs src/borrow.rs src/bump.rs			\
 	src/feed.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs	\
 	src/xml/fmt/atom/mod.rs src/xml/fmt/mod.rs src/xml/fmt/rdf/mod.rs	\
@@ -30,6 +28,8 @@ include Makefile.in
 
 all: ${ELCS}
 check: all
+	[ "$$(find Cargo.toml src -name '*.toml' -o -name '*.rs' | sort | xargs echo)" = "$$(echo ${RUSTFILES} | xargs echo)" ] || (echo 'Go update $${RUSTFILES}.'; exit 1)
+	[ "$$(find lisp -name '*.el' | sed 's/\.el/\.elc/g' | sort | xargs echo)" = "$$(echo ${ELCS} | xargs echo)" ] || (echo 'Go update $${ELCS}.'; exit 1)
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests   -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-db-tests     -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-entry-tests  -l ert -f ert-run-tests-batch-and-exit
