@@ -29,9 +29,9 @@ where
     ) -> Result<(), ParserError>;
 }
 
-pub const fn item_handler<'alloc, 'src, A>(
+pub const fn item_handler<'alloc, 'src, 'h, A>(
     ns: &[u8],
-) -> Option<&'static dyn HandleStart<'alloc, 'src, PartialEntry<'alloc, 'src, A>, A>>
+) -> Option<&'h dyn HandleStart<'alloc, 'src, PartialEntry<'alloc, 'src, A>, A>>
 where
     A: Allocator,
 {
@@ -43,9 +43,9 @@ where
     }
 }
 
-pub const fn feed_handler<'alloc, 'src, A>(
+pub const fn feed_handler<'alloc, 'src, 'h, A>(
     ns: &[u8],
-) -> Option<&'static dyn HandleStart<'alloc, 'src, PartialFeed<'alloc, 'src, A>, A>>
+) -> Option<&'h dyn HandleStart<'alloc, 'src, PartialFeed<'alloc, 'src, A>, A>>
 where
     A: Allocator,
 {

@@ -3,7 +3,7 @@ use {
         num,
         xml::{
             self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
-            get_attribute_when,
+            get_attribute_when, ns,
             parser::{Content, ParseTagInto, TagParser, rfc2822_timestamp},
             read_to_end,
         },
@@ -17,7 +17,7 @@ use {
     quick_xml::{
         XmlVersion,
         events::{BytesStart, Event},
-        name::{QName, ResolveResult},
+        name::{Namespace, QName, ResolveResult},
         reader::NsReader,
     },
     std::marker::PhantomData,
@@ -283,7 +283,7 @@ where
     where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        match event {
+        match &event {
             Event::Start(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
                 (Parser::OutsideChannel, (ResolveResult::Unbound, name))
                     if name.as_ref() == b"channel" =>
@@ -387,11 +387,27 @@ where
                     RssItem::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
                         .map(|_| step)
                 }
+                (step @ Parser::InsideChannel, (ResolveResult::Bound(Namespace(ns)), _))
+                    if let Some(handler) = ns::feed_handler(ns) =>
+                {
+                    handler
+                        .handle_start(reader, event, state, version, alloc)
+                        .map(|_| step)
+                }
                 (step, _) => {
                     reader.read_to_end(tag.name())?;
                     Ok(step)
                 }
             },
+            Event::Empty(tag)
+                if let (ResolveResult::Bound(Namespace(ns)), _) =
+                    reader.resolver().resolve_element(tag.name())
+                    && let Some(handler) = ns::feed_handler(ns) =>
+            {
+                handler
+                    .handle_start(reader, event, state, version, alloc)
+                    .map(|_| self)
+            }
             Event::End(tag)
                 if let (ResolveResult::Unbound, name) =
                     reader.resolver().resolve_element(tag.name())

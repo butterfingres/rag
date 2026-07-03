@@ -1,6 +1,6 @@
 use {
     crate::xml::{
-        self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
+        self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError, ns,
         parser::{Content, ParseTagInto, TagParser},
     },
     allocator_api2::alloc::Allocator,
@@ -111,7 +111,7 @@ where
     where
         F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        match event {
+        match &event {
             Event::Start(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
                 (Self::OutsideChannel, (RSS, name)) if name.as_ref() == b"channel" => {
                     Ok(Self::InsideChannel)
@@ -138,6 +138,13 @@ where
                     Ok(step)
                 }
 
+                (step @ Self::InsideChannel, (ResolveResult::Bound(Namespace(ns)), _))
+                    if let Some(handler) = ns::feed_handler(ns) =>
+                {
+                    handler.handle_start(reader, event, state, version, alloc)?;
+                    Ok(step)
+                }
+
                 (step @ Self::OutsideChannel, (RSS, name)) if name.as_ref() == b"item" => {
                     RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
                         .map(|_| step)
@@ -147,6 +154,14 @@ where
                     Ok(step)
                 }
             },
+            Event::Empty(tag)
+                if let (ResolveResult::Bound(Namespace(ns)), _) =
+                    reader.resolver().resolve_element(tag.name())
+                    && let Some(handler) = ns::feed_handler(ns) =>
+            {
+                handler.handle_start(reader, event, state, version, alloc)?;
+                Ok(self)
+            }
             Event::End(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
                 (Self::InsideChannel, (RSS, name)) if name.as_ref() == b"channel" => {
                     Ok(Self::OutsideChannel)

@@ -3,7 +3,7 @@ use {
         borrow::Cow,
         xml::{
             self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
-            get_attribute_when,
+            get_attribute_when, ns,
             parser::{Content, ParseTagInto, TagParser, rfc3339_timestamp},
         },
     },
@@ -244,7 +244,7 @@ where
     where
         F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        match event {
+        match &event {
             Event::Start(tag) => match reader.resolver().resolve_element(tag.name()) {
                 (NS, name) if name.as_ref() == b"title" => {
                     state.title.try_replace_with(|| {
@@ -267,12 +267,17 @@ where
                     )?;
                 }
                 (NS, name) if name.as_ref() == b"link" => {
-                    feed_handle_link(state, &tag, reader, version, alloc)?;
+                    feed_handle_link(state, tag, reader, version, alloc)?;
                     reader.read_to_end(tag.name())?;
                 }
 
                 (NS, name) if name.as_ref() == b"entry" => {
                     AtomEntry::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
+                }
+                (ResolveResult::Bound(Namespace(ns)), _)
+                    if let Some(handler) = ns::feed_handler(ns) =>
+                {
+                    handler.handle_start(reader, event, state, version, alloc)?;
                 }
                 _ => {
                     reader.read_to_end(tag.name())?;
@@ -280,7 +285,12 @@ where
             },
             Event::Empty(tag) => match reader.resolver().resolve_element(tag.name()) {
                 (NS, name) if name.as_ref() == b"link" => {
-                    feed_handle_link(state, &tag, reader, version, alloc)?;
+                    feed_handle_link(state, tag, reader, version, alloc)?;
+                }
+                (ResolveResult::Bound(Namespace(ns)), _)
+                    if let Some(handler) = ns::feed_handler(ns) =>
+                {
+                    handler.handle_start(reader, event, state, version, alloc)?;
                 }
                 _ => {}
             },
