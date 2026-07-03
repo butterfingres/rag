@@ -803,7 +803,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rss_parser_zero_copy() -> Result<(), TestParserError<'static>> {
+    fn test_rss_parser_alt() -> Result<(), TestParserError<'static>> {
         test_parser::<_, Parser, _>(
             include_str!("./alt.xml"),
             Feed {
