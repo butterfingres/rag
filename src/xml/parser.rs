@@ -1,7 +1,7 @@
 use {
     crate::{
         borrow::Cow,
-        xml::{ParserError, Replaceable, read_to_end},
+        xml::{ParserError, read_to_end},
     },
     allocator_api2::alloc::Allocator,
     jiff::{
@@ -9,7 +9,6 @@ use {
         fmt::{rfc2822, temporal},
     },
     quick_xml::{XmlVersion, name::QName, reader::NsReader},
-    std::{marker::PhantomData, str::FromStr},
 };
 
 pub trait ParseTagInto<'alloc, 'src, A, S = Self>
@@ -60,24 +59,6 @@ where
         Self: Sized,
     {
         Map { f, parser: self }
-    }
-    fn map_from_str<T>(self) -> MapFromStr<T, Self>
-    where
-        Self: Sized,
-    {
-        MapFromStr {
-            parser: self,
-            _marker: PhantomData,
-        }
-    }
-    fn map_replaceable(
-        self,
-        replaceable: bool,
-    ) -> Map<impl Fn(Self::Output) -> Replaceable<Self::Output>, Self>
-    where
-        Self: Sized,
-    {
-        self.map(move |data| Replaceable { data, replaceable })
     }
 }
 
@@ -140,31 +121,6 @@ where
         self.parser
             .parse_tag(reader, name, version, alloc)
             .map(&self.f)
-    }
-}
-pub struct MapFromStr<T, P> {
-    parser: P,
-    _marker: PhantomData<T>,
-}
-impl<'alloc, 'src, P, S, T, U, A> TagParser<'alloc, 'src, A> for MapFromStr<T, P>
-where
-    P: TagParser<'alloc, 'src, A, Output = S>,
-    S: AsRef<str>,
-    T: FromStr<Err = U>,
-    U: Into<ParserError>,
-    A: Allocator,
-{
-    type Output = T;
-
-    fn parse_tag(
-        &self,
-        reader: &mut NsReader<&'src [u8]>,
-        name: QName<'_>,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<Self::Output, ParserError> {
-        let input = self.parser.parse_tag(reader, name, version, alloc)?;
-        T::from_str(input.as_ref()).map_err(<U as Into<ParserError>>::into)
     }
 }
 pub fn rfc2822_timestamp<T>(ts: T) -> Result<Timestamp, ParserError>

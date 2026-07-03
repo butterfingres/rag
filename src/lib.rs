@@ -13,7 +13,7 @@ mod num;
 mod sym;
 #[cfg(test)]
 mod tz;
-pub mod xml;
+mod xml;
 
 emacs::plugin_is_GPL_compatible!();
 

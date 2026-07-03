@@ -475,15 +475,6 @@ where
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct ParsedFeed<'alloc, 'src, A>
-where
-    A: Allocator,
-{
-    pub feed: Feed<'alloc, 'src, A>,
-    pub entries: Vec<Entry<'alloc, 'src, A>>,
-}
-
 #[derive(Debug)]
 pub enum ParserError {
     Alloc(AllocError),
