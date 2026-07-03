@@ -61,6 +61,12 @@ where
                     )?;
                 }
 
+                (
+                    ResolveResult::Bound(Namespace(ns)),
+                    event @ (Event::Start(_) | Event::Empty(_)),
+                ) if let Some(handler) = ns::item_handler(ns) => {
+                    handler.handle_start(reader, event, &mut entry, version, alloc)?;
+                }
                 (_, Event::Start(tag)) => {
                     reader.read_to_end(tag.name())?;
                 }
