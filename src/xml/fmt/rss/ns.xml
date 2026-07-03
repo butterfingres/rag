@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<rss version="2.0"
+     xmlns:content="http://purl.org/rss/1.0/modules/content/"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:media="http://search.yahoo.com/mrss/"
+     xmlns:sy="http://purl.org/rss/1.0/modules/syndication/">
+  <channel>
+    <dc:title>dc title</dc:title>
+    <dc:date>2026-07-03</dc:date>
+    <sy:updatePeriod>hourly</sy:updatePeriod>
+    <sy:updateFrequency>2</sy:updateFrequency>
+    <item>
+      <dc:title>dublin core entry</dc:title>
+      <dc:date>2026-07-03</dc:date>
+      <dc:description>dublin core entry description</dc:description>
+      <dc:identifier>1</dc:identifier>
+    </item>
+    <item>
+      <content:encoded>content description</content:encoded>
+    </item>
+    <item>
+      <media:title>media entry</media:title>
+      <media:description>media description</media:description>
+      <media:content url="https://example.com/media.mp3"/>
+      <media:player url="https://example.com/media.mp4"/>
+      <media:peerLink href="https://example.com/media.torrent"/>
+    </item>
+    <item>
+      <media:group>
+        <media:title>media group entry</media:title>
+        <media:description>media group description</media:description>
+        <media:content url="https://example.com/media_group.mp3"/>
+        <media:player url="https://example.com/media_group.mp4"/>
+        <media:peerLink href="https://example.com/media_group.torrent"/>
+      </media:group>
+    </item>
+  </channel>
+</rss>

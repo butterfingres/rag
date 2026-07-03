@@ -41,7 +41,8 @@ where
     if let Some(href) = get_attribute_when(
         link,
         |attr| {
-            if let (NS, name) = reader.resolver().resolve(attr.key, true)
+            if let (ResolveResult::Unbound | NS, name) =
+                reader.resolver().resolve_attribute(attr.key)
                 && name.as_ref() == b"rel"
             {
                 found_rel = true;
@@ -54,7 +55,7 @@ where
 
             Ok(found_rel)
         },
-        |attr| matches!(reader.resolver().resolve(attr.key, true), (NS, name) if name.as_ref() == b"href"),
+        |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Unbound | NS, name) if name.as_ref() == b"href"),
         version,
         alloc,
     )? {
@@ -198,7 +199,8 @@ where
         && let Some(href) = get_attribute_when(
             link,
             |attr| {
-                if let (NS, name) = reader.resolver().resolve(attr.key, true)
+                if let (ResolveResult::Unbound | NS, name) =
+                    reader.resolver().resolve_attribute(attr.key)
                     && name.as_ref() == b"rel"
                     && *attr.value == *b"alternate"
                 {
@@ -208,7 +210,7 @@ where
 
                 Ok(found_rel)
             },
-            |attr| matches!(reader.resolver().resolve(attr.key, true), (NS, name) if name.as_ref() == b"href"),
+            |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Unbound | NS, name) if name.as_ref() == b"href"),
             version,
             alloc,
         )?

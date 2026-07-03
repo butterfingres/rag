@@ -33,7 +33,7 @@ where
     if let Some(url) = get_attribute_when(
         &start,
         |_| Ok(true),
-        |attr| matches!(reader.resolver().resolve(attr.key, true), (ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == url_attribute.as_bytes()),
+        |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Unbound | ResolveResult::Bound(Namespace(NS)), name) if name.as_ref() == url_attribute.as_bytes()),
         version,
         alloc,
     )? {
