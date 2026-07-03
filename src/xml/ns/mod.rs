@@ -4,7 +4,7 @@ pub mod media;
 pub mod sy;
 
 use {
-    crate::xml::{ParserError, PartialEntry},
+    crate::xml::{ParserError, PartialEntry, PartialFeed},
     allocator_api2::alloc::Allocator,
     quick_xml::{XmlVersion, events::Event, reader::NsReader},
 };
@@ -39,6 +39,19 @@ where
         content::NS => Some(&content::Parser),
         dc::NS => Some(&dc::Parser),
         media::NS => Some(&media::Parser),
+        _ => None,
+    }
+}
+
+pub const fn namespace_feed_handler<'alloc, 'src, A>(
+    ns: &[u8],
+) -> Option<&'static dyn HandleStart<'alloc, 'src, PartialFeed<'alloc, 'src, A>, A>>
+where
+    A: Allocator,
+{
+    match ns {
+        dc::NS => Some(&dc::Parser),
+        sy::NS => Some(&sy::Parser),
         _ => None,
     }
 }
