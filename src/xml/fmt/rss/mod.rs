@@ -442,7 +442,7 @@ mod tests {
             },
         },
         allocator_api2::{boxed::Box, vec},
-        jiff::{Span, civil::datetime},
+        jiff::{Span, civil::datetime, tz::TimeZone},
     };
 
     #[test]
@@ -800,6 +800,44 @@ mod tests {
                 &alloc,
             )
         })
+    }
+
+    #[test]
+    fn test_rss_parser_dc() -> Result<(), TestParserError<'static>> {
+        let alloc = &alloc::Dummy;
+        test_parser::<_, Parser, _>(
+            include_str!("./dc.xml"),
+            Feed {
+                title: Some(Cow::Borrowed(b"dc title")),
+                link: None,
+                // 2026-07-03
+                last_update: Some(
+                    datetime(2026, 07, 03, 00, 00, 00, 00)
+                        .to_zoned(TimeZone::UTC)?
+                        .timestamp()
+                        .into(),
+                ),
+                skip_hours: SkipHours::default(),
+                skip_days: SkipDays::default(),
+                ttl: Span::new(),
+                frequency: None,
+            },
+            [Entry {
+                title: Some(Cow::Borrowed(b"first entry")),
+                link: None,
+                description: Some(Cow::Borrowed(b"first entry description")),
+                id: Some(Cow::Borrowed(b"1")),
+                // 2026-07-03
+                pub_date: Some(
+                    datetime(2026, 07, 03, 00, 00, 00, 00)
+                        .to_zoned(TimeZone::UTC)?
+                        .timestamp()
+                        .into(),
+                ),
+                enclosures: vec![in &alloc;],
+            }],
+            &alloc,
+        )
     }
 
     #[test]
