@@ -115,7 +115,7 @@ jobs:
       - shell: bash
         run: |
           mv target/${{ matrix.target }}/release/${{ matrix.so-prefix }}rag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
-      - uses: actions/upload-artifact@v7.0.1
+      - uses: actions/upload-artifact@v7
         with:
           name: rag-core-${{ matrix.target }}
           path: rag-core.${{ matrix.so-suffix }}
