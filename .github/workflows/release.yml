@@ -9,6 +9,9 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGOBUILDFLAGS: --locked --release
+
 jobs:
   lisp:
     runs-on: ubuntu-latest
@@ -101,6 +104,8 @@ jobs:
             so-prefix: lib
             so-suffix: so
     runs-on: ${{ matrix.host }}
+    env:
+      RUSTFLAGS: -Ccodegen-units=1 -Cstrip=symbols ${{ matrix.rustflags }}
     steps:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
@@ -108,11 +113,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install ${{ matrix.ubuntu-pkg }}
-      - env:
-          RUSTFLAGS: -Ccodegen-units=1 -Cstrip=symbols ${{ matrix.rustflags }}
         run: |
           rustup toolchain install stable --target ${{ matrix.target }} --profile minimal --no-self-update
-          cargo build --locked --release --target ${{ matrix.target }}
+          cargo build ${CARGOBUILDFLAGS} --target ${{ matrix.target }}
       - shell: bash
         run: |
           mv target/${{ matrix.target }}/release/${{ matrix.so-prefix }}rag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
