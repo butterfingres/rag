@@ -105,4 +105,13 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn test_fetch_p_no_panic() -> Result<(), emacs::Error> {
+        assert!(
+            fetch_p_inner(Some("PT1M"), Some(0), Some(0), 30).is_err(),
+            "this should not panic"
+        );
+        Ok(())
+    }
 }
