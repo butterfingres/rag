@@ -119,6 +119,7 @@ jobs:
           name: rag-core-${{ matrix.target }}
           path: rag-core.${{ matrix.so-suffix }}
           if-no-files-found: error
+          retention-days: 1
 
   release:
     needs: [lisp, rag-core]
