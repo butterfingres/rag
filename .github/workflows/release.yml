@@ -138,12 +138,6 @@ jobs:
             rustflags: -Clinker=riscv64-linux-gnu-gcc -Ctarget-features=-crt-static
             so-prefix: lib
             so-suffix: so
-          - target: s390x-unknown-linux-musl
-            host: ubuntu-latest
-            ubuntu-pkg: gcc-s390x-linux-gnu
-            rustflags: -Clinker=s390x-linux-gnu-gcc -Ctarget-features=-crt-static
-            so-prefix: lib
-            so-suffix: so
     runs-on: ${{ matrix.host }}
     steps:
       - uses: actions/checkout@v6
