@@ -1,12 +1,12 @@
 on:
   push:
     paths:
-      - ".github/workflows/test.yml"
+      - ".github/workflows/test*.yml"
       - "src/**.rs"
       - "lisp/**.rs"
       - "Cargo.*"
-      - "Makefile"
-      - "configure"
+      - "Makefile*"
+      - "configure*"
   pull_request:
 
 jobs:
