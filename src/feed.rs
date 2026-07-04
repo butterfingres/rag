@@ -69,9 +69,8 @@ mod tests {
 
     #[test]
     fn test_fetch_p_empty() -> Result<(), emacs::Error> {
-        assert_eq!(
+        assert!(
             fetch_p_inner(None::<&str>, None, None, 0)?,
-            true,
             "empty feeds should always be fetched"
         );
         Ok(())
@@ -79,9 +78,8 @@ mod tests {
 
     #[test]
     fn test_fetch_p_below_cache() -> Result<(), emacs::Error> {
-        assert_eq!(
-            fetch_p_inner(Some("PT10M"), None, Some(0), 0)?,
-            false,
+        assert!(
+            !fetch_p_inner(Some("PT10M"), None, Some(0), 0)?,
             "0 < 0 + 10"
         );
         Ok(())
@@ -89,25 +87,20 @@ mod tests {
 
     #[test]
     fn test_fetch_p_default() -> Result<(), emacs::Error> {
-        assert_eq!(fetch_p_inner(Some("PT1S"), None, None, 1)?, true, "1 > 0");
+        assert!(fetch_p_inner(Some("PT1S"), None, None, 1)?, "1 > 0");
         Ok(())
     }
 
     #[test]
     fn test_fetch_p_last_update() -> Result<(), emacs::Error> {
-        assert_eq!(
-            fetch_p_inner(Some("PT1S"), None, Some(1), 2)?,
-            true,
-            "2 >= 1 + 1"
-        );
+        assert!(fetch_p_inner(Some("PT1S"), None, Some(1), 2)?, "2 >= 1 + 1");
         Ok(())
     }
 
     #[test]
     fn test_fetch_p_frequency() -> Result<(), emacs::Error> {
-        assert_eq!(
+        assert!(
             fetch_p_inner(Some("PT1M"), Some(2), Some(0), 30)?,
-            true,
             "60 / 2 >= 30"
         );
         Ok(())
