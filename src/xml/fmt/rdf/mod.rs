@@ -117,64 +117,63 @@ where
     where
         F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        match &event {
-            Event::Start(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
-                (Self::OutsideChannel, (RSS, name)) if name.as_ref() == b"channel" => {
-                    Ok(Self::InsideChannel)
-                }
-                (step @ Self::InsideChannel, (RSS, name)) if name.as_ref() == b"title" => {
-                    state.title.try_replace_with(|| {
+        match (self, reader.resolver().resolve_event(event)) {
+            (Self::OutsideChannel, (RSS, Event::Start(tag)))
+                if tag.local_name().as_ref() == b"channel" =>
+            {
+                Ok(Self::InsideChannel)
+            }
+            (Self::InsideChannel, (RSS, Event::End(tag)))
+                if tag.local_name().as_ref() == b"channel" =>
+            {
+                Ok(Self::OutsideChannel)
+            }
+            (step @ Self::InsideChannel, (RSS, Event::Start(tag)))
+                if tag.local_name().as_ref() == b"title" =>
+            {
+                state
+                    .title
+                    .try_replace_with(|| {
                         Content
                             .map(Some)
                             .map(Replaceable::new_irreplaceable)
                             .parse_tag(reader, tag.name(), version, alloc)
-                    })?;
-
-                    Ok(step)
-                }
-                (step @ Self::InsideChannel, (RSS, name)) if name.as_ref() == b"link" => {
-                    state.link.try_replace_or_skip(
+                    })
+                    .map(|_| step)
+            }
+            (step @ Self::InsideChannel, (RSS, Event::Start(tag)))
+                if tag.local_name().as_ref() == b"link" =>
+            {
+                state
+                    .link
+                    .try_replace_or_skip(
                         Content.map(Some).map(Replaceable::new_irreplaceable),
                         reader,
                         tag.name(),
                         version,
                         alloc,
-                    )?;
-
-                    Ok(step)
-                }
-
-                (step @ Self::InsideChannel, (ResolveResult::Bound(Namespace(ns)), _))
-                    if let Some(handler) = ns::feed_handler(ns) =>
-                {
-                    handler.handle_start(reader, event, state, version, alloc)?;
-                    Ok(step)
-                }
-
-                (step @ Self::OutsideChannel, (RSS, name)) if name.as_ref() == b"item" => {
-                    RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
-                        .map(|_| step)
-                }
-                (step, _) => {
-                    reader.read_to_end(tag.name())?;
-                    Ok(step)
-                }
-            },
-            Event::Empty(tag)
-                if let (ResolveResult::Bound(Namespace(ns)), _) =
-                    reader.resolver().resolve_element(tag.name())
-                    && let Some(handler) = ns::feed_handler(ns) =>
-            {
-                handler.handle_start(reader, event, state, version, alloc)?;
-                Ok(self)
+                    )
+                    .map(|_| step)
             }
-            Event::End(tag) => match (self, reader.resolver().resolve_element(tag.name())) {
-                (Self::InsideChannel, (RSS, name)) if name.as_ref() == b"channel" => {
-                    Ok(Self::OutsideChannel)
-                }
-                (step, _) => Ok(step),
-            },
-            _ => Ok(self),
+            (
+                step @ Self::InsideChannel,
+                (ResolveResult::Bound(Namespace(ns)), event @ (Event::Start(_) | Event::Empty(_))),
+            ) if let Some(handler) = ns::feed_handler(ns) => handler
+                .handle_start(reader, event, state, version, alloc)
+                .map(|_| step),
+
+            (step @ Self::OutsideChannel, (RSS, Event::Start(tag)))
+                if tag.local_name().as_ref() == b"item" =>
+            {
+                RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
+                    .map(|_| step)
+            }
+            (step, (RSS, Event::Start(tag))) => reader
+                .read_to_end(tag.name())
+                .map(|_| step)
+                .map_err(ParserError::Xml),
+
+            (step, _) => Ok(step),
         }
     }
 }
