@@ -76,44 +76,12 @@ jobs:
             host: ubuntu-latest
             so-prefix: lib
             so-suffix: so
-          - target: x86_64-unknown-linux-gnu
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-          - target: aarch64-unknown-linux-gnu
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-          - target: loongarch64-unknown-linux-gnu
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-          - target: powerpc64-unknown-linux-gnu
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
           - target: x86_64-pc-windows-msvc
             host: windows-latest
             so-suffix: dll
           - target: aarch64-pc-windows-msvc
             host: windows-latest
             so-suffix: dll
-          - target: aarch64-apple-darwin
-            host: macos-latest
-            so-prefix: lib
-            so-suffix: dylib
-          - target: x86_64-apple-darwin
-            host: macos-latest
-            so-prefix: lib
-            so-suffix: dylib
-          - target: x86_64-unknown-freebsd
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-          - target: x86_64-unknown-netbsd
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
 
           - target: x86_64-unknown-linux-musl
             host: ubuntu-latest
