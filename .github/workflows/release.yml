@@ -103,7 +103,7 @@ jobs:
     runs-on: ${{ matrix.host }}
     env:
       RUSTFLAGS: -Ccodegen-units=1 -Cstrip=symbols ${{ matrix.rustflags }}
-      CARGORUSTCFLAGS: --locked --release -- --output=rag-core.${{ matrix.so-suffix }}
+      CARGORUSTCFLAGS: --locked --release -- -o rag-core.${{ matrix.so-suffix }}
     steps:
       - uses: actions/checkout@v6
       - uses: Swatinem/rust-cache@v2
