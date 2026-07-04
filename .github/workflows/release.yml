@@ -75,11 +75,10 @@ jobs:
             host: macos-latest
             so-prefix: lib
             so-suffix: dylib
-          - target: x86_64-unknown-freebsd
-            host: ubuntu-latest
-            so-prefix: lib
-            so-suffix: so
-            cross: true
+          # - target: x86_64-unknown-freebsd
+          #   host: ubuntu-latest
+          #   so-prefix: lib
+          #   so-suffix: so
 
           - target: x86_64-unknown-linux-musl
             host: ubuntu-latest
@@ -117,14 +116,6 @@ jobs:
       - run: |
           rustup toolchain install stable --target ${{ matrix.target }} --profile minimal --no-self-update
           cargo build ${CARGOBUILDFLAGS} --target ${{ matrix.target }}
-        if: ${{ !matrix.cross }}
-      - uses: houseabsolute/actions-rust-cross@v1
-        if: ${{ matrix.cross }}
-        with:
-          target: ${{ matrix.target }}
-          args: ${CARGOBUILDFLAGS}
-          strip: true
-          use-rust-cache: false
       - shell: bash
         run: |
           mv target/${{ matrix.target }}/release/${{ matrix.so-prefix }}rag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
