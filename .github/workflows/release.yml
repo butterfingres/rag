@@ -74,7 +74,74 @@ jobs:
             host: ubuntu-latest
             so-prefix: lib
             so-suffix: so
+          - target: x86_64-unknown-linux-gnu
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
+          - target: aarch64-unknown-linux-gnu
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
+          - target: loongarch64-unknown-linux-gnu
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
+          - target: powerpc64-unknown-linux-gnu
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
+          - target: x86_64-pc-windows-msvc
+            host: windows-latest
+            so-suffix: dll
+          - target: aarch64-pc-windows-msvc
+            host: windows-latest
+            so-suffix: dll
+          - target: aarch64-apple-darwin
+            host: macos-latest
+            so-prefix: lib
+            so-suffix: dylib
+          - target: x86_64-apple-darwin
+            host: macos-latest
+            so-prefix: lib
+            so-suffix: dylib
+          - target: x86_64-unknown-freebsd
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
+          - target: x86_64-unknown-netbsd
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
 
+          - target: x86_64-unknown-linux-musl
+            host: ubuntu-latest
+            so-prefix: lib
+            so-suffix: so
+            rustflags: -Ctarget-features=-crt-static
+          - target: aarch64-unknown-linux-musl
+            host: ubuntu-latest
+            ubuntu-pkg: gcc-aarch64-linux-gnu
+            rustflags: -Clinker=aarch64-linux-gnu-gcc -Ctarget-features=-crt-static
+            so-prefix: lib
+            so-suffix: so
+          - target: powerpc64le-unknown-linux-musl
+            host: ubuntu-latest
+            ubuntu-pkg: gcc-powerpc64le-linux-gnu
+            rustflags: -Clinker=powerpc64le-linux-gnu-gcc -Ctarget-features=-crt-static
+            so-prefix: lib
+            so-suffix: so
+          - target: riscv64gc-unknown-linux-musl
+            host: ubuntu-latest
+            ubuntu-pkg: gcc-riscv64-linux-gnu
+            rustflags: -Clinker=riscv64-linux-gnu-gcc -Ctarget-features=-crt-static
+            so-prefix: lib
+            so-suffix: so
+          - target: s390x-unknown-linux-musl
+            host: ubuntu-latest
+            ubuntu-pkg: gcc-s390x-linux-gnu
+            rustflags: -Clinker=s390x-linux-gnu-gcc -Ctarget-features=-crt-static
+            so-prefix: lib
+            so-suffix: so
     runs-on: ${{ matrix.host }}
     steps:
       - uses: actions/checkout@v6
@@ -100,11 +167,11 @@ jobs:
   release:
     needs: [lisp, rag-core]
     runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
     steps:
       - uses: actions/download-artifact@v8
         with:
           skip-decompress: true
       - uses: softprops/action-gh-release@v3.0.1
-        if: github.ref_type == 'tag'
         with:
           files: "**/*"
