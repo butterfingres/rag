@@ -116,7 +116,7 @@ jobs:
           rustup toolchain install stable --target ${{ matrix.target }} --profile minimal --no-self-update
           cargo build ${CARGOBUILDFLAGS} --target ${{ matrix.target }}
 
-          FILE="$(rustc --crate-name=rag_core --crate-type=cdylib --print=file-names)";
+          FILE="$(rustc --crate-name=rag_core --crate-type=cdylib --print=file-names src/lib.rs)";
           mv target/${{ matrix.target }}/release/${FILE} rag-core.${{ matrix.so-suffix }}
       - uses: actions/upload-artifact@v7
         with:
