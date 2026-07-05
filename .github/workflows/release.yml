@@ -126,8 +126,7 @@ jobs:
           use-rust-cache: false
       - shell: bash
         run: |
-          FILE="$(rustc --crate-name=rag_core --crate-type=cdylib --print=file-names src/lib.rs)";
-          mv target/${{ matrix.target }}/release/${FILE} rag-core.${{ matrix.so-suffix }}
+          mv target/${{ matrix.target }}/release/${{ matrix.so-prefix }}rag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
       - uses: actions/upload-artifact@v7
         with:
           name: rag-core-${{ matrix.target }}
