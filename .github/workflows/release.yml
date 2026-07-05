@@ -104,7 +104,7 @@ jobs:
           target: ${{ matrix.target }}
           args: "--locked --release"
           strip: true
-          force-use-cross: ${{ matrix.force-use-cross }}
+          force-use-cross: ${{ matrix.force-use-cross || false }}
       - shell: bash
         run: |
           mv target/${{ matrix.target }}/release/${{ matrix.so-prefix }}rag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
