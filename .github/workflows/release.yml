@@ -36,22 +36,26 @@ jobs:
             so-suffix: so
           - target: aarch64-unknown-linux-gnu
             host: ubuntu-latest
-            force-use-cross: true
+            ubuntu-pkg: gcc-aarch64-linux-gnu
+            rustflags: -Clinker=aarch64-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: powerpc64le-unknown-linux-gnu
             host: ubuntu-latest
-            force-use-cross: true
+            ubuntu-pkg: gcc-powerpc64le-linux-gnu
+            rustflags: -Clinker=powerpc64le-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: riscv64gc-unknown-linux-gnu
             host: ubuntu-latest
-            force-use-cross: true
+            ubuntu-pkg: gcc-riscv64-linux-gnu
+            rustflags: -Clinker=riscv64-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: s390x-unknown-linux-gnu
             host: ubuntu-latest
-            force-use-cross: true
+            ubuntu-pkg: gcc-s390x-linux-gnu
+            rustflags: -Clinker=s390x-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: x86_64-pc-windows-msvc
@@ -72,6 +76,7 @@ jobs:
             host: ubuntu-latest
             so-prefix: lib
             so-suffix: so
+            cross: true
 
           - target: x86_64-unknown-linux-musl
             host: ubuntu-latest
@@ -80,38 +85,55 @@ jobs:
             rustflags: -Ctarget-feature=-crt-static
           - target: aarch64-unknown-linux-musl
             host: ubuntu-latest
-            force-use-cross: true
+            ubuntu-pkg: gcc-aarch64-linux-gnu
+            rustflags: -Clinker=aarch64-linux-gnu-gcc -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
           - target: powerpc64le-unknown-linux-musl
             host: ubuntu-latest
-            force-use-cross: true
+            ubuntu-pkg: gcc-powerpc64le-linux-gnu
+            rustflags: -Clinker=powerpc64le-linux-gnu-gcc -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
           - target: riscv64gc-unknown-linux-musl
             host: ubuntu-latest
-            force-use-cross: true
+            ubuntu-pkg: gcc-riscv64-linux-gnu
+            rustflags: -Clinker=riscv64-linux-gnu-gcc -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
     runs-on: ${{ matrix.host }}
+    env:
+      RUSTFLAGS: -Ccodegen-units=1 -Cstrip=symbols ${{ matrix.rustflags }}
+      CARGOBUILDFLAGS: --locked --release
     steps:
       - uses: actions/checkout@v6
-      - uses: houseabsolute/actions-rust-cross@v1
-        env:
-          RUSTFLAGS: "-Ccodegen-units=1 ${{ matrix.rustflags }}"
-        with:
-          command: build
-          target: ${{ matrix.target }}
-          args: "--locked --release"
-          strip: true
-          force-use-cross: ${{ matrix.force-use-cross || false }}
+      - uses: Swatinem/rust-cache@v2
+      - if: ${{ matrix.ubuntu-pkg }}
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install ${{ matrix.ubuntu-pkg }}
       - shell: bash
         run: |
-          mv target/${{ matrix.target }}/release/${{ matrix.so-prefix }}rag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
-      - uses: actions/upload-artifact@v7.0.1
+          rustup toolchain install stable --target ${{ matrix.target }} --profile minimal --no-self-update
+          cargo build ${CARGOBUILDFLAGS} --target ${{ matrix.target }}
+        if: ${{ !matrix.cross }}
+      - uses: houseabsolute/actions-rust-cross@v1
+        if: ${{ matrix.cross }}
+        with:
+          target: ${{ matrix.target }}
+          args: ${CARGOBUILDFLAGS}
+          strip: true
+          use-rust-cache: false
+      - shell: bash
+        run: |
+          FILE="$(rustc --crate-name=rag_core --crate-type=cdylib --print=file-names src/lib.rs)";
+          mv target/${{ matrix.target }}/release/${FILE} rag-core.${{ matrix.so-suffix }}
+      - uses: actions/upload-artifact@v7
         with:
           name: rag-core-${{ matrix.target }}
           path: rag-core.${{ matrix.so-suffix }}
+          if-no-files-found: error
+          retention-days: 1
 
   release:
     needs: [lisp, rag-core]
