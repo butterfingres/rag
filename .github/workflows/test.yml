@@ -2,8 +2,8 @@ on:
   push:
     paths:
       - ".github/workflows/test*.yml"
-      - "src/**.rs"
-      - "lisp/**.rs"
+      - "**/*.rs"
+      - "**/*.el"
       - "Cargo.*"
       - "Makefile*"
       - "configure*"
