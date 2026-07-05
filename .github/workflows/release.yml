@@ -37,21 +37,25 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             host: ubuntu-latest
             ubuntu-pkg: gcc-aarch64-linux-gnu
+            rustflags: -Clinker=aarch64-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: powerpc64le-unknown-linux-gnu
             host: ubuntu-latest
             ubuntu-pkg: gcc-powerpc64le-linux-gnu
+            rustflags: -Clinker=powerpc64le-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: riscv64gc-unknown-linux-gnu
             host: ubuntu-latest
             ubuntu-pkg: gcc-riscv64-linux-gnu
+            rustflags: -Clinker=riscv64-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: s390x-unknown-linux-gnu
             host: ubuntu-latest
             ubuntu-pkg: gcc-s390x-linux-gnu
+            rustflags: -Clinker=s390x-linux-gnu-gcc
             so-prefix: lib
             so-suffix: so
           - target: x86_64-pc-windows-msvc
@@ -82,19 +86,19 @@ jobs:
           - target: aarch64-unknown-linux-musl
             host: ubuntu-latest
             ubuntu-pkg: gcc-aarch64-linux-gnu
-            rustflags: -Ctarget-feature=-crt-static
+            rustflags: -Clinker=aarch64-linux-gnu-gcc -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
           - target: powerpc64le-unknown-linux-musl
             host: ubuntu-latest
             ubuntu-pkg: gcc-powerpc64le-linux-gnu
-            rustflags: -Ctarget-feature=-crt-static
+            rustflags: -Clinker=powerpc64le-linux-gnu-gcc -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
           - target: riscv64gc-unknown-linux-musl
             host: ubuntu-latest
             ubuntu-pkg: gcc-riscv64-linux-gnu
-            rustflags: -Ctarget-feature=-crt-static
+            rustflags: -Clinker=riscv64-linux-gnu-gcc -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
     runs-on: ${{ matrix.host }}
