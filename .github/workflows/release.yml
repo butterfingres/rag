@@ -120,6 +120,7 @@ jobs:
       - uses: houseabsolute/actions-rust-cross@v1
         if: ${{ matrix.cross }}
         with:
+          target: ${{ matrix.target }}
           args: ${CARGOBUILDFLAGS}
           strip: true
           use-rust-cache: false
