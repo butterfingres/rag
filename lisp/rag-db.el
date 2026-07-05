@@ -65,7 +65,20 @@ ALTER TABLE feed
 RENAME COLUMN ttl_new TO ttl;
 
 ALTER TABLE feed
-ADD COLUMN frequency INTEGER"]
+ADD COLUMN frequency INTEGER"
+                             "CREATE TABLE tag(
+  entry_id TEXT,
+  tag TEXT NOT NULL,
+  FOREIGN KEY(entry_id) REFERENCES entry(id)
+);
+CREATE TABLE tag_filter(tag TEXT PRIMARY KEY, show BOOLEAN NOT NULL);
+
+INSERT INTO tag (entry_id, tag)
+SELECT id, 'read' FROM entry
+WHERE hidden;
+
+ALTER TABLE entry
+DROP COLUMN hidden"]
   "A list of sql migrations.
 
 Running every sql snippet in this vector should create the newest
