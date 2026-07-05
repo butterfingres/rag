@@ -33,7 +33,7 @@ use {
     },
 };
 
-const ABI_VERSION: u32 = 0;
+const ABI_VERSION: u32 = 1;
 
 #[derive(Debug)]
 struct IncompatibleAbiVersionError(u32);

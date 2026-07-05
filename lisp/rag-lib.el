@@ -13,7 +13,7 @@
 
 (eval-when-compile (require 'cl-macs))
 
-(defconst rag-abi-version 0
+(defconst rag-abi-version 1
   "The major abi version of rag.
 
 This is incremented every time there is a breaking change between elisp
