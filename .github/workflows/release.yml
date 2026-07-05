@@ -76,7 +76,12 @@ jobs:
             host: ubuntu-latest
             so-prefix: lib
             so-suffix: so
-            cross: true
+          - target: x86_64-pc-windows-msvc
+            host: windows-latest
+            so-suffix: dll
+          - target: aarch64-pc-windows-msvc
+            host: windows-latest
+            so-suffix: dll
 
           - target: x86_64-unknown-linux-musl
             host: ubuntu-latest
@@ -86,7 +91,7 @@ jobs:
           - target: aarch64-unknown-linux-musl
             host: ubuntu-latest
             ubuntu-pkg: gcc-aarch64-linux-gnu
-            rustflags: -Clinker=aarch64-linux-gnu-gcc -Ctarget-feature=-crt-static
+            rustflags: -Clinker=/usr/bin/aarch64-linux-gnu-gcc -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
           - target: powerpc64le-unknown-linux-musl
@@ -102,38 +107,26 @@ jobs:
             so-prefix: lib
             so-suffix: so
     runs-on: ${{ matrix.host }}
-    env:
-      RUSTFLAGS: -Ccodegen-units=1 -Cstrip=symbols ${{ matrix.rustflags }}
-      CARGOBUILDFLAGS: --locked --release
     steps:
       - uses: actions/checkout@v6
-      - uses: Swatinem/rust-cache@v2
       - if: ${{ matrix.ubuntu-pkg }}
         run: |
-          sudo apt-get update
           sudo apt-get -y install ${{ matrix.ubuntu-pkg }}
-      - shell: bash
-        run: |
-          rustup toolchain install stable --target ${{ matrix.target }} --profile minimal --no-self-update
-          cargo build ${CARGOBUILDFLAGS} --target ${{ matrix.target }}
-        if: ${{ !matrix.cross }}
       - uses: houseabsolute/actions-rust-cross@v1
-        if: ${{ matrix.cross }}
+        env:
+          RUSTFLAGS: "-Ccodegen-units=1 ${{ matrix.rustflags }}"
         with:
+          command: build
           target: ${{ matrix.target }}
-          args: ${CARGOBUILDFLAGS}
+          args: "--locked --release"
           strip: true
-          use-rust-cache: false
       - shell: bash
         run: |
-          FILE="$(rustc --crate-name=rag_core --crate-type=cdylib --print=file-names src/lib.rs)";
-          mv target/${{ matrix.target }}/release/${FILE} rag-core.${{ matrix.so-suffix }}
-      - uses: actions/upload-artifact@v7
+          mv target/${{ matrix.target }}/release/${{ matrix.so-prefix }}rag_core.${{ matrix.so-suffix }} rag-core.${{ matrix.so-suffix }}
+      - uses: actions/upload-artifact@v7.0.1
         with:
           name: rag-core-${{ matrix.target }}
           path: rag-core.${{ matrix.so-suffix }}
-          if-no-files-found: error
-          retention-days: 1
 
   release:
     needs: [lisp, rag-core]
