@@ -91,7 +91,7 @@ jobs:
           - target: aarch64-unknown-linux-musl
             host: ubuntu-latest
             ubuntu-pkg: gcc-aarch64-linux-gnu
-            rustflags: -Clinker=/usr/bin/aarch64-linux-gnu-gcc -Ctarget-feature=-crt-static
+            rustflags: -Ctarget-feature=-crt-static
             so-prefix: lib
             so-suffix: so
           - target: powerpc64le-unknown-linux-musl
