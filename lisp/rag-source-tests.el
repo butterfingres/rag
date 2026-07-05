@@ -90,7 +90,7 @@ VALUES ('1', 1782739075, 'https://example.com/feed')")
         (should (string= (buffer-substring-no-properties (point-min) (point-max))
                          "fetching https://example.com/atom... ok\n")))
 
-      (should (equal (car (sqlite-select db "SELECT * FROM FEED
+      (should (equal (car (sqlite-select db "SELECT * FROM feed
 WHERE url == 'https://example.com/atom'"))
                      ;; description
                      '("https://example.com/atom"
@@ -122,8 +122,6 @@ WHERE id == '1'"))))
                          "contents of entry number 1"
                          ;; pub date
                          1102962602
-                         ;; hidden
-                         0
                          ;; feed-id
                          "https://example.com/atom"))))
 

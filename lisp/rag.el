@@ -107,10 +107,9 @@ WHERE url == ?1"
       (erase-buffer)
       (goto-char (point-min))
       (dolist (entry (sqlite-select db "SELECT title, pub_date, feed_id, id FROM entry
-WHERE pub_date > ? AND (? OR NOT hidden)
+WHERE pub_date > ?
 ORDER BY pub_date DESC"
                                     (list (or (and rag-oldest-entry (- (round (float-time)) rag-oldest-entry))
-                                              rag-show-all
                                               -1.0e+INF))))
         (cl-destructuring-bind (title pub-date feed-id id) entry
           (rag-entry-insert (make-rag-entry :title title
@@ -171,14 +170,15 @@ WHERE entry_id == ?"
 (defun rag-entry-set-hidden-at-point (hidden)
   (let* ((db (rag-db-get))
          (id (get-text-property (point) 'rag-entry-id)))
-    (sqlite-execute db
-                    "UPDATE entry
-SET hidden = ?
-WHERE id == ?"
-                    (list (if hidden
-                              1
-                            0)
-                          id)))
+    (if hidden
+        (sqlite-execute db
+                        "INSERT INTO tag (entry_id, tag)
+VALUES (?, 'read')"
+                        (list id))
+      (sqlite-execute db
+                      "DELETE FROM tag
+WHERE entry_id == ? AND tag == 'read'"
+                      (list id))))
 
   (save-excursion
     (let* ((start-column 11)
