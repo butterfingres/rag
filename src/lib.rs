@@ -11,7 +11,6 @@ mod feed;
 mod fmt;
 mod num;
 mod sym;
-#[cfg(test)]
 mod tz;
 mod xml;
 

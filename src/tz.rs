@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use jiff::tz::{TimeZone, offset};
 
 pub const Z: TimeZone = TimeZone::fixed(offset(0));
