@@ -144,12 +144,12 @@ WHERE id == ?"
                            (insert "...")
                            (newline)))))))
          (should-fetch (if-let* ((row (car (sqlite-select db
-                                                          "SELECT ttl, frequency, last_update
+                                                          "SELECT ttl, frequency, last_update, skip_days, skip_hours
 FROM feed
 WHERE url == ?"
                                                           (list url)))))
-                         (cl-destructuring-bind (ttl frequency last-update) row
-                           (rag-core-feed-fetch-p ttl frequency last-update (round (float-time))))
+                         (cl-destructuring-bind (ttl frequency last-update skip-days skip-hours) row
+                           (rag-core-feed-fetch-p ttl frequency last-update skip-days skip-hours (round (float-time))))
                          t)))
     (if should-fetch
         (url-queue-retrieve
