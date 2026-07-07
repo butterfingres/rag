@@ -33,26 +33,26 @@ fn fetch_p_inner<T>(
 where
     T: AsRef<str>,
 {
+    let now = Timestamp::from_second(now)?;
+
+    let skip_days = SkipDays::new([skip_days]);
+    let skip_hours = SkipHours::new([skip_hours]);
+    let zoned = now.to_zoned(tz::GMT);
+    if usize::try_from(zoned.hour())
+        .map(|idx| skip_hours[idx])
+        .unwrap_or_default()
+        || usize::try_from(zoned.weekday().to_monday_zero_offset())
+            .map(|idx| skip_days[idx])
+            .unwrap_or_default()
+    {
+        return Ok(false);
+    }
+
     if let Some(ttl) = ttl
         && let Some(last_update) = last_update
     {
         let ttl = Span::from_str(ttl.as_ref())?;
         let last_update = Timestamp::from_second(last_update)?;
-
-        let now = Timestamp::from_second(now)?;
-
-        let skip_days = SkipDays::new([skip_days]);
-        let skip_hours = SkipHours::new([skip_hours]);
-        let zoned = now.to_zoned(tz::GMT);
-        if usize::try_from(zoned.hour())
-            .map(|idx| skip_hours[idx])
-            .unwrap_or_default()
-            || usize::try_from(zoned.weekday().to_monday_zero_offset())
-                .map(|idx| skip_days[idx])
-                .unwrap_or_default()
-        {
-            return Ok(false);
-        }
 
         let mut duration = ttl.to_duration(&last_update.to_zoned(TimeZone::UTC))?;
         if let Some(frequency) = frequency {
@@ -132,10 +132,49 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_p_no_panic() -> Result<(), emacs::Error> {
+    fn test_fetch_p_no_panic() {
         assert!(
             fetch_p_inner(Some("PT1M"), Some(0), Some(0), 0, 0, 30).is_err(),
             "this should not panic"
+        );
+    }
+
+    #[test]
+    fn test_fetch_p_skip_hours() -> Result<(), emacs::Error> {
+        assert!(
+            !fetch_p_inner(
+                None::<&str>,
+                None,
+                Some(0),
+                0b0000_0000_0000_0000_0000_0000_0000_0001,
+                0,
+                0,
+            )?,
+            "the zeroth hour is skipped"
+        );
+        assert!(
+            !fetch_p_inner(
+                None::<&str>,
+                None,
+                Some(0),
+                0b0000_0000_0000_0000_0000_0000_0000_0010,
+                0,
+                60 * 60,
+            )?,
+            "the first hour is skipped"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_fetch_p_skip_days() -> Result<(), emacs::Error> {
+        assert!(
+            !fetch_p_inner(None::<&str>, None, Some(0), 0, 0b0000_1000, 0)?,
+            "January 1 1970 is in Thursday"
+        );
+        assert!(
+            !fetch_p_inner(None::<&str>, None, Some(0), 0, 0b0001_0000, 60 * 60 * 24)?,
+            "January 2 1970 is in Friday"
         );
         Ok(())
     }
