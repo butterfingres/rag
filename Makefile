@@ -29,8 +29,8 @@ include Makefile.in
 
 all: ${ELCS}
 check: all
-	[ "$$((echo Cargo.*; find src -name '*.rs') | sort | xargs echo)" = "$$(echo ${RUSTFILES} | xargs echo)" ] || (echo 'Go update $${RUSTFILES}.'; exit 1)
-	[ "$$(find lisp -name '*.el' | sed 's/\.el/\.elc/g' | sort | xargs echo)" = "$$(echo ${ELCS} | xargs echo)" ] || (echo 'Go update $${ELCS}.'; exit 1)
+	[ "$$((echo Cargo.*; find src -name '*.rs') | sort | xargs echo)" = "$$(echo ${RUSTFILES} | xargs echo)" ] || (echo 'Go update $${RUSTFILES}.' 1>&2; exit 1)
+	[ "$$(find lisp -name '*.el' | sed 's/\.el/\.elc/g' | sort | xargs echo)" = "$$(echo ${ELCS} | xargs echo)" ] || (echo 'Go update $${ELCS}.' 1>&2; exit 1)
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests   -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-db-tests     -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-entry-tests  -l ert -f ert-run-tests-batch-and-exit
