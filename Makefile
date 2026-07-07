@@ -17,18 +17,19 @@ PREFIX = /usr/local
 SITELISP = ${PREFIX}/share/emacs/site-lisp
 LIBDIR = ${PREFIX}/share/emacs/site-lisp
 
-RUSTFILES = Cargo.toml src/alloc.rs src/borrow.rs src/bump.rs			\
-	src/feed.rs src/fmt.rs src/lib.rs src/num.rs src/sym.rs src/tz.rs	\
-	src/xml/fmt/atom/mod.rs src/xml/fmt/mod.rs src/xml/fmt/rdf/mod.rs	\
-	src/xml/fmt/rss/mod.rs src/xml/mod.rs src/xml/ns/content/mod.rs		\
-	src/xml/ns/dc/mod.rs src/xml/ns/media/mod.rs src/xml/ns/mod.rs		\
-	src/xml/ns/sy/mod.rs src/xml/parser.rs
+RUSTFILES = Cargo.lock Cargo.toml src/alloc.rs src/borrow.rs		\
+	src/bump.rs src/feed.rs src/fmt.rs src/lib.rs src/num.rs		\
+	src/sym.rs src/tz.rs src/xml/fmt/atom/mod.rs src/xml/fmt/mod.rs	\
+	src/xml/fmt/rdf/mod.rs src/xml/fmt/rss/mod.rs src/xml/mod.rs	\
+	src/xml/ns/content/mod.rs src/xml/ns/dc/mod.rs					\
+	src/xml/ns/media/mod.rs src/xml/ns/mod.rs src/xml/ns/sy/mod.rs	\
+	src/xml/parser.rs
 
 include Makefile.in
 
 all: ${ELCS}
 check: all
-	[ "$$(find Cargo.toml src -name '*.toml' -o -name '*.rs' | sort | xargs echo)" = "$$(echo ${RUSTFILES} | xargs echo)" ] || (echo 'Go update $${RUSTFILES}.'; exit 1)
+	[ "$$((echo Cargo.*; find src -name '*.rs') | sort | xargs echo)" = "$$(echo ${RUSTFILES} | xargs echo)" ] || (echo 'Go update $${RUSTFILES}.'; exit 1)
 	[ "$$(find lisp -name '*.el' | sed 's/\.el/\.elc/g' | sort | xargs echo)" = "$$(echo ${ELCS} | xargs echo)" ] || (echo 'Go update $${ELCS}.'; exit 1)
 	${EMACS} ${EMACSFLAGS} -l rag-core-tests   -l ert -f ert-run-tests-batch-and-exit
 	${EMACS} ${EMACSFLAGS} -l rag-db-tests     -l ert -f ert-run-tests-batch-and-exit
