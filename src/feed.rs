@@ -35,15 +35,15 @@ where
 {
     let now = Timestamp::from_second(now)?;
 
-    let skip_days = SkipDays::new([skip_days]);
-    let skip_hours = SkipHours::new([skip_hours]);
     let zoned = now.to_zoned(tz::GMT);
-    if usize::try_from(zoned.hour())
-        .map(|idx| skip_hours[idx])
-        .unwrap_or_default()
-        || usize::try_from(zoned.weekday().to_monday_zero_offset())
-            .map(|idx| skip_days[idx])
-            .unwrap_or_default()
+    if (skip_hours != 0
+        && usize::try_from(zoned.hour())
+            .map(|idx| SkipHours::new([skip_hours])[idx])
+            .unwrap_or_default())
+        || (skip_days != 0
+            && usize::try_from(zoned.weekday().to_monday_zero_offset())
+                .map(|idx| SkipDays::new([skip_days])[idx])
+                .unwrap_or_default())
     {
         return Ok(false);
     }
