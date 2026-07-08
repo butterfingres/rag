@@ -236,6 +236,116 @@ where
     }
 }
 
+struct RssChannel;
+impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, (&mut PartialFeed<'alloc, 'src, A>, F)>
+    for RssChannel
+where
+    F: FnMut(Entry<'alloc, 'src, A>) -> T,
+    T: Into<Result<(), ParserError>>,
+    A: Allocator,
+{
+    fn parse_tag_into(
+        (feed, cb): &mut (&mut PartialFeed<'alloc, 'src, A>, F),
+        reader: &mut NsReader<&'src [u8]>,
+        name: QName<'_>,
+        version: XmlVersion,
+        alloc: &'alloc A,
+    ) -> Result<(), ParserError> {
+        loop {
+            match reader.read_resolved_event()? {
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"title" => {
+                    feed.title.try_replace_with(|| {
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
+                    })?;
+                }
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"link" => {
+                    feed.link.try_replace_with(|| {
+                        Content
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable)
+                            .parse_tag(reader, tag.name(), version, alloc)
+                    })?;
+                }
+                (ResolveResult::Unbound, Event::Start(tag))
+                    if tag.name().as_ref() == b"pubDate" =>
+                {
+                    feed.last_update.try_replace_or_skip(
+                        Content
+                            .flat_map(rfc2822_timestamp)
+                            .map(Some)
+                            .map(Replaceable::new_replaceable),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
+                (ResolveResult::Unbound, Event::Start(tag))
+                    if tag.name().as_ref() == b"lastBuildDate" =>
+                {
+                    feed.last_update.try_replace_or_skip(
+                        Content
+                            .flat_map(rfc2822_timestamp)
+                            .map(Some)
+                            .map(Replaceable::new_irreplaceable),
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
+                (ResolveResult::Unbound, Event::Start(tag))
+                    if tag.name().as_ref() == b"skipHours" =>
+                {
+                    RssSkipHandler::<RssSkipHour>::parse_tag_into(
+                        &mut feed.skip_hours,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
+                (ResolveResult::Unbound, Event::Start(tag))
+                    if tag.name().as_ref() == b"skipDays" =>
+                {
+                    RssSkipHandler::<RssSkipDay>::parse_tag_into(
+                        &mut feed.skip_days,
+                        reader,
+                        tag.name(),
+                        version,
+                        alloc,
+                    )?;
+                }
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"ttl" => {
+                    feed.ttl = Content
+                        .flat_map(|val| num::parse(val).map_err(ParserError::ParseInt))
+                        .map(Some)
+                        .parse_tag(reader, tag.name(), version, alloc)?;
+                }
+                (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"item" => {
+                    RssItem::parse_tag_into(cb, reader, tag.name(), version, alloc)?;
+                }
+                (
+                    ResolveResult::Bound(Namespace(ns)),
+                    event @ (Event::Start(_) | Event::Empty(_)),
+                ) if let Some(handler) = ns::feed_handler(ns) => {
+                    handler.handle_start(reader, event, feed, version, alloc)?;
+                }
+
+                (_, Event::End(tag)) if tag.name() == name => {
+                    return Ok(());
+                }
+                (_, Event::Eof) => return Err(ParserError::UNCLOSED_TAG),
+
+                _ => {}
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 pub enum Parser {
     #[default]
@@ -290,82 +400,11 @@ where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
         match (self, reader.resolver().resolve_event(event)) {
-            (Parser::OutsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
+            (step, (ResolveResult::Unbound, Event::Start(tag)))
                 if tag.name().as_ref() == b"channel" =>
             {
-                Ok(Parser::InsideChannel)
-            }
-            (Parser::InsideChannel, (ResolveResult::Unbound, Event::End(tag)))
-                if tag.name().as_ref() == b"channel" =>
-            {
-                Ok(Parser::OutsideChannel)
-            }
-
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"title" =>
-            {
-                state
-                    .title
-                    .try_replace_with(|| {
-                        Content
-                            .map(Some)
-                            .map(Replaceable::new_irreplaceable)
-                            .parse_tag(reader, tag.name(), version, alloc)
-                    })
-                    .map(|_| step)
-            }
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"link" =>
-            {
-                state
-                    .link
-                    .try_replace_with(|| {
-                        Content
-                            .map(Some)
-                            .map(Replaceable::new_irreplaceable)
-                            .parse_tag(reader, tag.name(), version, alloc)
-                    })
-                    .map(|_| step)
-            }
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"pubDate" =>
-            {
-                state
-                    .last_update
-                    .try_replace_or_skip(
-                        Content
-                            .flat_map(rfc2822_timestamp)
-                            .map(Some)
-                            .map(Replaceable::new_replaceable),
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
-            }
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"lastBuildDate" =>
-            {
-                state
-                    .last_update
-                    .try_replace_or_skip(
-                        Content
-                            .flat_map(rfc2822_timestamp)
-                            .map(Some)
-                            .map(Replaceable::new_irreplaceable),
-                        reader,
-                        tag.name(),
-                        version,
-                        alloc,
-                    )
-                    .map(|_| step)
-            }
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"skipHours" =>
-            {
-                RssSkipHandler::<RssSkipHour>::parse_tag_into(
-                    &mut state.skip_hours,
+                RssChannel::parse_tag_into(
+                    &mut (state, &mut cb),
                     reader,
                     tag.name(),
                     version,
@@ -373,38 +412,6 @@ where
                 )
                 .map(|_| step)
             }
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"skipDays" =>
-            {
-                RssSkipHandler::<RssSkipDay>::parse_tag_into(
-                    &mut state.skip_days,
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )
-                .map(|_| step)
-            }
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"ttl" =>
-            {
-                state.ttl = Content
-                    .flat_map(|val| num::parse(val).map_err(ParserError::ParseInt))
-                    .map(Some)
-                    .parse_tag(reader, tag.name(), version, alloc)?;
-                Ok(step)
-            }
-            (step @ Parser::InsideChannel, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"item" =>
-            {
-                RssItem::parse_tag_into(&mut cb, reader, tag.name(), version, alloc).map(|_| step)
-            }
-            (
-                step @ Parser::InsideChannel,
-                (ResolveResult::Bound(Namespace(ns)), event @ (Event::Start(_) | Event::Empty(_))),
-            ) if let Some(handler) = ns::feed_handler(ns) => handler
-                .handle_start(reader, event, state, version, alloc)
-                .map(|_| step),
             (step, (_, Event::Start(tag))) => reader
                 .read_to_end(tag.name())
                 .map(|_| step)
