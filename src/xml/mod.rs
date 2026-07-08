@@ -589,19 +589,32 @@ where
         _: &NsReader<&'src [u8]>,
         _: XmlVersion,
     ) -> Result<Self, TryFromRootError<'src>>;
+    fn try_recognize_root(
+        &self,
+        root: BytesStart<'src>,
+        reader: &NsReader<&'src [u8]>,
+        version: XmlVersion,
+    ) -> Result<bool, ParserError> {
+        Self::try_from_root(root, reader, version)
+            .map(|_| true)
+            .or_else(|e| match e {
+                TryFromRootError::Xml(e) => Err(ParserError::Xml(e)),
+                TryFromRootError::UnknownRoot(_) => Ok(false),
+            })
+    }
     fn handle_event<F>(
-        self,
+        &self,
         _: &mut NsReader<&'src [u8]>,
         _: Event<'src>,
         _: &mut PartialFeed<'alloc, 'src, A>,
         _: F,
         _: XmlVersion,
         _: &'alloc A,
-    ) -> Result<Self, ParserError>
+    ) -> Result<(), ParserError>
     where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>;
     fn handle_events<F>(
-        mut self,
+        &self,
         reader: &mut NsReader<&'src [u8]>,
         mut cb: F,
         version: XmlVersion,
@@ -614,9 +627,7 @@ where
         loop {
             match reader.read_event()? {
                 Event::Eof => break Ok(state.try_into()?),
-                event => {
-                    self = self.handle_event(reader, event, &mut state, &mut cb, version, alloc)?
-                }
+                event => self.handle_event(reader, event, &mut state, &mut cb, version, alloc)?,
             }
         }
     }

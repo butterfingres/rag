@@ -383,14 +383,14 @@ where
         }
     }
     fn handle_event<F>(
-        self,
+        &self,
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
         mut cb: F,
         version: XmlVersion,
         alloc: &'alloc A,
-    ) -> Result<Self, ParserError>
+    ) -> Result<(), ParserError>
     where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
@@ -410,7 +410,7 @@ where
             _ => {}
         };
 
-        Ok(self)
+        Ok(())
     }
 }
 
