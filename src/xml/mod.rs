@@ -171,11 +171,15 @@ where
             args.push(val.into_lisp(env)?);
         }
 
-        args.push(sym::key::SKIP_DAYS.bind(env));
-        args.push(skip_days.data[0].into_lisp(env)?);
+        if skip_days.data[0] != 0 {
+            args.push(sym::key::SKIP_DAYS.bind(env));
+            args.push(skip_days.data[0].into_lisp(env)?);
+        }
 
-        args.push(sym::key::SKIP_HOURS.bind(env));
-        args.push(skip_hours.data[0].into_lisp(env)?);
+        if skip_hours.data[0] != 0 {
+            args.push(sym::key::SKIP_HOURS.bind(env));
+            args.push(skip_hours.data[0].into_lisp(env)?);
+        }
 
         if !ttl.is_zero() {
             args.push(sym::key::TTL.bind(env));
