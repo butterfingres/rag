@@ -29,7 +29,10 @@ where
     ) -> Result<(), ParserError> {
         match start {
             Event::Start(tag) if tag.local_name().as_ref() == b"updatePeriod" => {
-                match read_to_end(reader, tag.name(), alloc)?.as_ref() {
+                match read_to_end(reader, tag.name(), alloc)?
+                    .as_ref()
+                    .trim_ascii()
+                {
                     b"hourly" => {
                         feed.period = Span::new().try_hours(1)?;
                     }
@@ -49,7 +52,9 @@ where
                 }
             }
             Event::Start(tag) if tag.local_name().as_ref() == b"updateFrequency" => {
-                feed.frequency = Some(num::parse(read_to_end(reader, tag.name(), alloc)?)?);
+                feed.frequency = Some(num::parse(
+                    read_to_end(reader, tag.name(), alloc)?.trim_ascii(),
+                )?);
             }
 
             Event::Start(tag) => {

@@ -3,5 +3,5 @@
          xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
          xmlns="http://purl.org/rss/1.0/">
   <sy:updatePeriod>hourly</sy:updatePeriod>
-  <sy:updateFrequency>20</sy:updateFrequency>
+  <sy:updateFrequency>  20  </sy:updateFrequency>
 </channel>
