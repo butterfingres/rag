@@ -158,7 +158,7 @@ where
             last_update,
         } = self;
 
-        let mut args = ArrayVec::<emacs::Value<'e>, { 6 * 2 }>::new();
+        let mut args = ArrayVec::<emacs::Value<'e>, { 7 * 2 }>::new();
         if let Some(val) = title {
             let val = str::from_utf8(&val)?;
             args.push(sym::key::TITLE.bind(env));
