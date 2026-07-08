@@ -62,9 +62,9 @@ entries will have those and at least `rag-entry-title' and
 
 (defun rag-source-handle-new-entry (url db delete-entry insert-entry entry)
   (let* ((id (or (rag-entry-id entry)
-                 (rag-entry-link entry)
                  (format "urn:sha1:%s"
                          (sha1 (or (rag-entry-description entry)
+                                   (rag-entry-link entry)
                                    (float-time))))))
          (old-pub-date (car-safe (car (sqlite-select db "SELECT pub_date FROM entry
 WHERE id == ?"
