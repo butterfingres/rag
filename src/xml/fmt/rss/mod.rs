@@ -353,7 +353,7 @@ where
 {
     fn try_recognize_root(
         &self,
-        root: BytesStart<'src>,
+        root: &BytesStart<'src>,
         reader: &NsReader<&'src [u8]>,
         version: XmlVersion,
     ) -> Result<bool, ParserError> {

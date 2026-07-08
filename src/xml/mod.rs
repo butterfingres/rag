@@ -585,9 +585,9 @@ where
 {
     fn try_recognize_root(
         &self,
-        root: BytesStart<'src>,
-        reader: &NsReader<&'src [u8]>,
-        version: XmlVersion,
+        _: &BytesStart<'src>,
+        _: &NsReader<&'src [u8]>,
+        _: XmlVersion,
     ) -> Result<bool, ParserError>;
     fn handle_event(
         &self,
