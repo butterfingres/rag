@@ -13,7 +13,6 @@ use {
     },
     allocator_api2::alloc::Allocator,
     jiff::{Timestamp, civil::datetime, fmt::temporal::DateTimeParser, tz::TimeZone},
-    lazy_regex::bytes_regex_captures,
     memchr::memchr,
     quick_xml::{XmlVersion, events::Event, reader::NsReader},
 };
@@ -138,25 +137,41 @@ where
         })
         .unwrap_or((false, date));
 
-    let ts = if let Some((_, year, month)) =
-        bytes_regex_captures!(r#"^([0-9]{4})(-[0-9]{2})?$"#, date)
-    {
-        let year =
-            i16::try_from(parse::<_, u16>(year)?).map_err(|_| ParserError::DateOutOfRange)?;
-        let month = if let [b'-', month @ ..] = month {
-            i8::try_from(parse::<_, u8>(month)?).map_err(|_| ParserError::DateOutOfRange)?
-        } else {
-            01
-        };
-        datetime(year, month, 01, 00, 00, 00, 00)
-            .to_zoned(TimeZone::UTC)?
-            .timestamp()
-    } else {
-        DateTimeParser::new()
+    let ts = match date {
+        [b'0'..=b'9', b'0'..=b'9', b'0'..=b'9', b'0'..=b'9'] => {
+            let year =
+                i16::try_from(parse::<_, u16>(date)?).map_err(|_| ParserError::DateOutOfRange)?;
+            datetime(year, 01, 01, 00, 00, 00, 00)
+                .to_zoned(TimeZone::UTC)?
+                .timestamp()
+        }
+        [
+            b'0'..=b'9',
+            b'0'..=b'9',
+            b'0'..=b'9',
+            b'0'..=b'9',
+            b'-',
+            b'0'..=b'9',
+            b'0'..=b'9',
+        ] => {
+            let year = &date[..4];
+            let month = &date[5..];
+            let year =
+                i16::try_from(parse::<_, u16>(year)?).map_err(|_| ParserError::DateOutOfRange)?;
+            let month = if let [b'-', month @ ..] = month {
+                i8::try_from(parse::<_, u8>(month)?).map_err(|_| ParserError::DateOutOfRange)?
+            } else {
+                01
+            };
+            datetime(year, month, 01, 00, 00, 00, 00)
+                .to_zoned(TimeZone::UTC)?
+                .timestamp()
+        }
+        _ => DateTimeParser::new()
             .parse_datetime(date)
             .and_then(|dt| dt.to_zoned(TimeZone::UTC))
             .map(|zoned| zoned.timestamp())
-            .or_else(|_| DateTimeParser::new().parse_timestamp(date))?
+            .or_else(|_| DateTimeParser::new().parse_timestamp(date))?,
     };
 
     Ok(Replaceable {
