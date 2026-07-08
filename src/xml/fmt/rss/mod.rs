@@ -2,8 +2,8 @@ use {
     crate::{
         num,
         xml::{
-            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
-            get_attribute_when, ns,
+            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, get_attribute_when,
+            ns,
             parser::{Content, ParseTagInto, TagParser, rfc2822_timestamp},
             read_to_end,
         },
@@ -351,11 +351,12 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator + 'alloc,
 {
-    fn try_from_root(
+    fn try_recognize_root(
+        &self,
         root: BytesStart<'src>,
         reader: &NsReader<&'src [u8]>,
         version: XmlVersion,
-    ) -> Result<Self, TryFromRootError<'src>> {
+    ) -> Result<bool, ParserError> {
         if let (ResolveResult::Unbound, name) = reader.resolver().resolve_element(root.name())
             && name.as_ref() == b"rss"
             && {
@@ -377,9 +378,9 @@ where
                 found
             }
         {
-            Ok(Self)
+            Ok(true)
         } else {
-            Err(TryFromRootError::UnknownRoot(root))
+            Ok(false)
         }
     }
     fn handle_event<F>(
@@ -435,7 +436,8 @@ mod tests {
     #[test]
     fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
-            test_parser::<_, Parser, _>(
+            test_parser(
+                &Parser,
                 include_str!("./all.xml"),
                 Feed {
                     title: Some(Cow::Borrowed(b"example feed")),
@@ -484,7 +486,8 @@ mod tests {
     #[test]
     fn test_rss_parser_sample_v0_91() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
-            test_parser::<_, Parser, _>(
+            test_parser(
+                &Parser,
             include_str!("./sample-rss-091.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"WriteTheWeb")),
@@ -553,7 +556,8 @@ mod tests {
     #[test]
     fn test_rss_parser_sample_v0_92() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
-            test_parser::<_, Parser, _>(
+            test_parser(
+                &Parser,
                 include_str!("./sample-rss-092.xml"),
                 Feed {
                     title: Some(Cow::Borrowed(b"Winnemac Daily News")),
@@ -699,7 +703,8 @@ mod tests {
     #[test]
     fn test_rss_parser_sample_v2() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
-            test_parser::<_, Parser, _>(
+            test_parser(
+                &Parser,
                 include_str!("./sample-rss-2.xml"),
                 Feed {
                     title: Some(Cow::Borrowed(b"NASA Space Station News")),
@@ -788,12 +793,13 @@ mod tests {
 
     #[test]
     fn test_rss_parser_ns() -> Result<(), TestParserError<'static>> {
-        test_parser_ns::<Parser>(include_str!("./ns.xml"))
+        test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 
     #[test]
     fn test_rss_parser_alt() -> Result<(), TestParserError<'static>> {
-        test_parser::<_, Parser, _>(
+        test_parser(
+            &Parser,
             include_str!("./alt.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"example feed")),

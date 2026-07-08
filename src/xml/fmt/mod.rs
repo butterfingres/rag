@@ -18,12 +18,16 @@ mod tests {
         jiff::{Span, civil::datetime, tz::TimeZone},
     };
 
-    pub fn test_parser_ns<'src, T>(input: &'src str) -> Result<(), TestParserError<'src>>
+    pub fn test_parser_ns<'src, T>(
+        parser: &T,
+        input: &'src str,
+    ) -> Result<(), TestParserError<'src>>
     where
         T: for<'alloc> Parser<'alloc, 'src, Bump>,
     {
         with_bump(|alloc| {
-            test_parser::<_, T, Bump>(
+            test_parser(
+                parser,
                 input,
                 Feed {
                     title: Some(Cow::Borrowed(b"dc title")),

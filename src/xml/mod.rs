@@ -584,24 +584,12 @@ where
     Self: Sized,
     A: Allocator,
 {
-    fn try_from_root(
-        _: BytesStart<'src>,
-        _: &NsReader<&'src [u8]>,
-        _: XmlVersion,
-    ) -> Result<Self, TryFromRootError<'src>>;
     fn try_recognize_root(
         &self,
         root: BytesStart<'src>,
         reader: &NsReader<&'src [u8]>,
         version: XmlVersion,
-    ) -> Result<bool, ParserError> {
-        Self::try_from_root(root, reader, version)
-            .map(|_| true)
-            .or_else(|e| match e {
-                TryFromRootError::Xml(e) => Err(ParserError::Xml(e)),
-                TryFromRootError::UnknownRoot(_) => Ok(false),
-            })
-    }
+    ) -> Result<bool, ParserError>;
     fn handle_event<F>(
         &self,
         _: &mut NsReader<&'src [u8]>,
@@ -797,6 +785,7 @@ mod tests {
         }
     }
     pub fn test_parser<'alloc, 'src, const N: usize, T, A>(
+        parser: &T,
         input: &'src str,
         output_state: Feed<'alloc, 'src, A>,
         output_entries: [Entry<'alloc, 'src, A>; N],
@@ -807,11 +796,10 @@ mod tests {
         A: Allocator,
     {
         let mut reader = NsReader::from_str(input);
-        let (version, root) = get_header(&mut reader)?;
+        let (version, _root) = get_header(&mut reader)?;
 
         let mut items = 0;
 
-        let parser = T::try_from_root(root, &reader, version)?;
         let state = parser.handle_events(
             &mut reader,
             |entry| {

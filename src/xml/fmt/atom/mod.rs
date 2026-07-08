@@ -2,8 +2,8 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError,
-            get_attribute_when, ns,
+            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, get_attribute_when,
+            ns,
             parser::{Content, ParseTagInto, TagParser, rfc3339_timestamp},
         },
     },
@@ -228,17 +228,18 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator + 'alloc,
 {
-    fn try_from_root(
+    fn try_recognize_root(
+        &self,
         root: BytesStart<'src>,
         reader: &NsReader<&'src [u8]>,
         _: XmlVersion,
-    ) -> Result<Self, TryFromRootError<'src>> {
+    ) -> Result<bool, ParserError> {
         if let (NS, name) = reader.resolver().resolve_element(root.name())
             && name.as_ref() == b"feed"
         {
-            Ok(Self)
+            Ok(true)
         } else {
-            Err(TryFromRootError::UnknownRoot(root))
+            Ok(false)
         }
     }
     fn handle_event<F>(
@@ -321,7 +322,8 @@ mod tests {
     #[test]
     fn test_atom_parser_all() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
-            test_parser::<_, Parser, _>(
+            test_parser(
+                &Parser,
                 include_str!("./all.xml"),
                 Feed {
                     title: Some(Cow::Borrowed(b"test feed")),
@@ -359,6 +361,6 @@ mod tests {
 
     #[test]
     fn test_atom_parser_ns() -> Result<(), TestParserError<'static>> {
-        test_parser_ns::<Parser>(include_str!("./ns.xml"))
+        test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 }

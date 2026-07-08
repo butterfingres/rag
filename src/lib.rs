@@ -12,19 +12,14 @@ mod fmt;
 mod num;
 mod sym;
 mod tz;
-mod xml;
+pub mod xml;
 
 emacs::plugin_is_GPL_compatible!();
 
 use {
-    crate::xml::{
-        Parser, TryFromRootError,
-        fmt::{atom, rdf, rss},
-        get_header,
-    },
+    crate::xml::get_header,
     allocator_api2::alloc::Global,
     bump_scope::Bump,
-    emacs::IntoLisp,
     quick_xml::reader::NsReader,
     std::{
         error::Error,
@@ -77,37 +72,38 @@ impl Error for UnknownRootError {}
 /// feed url by capturing it in a closure.
 #[emacs::defun]
 fn parse_string<'e>(
-    env: &'e emacs::Env,
+    _env: &'e emacs::Env,
     string: String,
-    alloc: &Bump<Global>,
-    entry_handler: emacs::Value<'e>,
+    _alloc: &Bump<Global>,
+    _entry_handler: emacs::Value<'e>,
 ) -> Result<emacs::Value<'e>, emacs::Error> {
     let mut reader = NsReader::from_str(&string);
-    let (version, root) = get_header(&mut reader)?;
+    let (_version, _root) = get_header(&mut reader)?;
 
-    macro_rules! try_parsers {
-        ($root:expr, []) => {
-            let _ = $root;
-            return Err(emacs::Error::new(UnknownRootError));
-        };
-        ($root:expr, [$car:ty $(, $($cdr:ty),* $(,)?)?]) => {
-            match <$car as Parser<'_, '_, &Bump<Global>>>::try_from_root($root, &reader, version) {
-                Ok(parser) => {
-                    let feed = parser.handle_events(&mut reader, |entry| {
-                        let entry = entry.into_lisp(env)?;
-                        entry_handler.call((entry,))?;
-                        Ok(())
-                    }, version, alloc)?;
-                    return feed.into_lisp(env);
-                }
-                Err(TryFromRootError::UnknownRoot(root)) => {
-                    try_parsers!(root, [$($($cdr),*)?]);
-                }
-                Err(TryFromRootError::Xml(e)) => {
-                    return Err(emacs::Error::new(e));
-                }
-            }
-        };
-    }
-    try_parsers!(root, [atom::Parser, rdf::Parser, rss::Parser]);
+    todo!()
+    // macro_rules! try_parsers {
+    //     ($root:expr, []) => {
+    //         let _ = $root;
+    //         return Err(emacs::Error::new(UnknownRootError));
+    //     };
+    //     ($root:expr, [$car:ty $(, $($cdr:ty),* $(,)?)?]) => {
+    //         match <$car as Parser<'_, '_, &Bump<Global>>>::try_from_root($root, &reader, version) {
+    //             Ok(parser) => {
+    //                 let feed = parser.handle_events(&mut reader, |entry| {
+    //                     let entry = entry.into_lisp(env)?;
+    //                     entry_handler.call((entry,))?;
+    //                     Ok(())
+    //                 }, version, alloc)?;
+    //                 return feed.into_lisp(env);
+    //             }
+    //             Err(TryFromRootError::UnknownRoot(root)) => {
+    //                 try_parsers!(root, [$($($cdr),*)?]);
+    //             }
+    //             Err(TryFromRootError::Xml(e)) => {
+    //                 return Err(emacs::Error::new(e));
+    //             }
+    //         }
+    //     };
+    // }
+    // try_parsers!(root, [atom::Parser, rdf::Parser, rss::Parser]);
 }

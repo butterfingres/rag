@@ -1,6 +1,6 @@
 use {
     crate::xml::{
-        self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, TryFromRootError, ns,
+        self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, ns,
         parser::{Content, ParseTagInto, TagParser},
     },
     allocator_api2::alloc::Allocator,
@@ -138,17 +138,18 @@ impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator,
 {
-    fn try_from_root(
+    fn try_recognize_root(
+        &self,
         root: BytesStart<'src>,
         reader: &NsReader<&'src [u8]>,
         _: XmlVersion,
-    ) -> Result<Self, TryFromRootError<'src>> {
+    ) -> Result<bool, ParserError> {
         if let (RDF, name) = reader.resolver().resolve_element(root.name())
             && name.as_ref() == b"RDF"
         {
-            Ok(Self)
+            Ok(true)
         } else {
-            Err(TryFromRootError::UnknownRoot(root))
+            Ok(false)
         }
     }
 
@@ -200,7 +201,8 @@ mod tests {
 
     #[test]
     fn test_rdf_parser_sample() -> Result<(), TestParserError<'static>> {
-        test_parser::<_, Parser, _>(
+        test_parser(
+            &Parser,
             include_str!("./sample.xml"),
             Feed {
                 title: Some(Cow::Borrowed(b"XML.com")),
@@ -235,6 +237,6 @@ mod tests {
 
     #[test]
     fn test_rdf_parser_ns() -> Result<(), TestParserError<'static>> {
-        test_parser_ns::<Parser>(include_str!("./ns.xml"))
+        test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 }
