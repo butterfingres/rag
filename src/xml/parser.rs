@@ -11,7 +11,7 @@ use {
     quick_xml::{XmlVersion, name::QName, reader::NsReader},
 };
 
-pub trait ParseTagInto<'alloc, 'src, A, S = Self>
+pub trait ParseTagInto<'alloc, 'src, A, S: ?Sized = Self>
 where
     A: Allocator,
 {

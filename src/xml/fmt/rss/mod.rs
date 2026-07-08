@@ -347,8 +347,9 @@ where
 }
 
 pub struct Parser;
-impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
+impl<'alloc, 'src, F, A> xml::Parser<'alloc, 'src, F, A> for Parser
 where
+    F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
     A: Allocator + 'alloc,
 {
     fn try_recognize_root(
@@ -383,18 +384,15 @@ where
             Ok(false)
         }
     }
-    fn handle_event<F>(
+    fn handle_event(
         &self,
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        mut cb: F,
+        mut cb: &mut F,
         version: XmlVersion,
         alloc: &'alloc A,
-    ) -> Result<(), ParserError>
-    where
-        F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
-    {
+    ) -> Result<(), ParserError> {
         match reader.resolver().resolve_event(event) {
             (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"channel" => {
                 RssChannel::parse_tag_into(

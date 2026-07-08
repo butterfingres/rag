@@ -579,10 +579,11 @@ impl From<quick_xml::Error> for TryFromRootError<'_> {
     }
 }
 
-pub trait Parser<'alloc, 'src, A>: Sized
+pub trait Parser<'alloc, 'src, F, A>: Sized
 where
     Self: Sized,
-    A: Allocator,
+    F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
+    A: Allocator + 'alloc,
 {
     fn try_recognize_root(
         &self,
@@ -590,32 +591,27 @@ where
         reader: &NsReader<&'src [u8]>,
         version: XmlVersion,
     ) -> Result<bool, ParserError>;
-    fn handle_event<F>(
+    fn handle_event(
         &self,
         _: &mut NsReader<&'src [u8]>,
         _: Event<'src>,
         _: &mut PartialFeed<'alloc, 'src, A>,
-        _: F,
+        _: &mut F,
         _: XmlVersion,
         _: &'alloc A,
-    ) -> Result<(), ParserError>
-    where
-        F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>;
-    fn handle_events<F>(
+    ) -> Result<(), ParserError>;
+    fn handle_events(
         &self,
         reader: &mut NsReader<&'src [u8]>,
-        mut cb: F,
+        cb: &mut F,
         version: XmlVersion,
         alloc: &'alloc A,
-    ) -> Result<Feed<'alloc, 'src, A>, ParserError>
-    where
-        F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
-    {
+    ) -> Result<Feed<'alloc, 'src, A>, ParserError> {
         let mut state = PartialFeed::default();
         loop {
             match reader.read_event()? {
                 Event::Eof => break Ok(state.try_into()?),
-                event => self.handle_event(reader, event, &mut state, &mut cb, version, alloc)?,
+                event => self.handle_event(reader, event, &mut state, cb, version, alloc)?,
             }
         }
     }
@@ -792,7 +788,7 @@ mod tests {
         alloc: &'alloc A,
     ) -> Result<(), TestParserError<'src>>
     where
-        T: Parser<'alloc, 'src, A>,
+        T: Parser<'alloc, 'src, dyn FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>, A>,
         A: Allocator,
     {
         let mut reader = NsReader::from_str(input);
@@ -802,7 +798,7 @@ mod tests {
 
         let state = parser.handle_events(
             &mut reader,
-            |entry| {
+            &mut move |entry| {
                 assert_eq!(Some(&entry), output_entries.get(items));
                 items += 1;
                 Ok(())

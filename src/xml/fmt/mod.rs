@@ -9,7 +9,7 @@ mod tests {
             alloc::with_bump,
             borrow::Cow,
             xml::{
-                Entry, Feed, Parser, SkipDays, SkipHours,
+                Entry, Feed, Parser, ParserError, SkipDays, SkipHours,
                 tests::{TestParserError, test_parser},
             },
         },
@@ -23,7 +23,12 @@ mod tests {
         input: &'src str,
     ) -> Result<(), TestParserError<'src>>
     where
-        T: for<'alloc> Parser<'alloc, 'src, Bump>,
+        T: for<'alloc> Parser<
+                'alloc,
+                'src,
+                dyn FnMut(Entry<'alloc, 'src, Bump>) -> Result<(), ParserError>,
+                Bump,
+            >,
     {
         with_bump(|alloc| {
             test_parser(
