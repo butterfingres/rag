@@ -388,19 +388,13 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        mut cb: &mut dyn FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+        cb: &mut dyn FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         match reader.resolver().resolve_event(event) {
             (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"channel" => {
-                RssChannel::parse_tag_into(
-                    &mut (state, &mut cb),
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )?;
+                RssChannel::parse_tag_into(&mut (state, cb), reader, tag.name(), version, alloc)?;
             }
             (_, Event::Start(tag)) => {
                 reader.read_to_end(tag.name()).map_err(ParserError::Xml)?;

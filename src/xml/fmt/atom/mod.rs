@@ -89,7 +89,7 @@ where
 struct AtomEntry;
 impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for AtomEntry
 where
-    F: FnMut(Entry<'alloc, 'src, A>) -> T,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T + ?Sized,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
@@ -247,7 +247,7 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        mut cb: &mut dyn FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+        cb: &mut dyn FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -280,7 +280,7 @@ where
                 feed_handle_link(state, &tag, reader, version, alloc)?;
             }
             (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"entry" => {
-                AtomEntry::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
+                AtomEntry::parse_tag_into(cb, reader, tag.name(), version, alloc)?;
             }
 
             (ResolveResult::Bound(Namespace(ns)), event)
