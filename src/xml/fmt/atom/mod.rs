@@ -2,8 +2,8 @@ use {
     crate::{
         borrow::Cow,
         xml::{
-            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, get_attribute_when,
-            ns,
+            self, Entry, EntryCb, ParserError, PartialEntry, PartialFeed, Replaceable,
+            get_attribute_when, ns,
             parser::{Content, ParseTagInto, TagParser, rfc3339_timestamp},
         },
     },
@@ -14,6 +14,7 @@ use {
         name::{Namespace, QName, ResolveResult},
         reader::NsReader,
     },
+    std::cell::Cell,
 };
 
 const NS: ResolveResult<'static> = ResolveResult::Bound(Namespace(b"http://www.w3.org/2005/Atom"));
@@ -28,15 +29,15 @@ fn handle_link<'alloc, 'src, A>(
 where
     A: Allocator,
 {
-    #[derive(Default)]
+    #[derive(Clone, Copy, Default)]
     enum LinkType {
         Enclosure,
         Alternate,
         #[default]
         Other,
     }
-    let mut found_rel = false;
-    let mut ty = None;
+    let found_rel = Cell::new(false);
+    let ty = Cell::new(None);
 
     if let Some(href) = get_attribute_when(
         link,
@@ -45,21 +46,21 @@ where
                 reader.resolver().resolve_attribute(attr.key)
                 && name.as_ref() == b"rel"
             {
-                found_rel = true;
-                ty = Some(match attr.normalized_value(version)?.as_ref() {
+                found_rel.set(true);
+                ty.set(Some(match attr.normalized_value(version)?.as_ref() {
                     "alternate" => LinkType::Alternate,
                     "enclosure" => LinkType::Enclosure,
                     _ => LinkType::Other,
-                });
+                }));
             }
 
-            Ok(found_rel)
+            Ok(found_rel.get())
         },
         |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Unbound | NS, name) if name.as_ref() == b"href"),
         version,
         alloc,
     )? {
-        match ty.unwrap_or_default() {
+        match ty.get().unwrap_or_default() {
             LinkType::Enclosure => {
                 entry.enclosures.push(href);
             }
@@ -89,7 +90,7 @@ where
 struct AtomEntry;
 impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for AtomEntry
 where
-    F: FnMut(Entry<'alloc, 'src, A>) -> T + ?Sized,
+    F: Fn(Entry<'alloc, 'src, A>) -> T + ?Sized,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
@@ -191,8 +192,8 @@ fn feed_handle_link<'alloc, 'src, A>(
 where
     A: Allocator,
 {
-    let mut replaceable = true;
-    let mut found_rel = false;
+    let replaceable = Cell::new(true);
+    let found_rel = Cell::new(false);
     if let Replaceable {
         replaceable: true, ..
     } = feed.link
@@ -204,11 +205,11 @@ where
                     && name.as_ref() == b"rel"
                     && *attr.value == *b"alternate"
                 {
-                    found_rel = true;
-                    replaceable = false;
+                    found_rel.set(true);
+                    replaceable.set(false);
                 }
 
-                Ok(found_rel)
+                Ok(found_rel.get())
             },
             |attr| matches!(reader.resolver().resolve_attribute(attr.key), (ResolveResult::Unbound | NS, name) if name.as_ref() == b"href"),
             version,
@@ -216,7 +217,7 @@ where
         )?
     {
         feed.link = Replaceable {
-            replaceable,
+            replaceable: replaceable.get(),
             data: Some(Cow::Owned(href.into())),
         };
     }
@@ -247,7 +248,7 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        cb: &mut (dyn FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError> + 'static),
+        mut cb: &EntryCb<'alloc, 'src, A>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -280,7 +281,7 @@ where
                 feed_handle_link(state, &tag, reader, version, alloc)?;
             }
             (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"entry" => {
-                AtomEntry::parse_tag_into(cb, reader, tag.name(), version, alloc)?;
+                AtomEntry::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
             }
 
             (ResolveResult::Bound(Namespace(ns)), event)
