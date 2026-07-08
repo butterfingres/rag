@@ -242,83 +242,6 @@ where
             Ok(false)
         }
     }
-    fn handle_event<F>(
-        &self,
-        reader: &mut NsReader<&'src [u8]>,
-        event: Event<'src>,
-        state: &mut PartialFeed<'alloc, 'src, A>,
-        mut cb: F,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError>
-    where
-        F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
-    {
-        match reader.resolver().resolve_event(event) {
-            (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
-                state.title.try_replace_with(|| {
-                    Content
-                        .map(Some)
-                        .map(Replaceable::new_irreplaceable)
-                        .parse_tag(reader, tag.name(), version, alloc)
-                })?;
-            }
-            (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"updated" => {
-                state.last_update.try_replace_or_skip(
-                    Content
-                        .flat_map(rfc3339_timestamp)
-                        .map(Some)
-                        .map(Replaceable::new_irreplaceable),
-                    reader,
-                    tag.name(),
-                    version,
-                    alloc,
-                )?;
-            }
-            (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"link" => {
-                feed_handle_link(state, &tag, reader, version, alloc)?;
-                reader.read_to_end(tag.name())?;
-            }
-            (NS, Event::Empty(tag)) if tag.local_name().as_ref() == b"link" => {
-                feed_handle_link(state, &tag, reader, version, alloc)?;
-            }
-            (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"entry" => {
-                AtomEntry::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
-            }
-
-            (ResolveResult::Bound(Namespace(ns)), event)
-                if let Some(handler) = ns::feed_handler(ns) =>
-            {
-                handler.handle_start(reader, event, state, version, alloc)?;
-            }
-
-            (_, Event::Start(tag)) => {
-                reader.read_to_end(tag.name())?;
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-}
-impl<'alloc, 'src, A> xml::Parser2<'alloc, 'src, A> for Parser
-where
-    A: Allocator + 'alloc,
-{
-    fn try_recognize_root(
-        &self,
-        root: BytesStart<'src>,
-        reader: &NsReader<&'src [u8]>,
-        _: XmlVersion,
-    ) -> Result<bool, ParserError> {
-        if let (NS, name) = reader.resolver().resolve_element(root.name())
-            && name.as_ref() == b"feed"
-        {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
     fn handle_event(
         &self,
         reader: &mut NsReader<&'src [u8]>,
@@ -383,7 +306,7 @@ mod tests {
         crate::{
             alloc::with_bump,
             tz,
-            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser_2},
+            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser},
         },
         allocator_api2::{boxed::Box, vec},
         jiff::{Span, civil::datetime},
@@ -392,7 +315,7 @@ mod tests {
     #[test]
     fn test_atom_parser_all() -> Result<(), ParserError> {
         with_bump(|alloc| {
-            test_parser_2(
+            test_parser(
                 &Parser,
                 include_str!("./all.xml"),
                 Feed {

@@ -153,53 +153,6 @@ where
         }
     }
 
-    fn handle_event<F>(
-        &self,
-        reader: &mut NsReader<&'src [u8]>,
-        event: Event<'src>,
-        state: &mut PartialFeed<'alloc, 'src, A>,
-        mut cb: F,
-        version: XmlVersion,
-        alloc: &'alloc A,
-    ) -> Result<(), ParserError>
-    where
-        F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
-    {
-        match reader.resolver().resolve_event(event) {
-            (RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"channel" => {
-                RdfChannel::parse_tag_into(state, reader, tag.name(), version, alloc)?;
-            }
-            (RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"item" => {
-                RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
-            }
-            (_, Event::Start(tag)) => {
-                reader.read_to_end(tag.name()).map_err(ParserError::Xml)?;
-            }
-            _ => {}
-        };
-
-        Ok(())
-    }
-}
-impl<'alloc, 'src, A> xml::Parser2<'alloc, 'src, A> for Parser
-where
-    A: Allocator,
-{
-    fn try_recognize_root(
-        &self,
-        root: BytesStart<'src>,
-        reader: &NsReader<&'src [u8]>,
-        _: XmlVersion,
-    ) -> Result<bool, ParserError> {
-        if let (RDF, name) = reader.resolver().resolve_element(root.name())
-            && name.as_ref() == b"RDF"
-        {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
     fn handle_event(
         &self,
         reader: &mut NsReader<&'src [u8]>,

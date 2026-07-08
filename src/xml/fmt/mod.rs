@@ -8,10 +8,7 @@ mod tests {
         crate::{
             alloc::with_bump,
             borrow::Cow,
-            xml::{
-                Entry, Feed, Parser, Parser2, ParserError, SkipDays, SkipHours,
-                tests::{test_parser, test_parser_2},
-            },
+            xml::{Entry, Feed, Parser, ParserError, SkipDays, SkipHours, tests::test_parser},
         },
         allocator_api2::{boxed::Box, vec},
         bump_scope::Bump,
@@ -20,10 +17,10 @@ mod tests {
 
     pub fn test_parser_ns<'src, T>(parser: &T, input: &'src str) -> Result<(), ParserError>
     where
-        T: for<'alloc> Parser2<'alloc, 'src, Bump>,
+        T: for<'alloc> Parser<'alloc, 'src, Bump>,
     {
         with_bump(|alloc| {
-            test_parser_2(
+            test_parser(
                 parser,
                 input,
                 Feed {
