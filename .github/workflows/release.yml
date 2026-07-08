@@ -103,7 +103,7 @@ jobs:
             so-suffix: so
     runs-on: ${{ matrix.host }}
     env:
-      RUSTFLAGS: -Ccodegen-units=1 -Cstrip=symbols ${{ matrix.rustflags }}
+      RUSTFLAGS: -Ccodegen-units=1 -Cstrip=symbols -Cpanic=abort ${{ matrix.rustflags }}
       CARGOBUILDFLAGS: --locked --release
     steps:
       - uses: actions/checkout@v6
