@@ -47,12 +47,12 @@ clean:
 
 target/debug/${LIB}: ${RUSTFILES}
 	${CARGO} ${CARGOFLAGS} build ${CARGOBUILDFLAGS}
-target/debug/rag-core.${SO}: target/debug/librag_core.${SO}
+target/debug/rag-core.${SO}: target/debug/${LIB}
 	cp $< $@
 
 target/release/${LIB}: ${RUSTFILES}
 	${CARGO} ${CARGOFLAGS} build --release ${CARGOBUILDFLAGS}
-target/release/rag-core.${SO}: target/release/librag_core.${SO}
+target/release/rag-core.${SO}: target/release/${LIB}
 	cp $< $@
 
 lisp/rag.elc: lisp/rag-db.elc lisp/rag-entry.elc lisp/rag-faces.elc lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag-source.elc target/debug/rag-core.${SO}
