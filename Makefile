@@ -55,17 +55,17 @@ target/release/${LIB}: ${RUSTFILES}
 target/release/rag-core.${SO}: target/release/${LIB} lisp/rag-lib.elc
 	cp $< $@
 
-lisp/rag.elc: lisp/rag-db.elc lisp/rag-entry.elc lisp/rag-faces.elc lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag-source.elc target/debug/rag-core.${SO}
+lisp/rag.elc: lisp/rag-db.elc lisp/rag-entry.elc lisp/rag-faces.elc lisp/rag-pool.elc lisp/rag-source.elc target/debug/rag-core.${SO}
 lisp/rag-entry.elc: lisp/rag-faces.elc lisp/rag-lib.elc
 lisp/rag-entry-tests.elc: lisp/rag-entry.elc
 lisp/rag-tests.elc: lisp/rag.elc lisp/rag-db.elc lisp/rag-db-tests-lib.elc
-lisp/rag-source.elc: lisp/rag-db.elc lisp/rag-lib.elc lisp/rag-pool.elc lisp/rag-progress.elc target/debug/rag-core.${SO}
+lisp/rag-source.elc: lisp/rag-db.elc lisp/rag-pool.elc lisp/rag-progress.elc target/debug/rag-core.${SO}
 lisp/rag-source-tests.elc: lisp/rag-source.elc lisp/rag-db.elc lisp/rag-db-tests-lib.elc
-lisp/rag-pool.elc: lisp/rag-lib.elc target/debug/rag-core.${SO}
+lisp/rag-pool.elc: target/debug/rag-core.${SO}
 lisp/rag-pool-tests.elc: lisp/rag-pool.elc
 lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-db-tests-lib.elc
 lisp/rag-db-tests-lib.elc: lisp/rag-db.elc
-lisp/rag-core-tests.elc: lisp/rag-lib.elc target/debug/rag-core.${SO}
+lisp/rag-core-tests.elc: target/debug/rag-core.${SO}
 
 install: target/release/rag-core.${SO} ${ELCS}
 	install -m 755 -d "${SITELISP}"
