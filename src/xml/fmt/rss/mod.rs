@@ -131,7 +131,7 @@ where
 struct RssItem;
 impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for RssItem
 where
-    F: Fn(Entry<'alloc, 'src, A>) -> T,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
@@ -240,7 +240,7 @@ struct RssChannel;
 impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, (&mut PartialFeed<'alloc, 'src, A>, F)>
     for RssChannel
 where
-    F: Fn(Entry<'alloc, 'src, A>) -> T,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
     A: Allocator,
 {
@@ -388,13 +388,19 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        cb: &EntryCb<'alloc, 'src, A>,
+        mut cb: &mut EntryCb<'alloc, 'src, A>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
         match reader.resolver().resolve_event(event) {
             (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"channel" => {
-                RssChannel::parse_tag_into(&mut (state, &cb), reader, tag.name(), version, alloc)?;
+                RssChannel::parse_tag_into(
+                    &mut (state, &mut cb),
+                    reader,
+                    tag.name(),
+                    version,
+                    alloc,
+                )?;
             }
             (_, Event::Start(tag)) => {
                 reader.read_to_end(tag.name()).map_err(ParserError::Xml)?;

@@ -580,7 +580,7 @@ impl From<quick_xml::Error> for TryFromRootError<'_> {
 }
 
 pub type EntryCb<'alloc, 'src, A> =
-    dyn Fn(Entry<'alloc, 'src, A>) -> Result<(), ParserError> + 'static;
+    dyn FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError> + 'static;
 
 pub trait Parser<'alloc, 'src, A>
 where
@@ -597,14 +597,14 @@ where
         _: &mut NsReader<&'src [u8]>,
         _: Event<'src>,
         _: &mut PartialFeed<'alloc, 'src, A>,
-        _: &EntryCb<'alloc, 'src, A>,
+        _: &mut EntryCb<'alloc, 'src, A>,
         _: XmlVersion,
         _: &'alloc A,
     ) -> Result<(), ParserError>;
     fn handle_events(
         &self,
         reader: &mut NsReader<&'src [u8]>,
-        cb: &EntryCb<'alloc, 'src, A>,
+        cb: &mut EntryCb<'alloc, 'src, A>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<Feed<'alloc, 'src, A>, ParserError> {
@@ -626,8 +626,8 @@ fn get_attribute_when<'alloc, 'src, F, G, A>(
     alloc: &'alloc A,
 ) -> Result<Option<Box<[u8], &'alloc A>>, ParserError>
 where
-    F: Fn(&Attribute<'src>) -> Result<bool, ParserError>,
-    G: Fn(&Attribute<'src>) -> bool,
+    F: FnMut(&Attribute<'src>) -> Result<bool, ParserError>,
+    G: FnMut(&Attribute<'src>) -> bool,
     A: Allocator,
 {
     let mut value = None;
@@ -756,7 +756,7 @@ mod tests {
     use {
         super::*,
         crate::alloc::{self, with_bump},
-        std::{assert_matches, cell::Cell, fmt::Debug},
+        std::{assert_matches, fmt::Debug},
     };
 
     #[expect(
@@ -795,20 +795,20 @@ mod tests {
         let mut reader = NsReader::from_str(input);
         let (version, _root) = get_header(&mut reader)?;
 
-        let items = Cell::new(0);
+        let mut items = 0;
 
         let state = parser.handle_events(
             &mut reader,
-            &move |entry| {
-                assert_eq!(Some(&entry), output_entries.get(items.get()));
-                items.set(items.get() + 1);
+            &mut move |entry| {
+                assert_eq!(Some(&entry), output_entries.get(items));
+                items += 1;
                 Ok(())
             },
             version,
             alloc,
         )?;
         assert_eq!(state, output_state);
-        assert_eq!(N, items.get());
+        assert_eq!(N, items);
 
         Ok(())
     }
