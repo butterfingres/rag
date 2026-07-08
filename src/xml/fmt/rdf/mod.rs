@@ -133,10 +133,7 @@ where
     }
 }
 
-pub enum Parser {
-    OutsideChannel,
-    InsideChannel,
-}
+pub struct Parser;
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator,
@@ -149,7 +146,7 @@ where
         if let (RDF, name) = reader.resolver().resolve_element(root.name())
             && name.as_ref() == b"RDF"
         {
-            Ok(Self::OutsideChannel)
+            Ok(Self)
         } else {
             Err(TryFromRootError::UnknownRoot(root))
         }
@@ -167,24 +164,20 @@ where
     where
         F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        match (self, reader.resolver().resolve_event(event)) {
-            (step @ Self::OutsideChannel, (RSS, Event::Start(tag)))
-                if tag.local_name().as_ref() == b"channel" =>
-            {
-                RdfChannel::parse_tag_into(state, reader, tag.name(), version, alloc).map(|_| step)
+        match reader.resolver().resolve_event(event) {
+            (RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"channel" => {
+                RdfChannel::parse_tag_into(state, reader, tag.name(), version, alloc)?;
             }
-            (step @ Self::OutsideChannel, (RSS, Event::Start(tag)))
-                if tag.local_name().as_ref() == b"item" =>
-            {
-                RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)
-                    .map(|_| step)
+            (RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"item" => {
+                RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
             }
-            (step, (_, Event::Start(tag))) => reader
-                .read_to_end(tag.name())
-                .map(|_| step)
-                .map_err(ParserError::Xml),
-            (step, _) => Ok(step),
-        }
+            (_, Event::Start(tag)) => {
+                reader.read_to_end(tag.name()).map_err(ParserError::Xml)?;
+            }
+            _ => {}
+        };
+
+        Ok(self)
     }
 }
 

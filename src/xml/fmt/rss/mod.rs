@@ -346,12 +346,7 @@ where
     }
 }
 
-#[derive(Default)]
-pub enum Parser {
-    #[default]
-    OutsideChannel,
-    InsideChannel,
-}
+pub struct Parser;
 impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
     A: Allocator + 'alloc,
@@ -382,7 +377,7 @@ where
                 found
             }
         {
-            Ok(Self::OutsideChannel)
+            Ok(Self)
         } else {
             Err(TryFromRootError::UnknownRoot(root))
         }
@@ -399,25 +394,23 @@ where
     where
         F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
     {
-        match (self, reader.resolver().resolve_event(event)) {
-            (step, (ResolveResult::Unbound, Event::Start(tag)))
-                if tag.name().as_ref() == b"channel" =>
-            {
+        match reader.resolver().resolve_event(event) {
+            (ResolveResult::Unbound, Event::Start(tag)) if tag.name().as_ref() == b"channel" => {
                 RssChannel::parse_tag_into(
                     &mut (state, &mut cb),
                     reader,
                     tag.name(),
                     version,
                     alloc,
-                )
-                .map(|_| step)
+                )?;
             }
-            (step, (_, Event::Start(tag))) => reader
-                .read_to_end(tag.name())
-                .map(|_| step)
-                .map_err(ParserError::Xml),
-            (step, _) => Ok(step),
-        }
+            (_, Event::Start(tag)) => {
+                reader.read_to_end(tag.name()).map_err(ParserError::Xml)?;
+            }
+            _ => {}
+        };
+
+        Ok(self)
     }
 }
 
