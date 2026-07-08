@@ -20,7 +20,7 @@ pub const RSS: ResolveResult<'static> =
 struct RdfItemHandler;
 impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for RdfItemHandler
 where
-    F: FnMut(Entry<'alloc, 'src, A>) -> T + ?Sized,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
@@ -134,10 +134,9 @@ where
 }
 
 pub struct Parser;
-impl<'alloc, 'src, F, A> xml::Parser<'alloc, 'src, F, A> for Parser
+impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
-    F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
-    A: Allocator + 'alloc,
+    A: Allocator,
 {
     fn try_recognize_root(
         &self,
@@ -154,21 +153,24 @@ where
         }
     }
 
-    fn handle_event(
+    fn handle_event<F>(
         &self,
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        cb: &mut F,
+        mut cb: F,
         version: XmlVersion,
         alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
+    ) -> Result<(), ParserError>
+    where
+        F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+    {
         match reader.resolver().resolve_event(event) {
             (RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"channel" => {
                 RdfChannel::parse_tag_into(state, reader, tag.name(), version, alloc)?;
             }
             (RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"item" => {
-                RdfItemHandler::parse_tag_into(cb, reader, tag.name(), version, alloc)?;
+                RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
             }
             (_, Event::Start(tag)) => {
                 reader.read_to_end(tag.name()).map_err(ParserError::Xml)?;

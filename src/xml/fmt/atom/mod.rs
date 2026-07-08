@@ -89,7 +89,7 @@ where
 struct AtomEntry;
 impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for AtomEntry
 where
-    F: FnMut(Entry<'alloc, 'src, A>) -> T + ?Sized,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
@@ -224,9 +224,8 @@ where
 }
 
 pub struct Parser;
-impl<'alloc, 'src, F, A> xml::Parser<'alloc, 'src, F, A> for Parser
+impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
-    F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
     A: Allocator + 'alloc,
 {
     fn try_recognize_root(
@@ -243,15 +242,18 @@ where
             Ok(false)
         }
     }
-    fn handle_event(
+    fn handle_event<F>(
         &self,
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        cb: &mut F,
+        mut cb: F,
         version: XmlVersion,
         alloc: &'alloc A,
-    ) -> Result<(), ParserError> {
+    ) -> Result<(), ParserError>
+    where
+        F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError>,
+    {
         match reader.resolver().resolve_event(event) {
             (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"title" => {
                 state.title.try_replace_with(|| {
@@ -281,7 +283,7 @@ where
                 feed_handle_link(state, &tag, reader, version, alloc)?;
             }
             (NS, Event::Start(tag)) if tag.local_name().as_ref() == b"entry" => {
-                AtomEntry::parse_tag_into(cb, reader, tag.name(), version, alloc)?;
+                AtomEntry::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
             }
 
             (ResolveResult::Bound(Namespace(ns)), event)
