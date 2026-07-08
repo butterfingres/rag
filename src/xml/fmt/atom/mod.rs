@@ -224,8 +224,9 @@ where
 }
 
 pub struct Parser;
-impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
+impl<'alloc, 'src, F, A> xml::Parser<'alloc, 'src, F, A> for Parser
 where
+    F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
     A: Allocator + 'alloc,
 {
     fn try_recognize_root(
@@ -247,7 +248,7 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        cb: &mut (dyn FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError> + 'static),
+        cb: &mut F,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -306,14 +307,18 @@ mod tests {
         crate::{
             alloc::with_bump,
             tz,
-            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser},
+            xml::{
+                Feed, SkipDays, SkipHours,
+                fmt::tests::test_parser_ns,
+                tests::{TestParserError, test_parser},
+            },
         },
         allocator_api2::{boxed::Box, vec},
         jiff::{Span, civil::datetime},
     };
 
     #[test]
-    fn test_atom_parser_all() -> Result<(), ParserError> {
+    fn test_atom_parser_all() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
             test_parser(
                 &Parser,
@@ -353,7 +358,7 @@ mod tests {
     }
 
     #[test]
-    fn test_atom_parser_ns() -> Result<(), ParserError> {
+    fn test_atom_parser_ns() -> Result<(), TestParserError<'static>> {
         test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 }

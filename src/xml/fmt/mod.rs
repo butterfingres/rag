@@ -8,16 +8,27 @@ mod tests {
         crate::{
             alloc::with_bump,
             borrow::Cow,
-            xml::{Entry, Feed, Parser, ParserError, SkipDays, SkipHours, tests::test_parser},
+            xml::{
+                Entry, Feed, Parser, ParserError, SkipDays, SkipHours,
+                tests::{TestParserError, test_parser},
+            },
         },
         allocator_api2::{boxed::Box, vec},
         bump_scope::Bump,
         jiff::{Span, civil::datetime, tz::TimeZone},
     };
 
-    pub fn test_parser_ns<'src, T>(parser: &T, input: &'src str) -> Result<(), ParserError>
+    pub fn test_parser_ns<'src, T>(
+        parser: &T,
+        input: &'src str,
+    ) -> Result<(), TestParserError<'src>>
     where
-        T: for<'alloc> Parser<'alloc, 'src, Bump>,
+        T: for<'alloc> Parser<
+                'alloc,
+                'src,
+                dyn FnMut(Entry<'alloc, 'src, Bump>) -> Result<(), ParserError>,
+                Bump,
+            >,
     {
         with_bump(|alloc| {
             test_parser(

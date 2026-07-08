@@ -2,8 +2,8 @@ use {
     crate::{
         num,
         xml::{
-            self, Entry, EntryCb, ParserError, PartialEntry, PartialFeed, Replaceable,
-            get_attribute_when, ns,
+            self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, get_attribute_when,
+            ns,
             parser::{Content, ParseTagInto, TagParser, rfc2822_timestamp},
             read_to_end,
         },
@@ -347,8 +347,9 @@ where
 }
 
 pub struct Parser;
-impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
+impl<'alloc, 'src, F, A> xml::Parser<'alloc, 'src, F, A> for Parser
 where
+    F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
     A: Allocator + 'alloc,
 {
     fn try_recognize_root(
@@ -388,7 +389,7 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        mut cb: &mut EntryCb<'alloc, 'src, A>,
+        mut cb: &mut F,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -421,7 +422,9 @@ mod tests {
             borrow::Cow,
             tz,
             xml::{
-                Entry, Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser,
+                Entry, Feed, SkipDays, SkipHours,
+                fmt::tests::test_parser_ns,
+                tests::{TestParserError, test_parser},
             },
         },
         allocator_api2::{boxed::Box, vec},
@@ -429,7 +432,7 @@ mod tests {
     };
 
     #[test]
-    fn test_rss_parser_all() -> Result<(), ParserError> {
+    fn test_rss_parser_all() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
             test_parser(
                 &Parser,
@@ -479,7 +482,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rss_parser_sample_v0_91() -> Result<(), ParserError> {
+    fn test_rss_parser_sample_v0_91() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
             test_parser(
                 &Parser,
@@ -549,7 +552,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rss_parser_sample_v0_92() -> Result<(), ParserError> {
+    fn test_rss_parser_sample_v0_92() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
             test_parser(
                 &Parser,
@@ -696,7 +699,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rss_parser_sample_v2() -> Result<(), ParserError> {
+    fn test_rss_parser_sample_v2() -> Result<(), TestParserError<'static>> {
         with_bump(|alloc| {
             test_parser(
                 &Parser,
@@ -787,12 +790,12 @@ mod tests {
     }
 
     #[test]
-    fn test_rss_parser_ns() -> Result<(), ParserError> {
+    fn test_rss_parser_ns() -> Result<(), TestParserError<'static>> {
         test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 
     #[test]
-    fn test_rss_parser_alt() -> Result<(), ParserError> {
+    fn test_rss_parser_alt() -> Result<(), TestParserError<'static>> {
         test_parser(
             &Parser,
             include_str!("./alt.xml"),
