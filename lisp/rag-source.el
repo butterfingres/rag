@@ -137,17 +137,16 @@ WHERE id == ?"
   "Update source URL."
   (let* ((db (rag-db-get))
          (progress-buffer (rag-progress-buffer-get))
-         (marker (when (buffer-live-p progress-buffer)
-                   (with-current-buffer progress-buffer
-                     (save-excursion
-                       (goto-char (point-max))
+         (marker (with-current-buffer progress-buffer
+                   (save-excursion
+                     (goto-char (point-max))
+                     (let ((inhibit-read-only t))
+                       (insert "fetching ")
+                       (insert (propertize url 'face 'link))
+                       (insert "...")
                        (prog1
                            (point-marker)
-                         (let ((inhibit-read-only t))
-                           (insert "fetching ")
-                           (insert (propertize url 'face 'link))
-                           (insert "...")
-                           (newline)))))))
+                         (newline))))))
          (should-fetch (or rag-source-inhibit-cache
                            (if-let* ((row (car (sqlite-select db
                                                               "SELECT ttl, frequency, last_update, skip_days, skip_hours

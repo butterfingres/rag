@@ -26,8 +26,8 @@ fn fetch_p_inner<T>(
     ttl: Option<T>,
     frequency: Option<i32>,
     last_update: Option<i64>,
-    skip_hours: u32,
-    skip_days: u8,
+    skip_hours: Option<u32>,
+    skip_days: Option<u8>,
     now: i64,
 ) -> Result<bool, emacs::Error>
 where
@@ -36,14 +36,17 @@ where
     let now = Timestamp::from_second(now)?;
 
     let zoned = now.to_zoned(tz::GMT);
-    if (skip_hours != 0
+    if let Some(skip_hours) = skip_hours
         && usize::try_from(zoned.hour())
             .map(|idx| SkipHours::new([skip_hours])[idx])
-            .unwrap_or_default())
-        || (skip_days != 0
-            && usize::try_from(zoned.weekday().to_monday_zero_offset())
-                .map(|idx| SkipDays::new([skip_days])[idx])
-                .unwrap_or_default())
+            .unwrap_or_default()
+    {
+        return Ok(false);
+    }
+    if let Some(skip_days) = skip_days
+        && usize::try_from(zoned.weekday().to_monday_zero_offset())
+            .map(|idx| SkipDays::new([skip_days])[idx])
+            .unwrap_or_default()
     {
         return Ok(false);
     }
@@ -78,8 +81,8 @@ pub fn fetch_p(
     ttl: Option<String>,
     frequency: Option<i32>,
     last_update: Option<i64>,
-    skip_days: u32,
-    skip_hours: u8,
+    skip_days: Option<u32>,
+    skip_hours: Option<u8>,
     now: i64,
 ) -> Result<bool, emacs::Error> {
     fetch_p_inner(ttl, frequency, last_update, skip_days, skip_hours, now)
@@ -92,7 +95,7 @@ mod tests {
     #[test]
     fn test_fetch_p_empty() -> Result<(), emacs::Error> {
         assert!(
-            fetch_p_inner(None::<&str>, None, None, 0, 0, 0)?,
+            fetch_p_inner(None::<&str>, None, None, None, None, 0)?,
             "empty feeds should always be fetched"
         );
         Ok(())
@@ -101,7 +104,7 @@ mod tests {
     #[test]
     fn test_fetch_p_below_cache() -> Result<(), emacs::Error> {
         assert!(
-            !fetch_p_inner(Some("PT10M"), None, Some(0), 0, 0, 0)?,
+            !fetch_p_inner(Some("PT10M"), None, Some(0), None, None, 0)?,
             "0 < 0 + 10"
         );
         Ok(())
@@ -109,14 +112,17 @@ mod tests {
 
     #[test]
     fn test_fetch_p_default() -> Result<(), emacs::Error> {
-        assert!(fetch_p_inner(Some("PT1S"), None, None, 0, 0, 1)?, "1 > 0");
+        assert!(
+            fetch_p_inner(Some("PT1S"), None, None, None, None, 1)?,
+            "1 > 0"
+        );
         Ok(())
     }
 
     #[test]
     fn test_fetch_p_last_update() -> Result<(), emacs::Error> {
         assert!(
-            fetch_p_inner(Some("PT1S"), None, Some(1), 0, 0, 2)?,
+            fetch_p_inner(Some("PT1S"), None, Some(1), None, None, 2)?,
             "2 >= 1 + 1"
         );
         Ok(())
@@ -125,7 +131,7 @@ mod tests {
     #[test]
     fn test_fetch_p_frequency() -> Result<(), emacs::Error> {
         assert!(
-            fetch_p_inner(Some("PT1M"), Some(2), Some(0), 0, 0, 30)?,
+            fetch_p_inner(Some("PT1M"), Some(2), Some(0), None, None, 30)?,
             "60 / 2 >= 30"
         );
         Ok(())
@@ -134,7 +140,7 @@ mod tests {
     #[test]
     fn test_fetch_p_no_panic() {
         assert!(
-            fetch_p_inner(Some("PT1M"), Some(0), Some(0), 0, 0, 30).is_err(),
+            fetch_p_inner(Some("PT1M"), Some(0), Some(0), None, None, 30).is_err(),
             "this should not panic"
         );
     }
@@ -146,8 +152,8 @@ mod tests {
                 None::<&str>,
                 None,
                 Some(0),
-                0b0000_0000_0000_0000_0000_0000_0000_0001,
-                0,
+                Some(0b0000_0000_0000_0000_0000_0000_0000_0001),
+                None,
                 0,
             )?,
             "the zeroth hour is skipped"
@@ -157,8 +163,8 @@ mod tests {
                 None::<&str>,
                 None,
                 Some(0),
-                0b0000_0000_0000_0000_0000_0000_0000_0010,
-                0,
+                Some(0b0000_0000_0000_0000_0000_0000_0000_0010),
+                None,
                 60 * 60,
             )?,
             "the first hour is skipped"
@@ -169,11 +175,18 @@ mod tests {
     #[test]
     fn test_fetch_p_skip_days() -> Result<(), emacs::Error> {
         assert!(
-            !fetch_p_inner(None::<&str>, None, Some(0), 0, 0b0000_1000, 0)?,
+            !fetch_p_inner(None::<&str>, None, Some(0), None, Some(0b0000_1000), 0)?,
             "January 1 1970 is in Thursday"
         );
         assert!(
-            !fetch_p_inner(None::<&str>, None, Some(0), 0, 0b0001_0000, 60 * 60 * 24)?,
+            !fetch_p_inner(
+                None::<&str>,
+                None,
+                Some(0),
+                None,
+                Some(0b0001_0000),
+                60 * 60 * 24
+            )?,
             "January 2 1970 is in Friday"
         );
         Ok(())

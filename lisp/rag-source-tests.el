@@ -84,54 +84,74 @@ VALUES ('1', 1782739075, 'https://example.com/feed')")
   </entry>
 </feed>")
                    (apply cb '() cbargs)))))
-      (rag-source-update "https://example.com/atom")
-      (with-current-buffer (rag-progress-buffer-get)
-        (goto-char (point-min))
-        (should (string= (buffer-substring-no-properties (point-min) (point-max))
-                         "fetching https://example.com/atom... ok\n")))
+      (let ((progress-buffer (rag-progress-buffer-get)))
+        (unwind-protect
+            (with-current-buffer progress-buffer
+              (rag-source-update "https://example.com/atom")
+              (goto-char (point-min))
+              (should (string= (buffer-substring-no-properties (point-min) (point-max))
+                               "fetching https://example.com/atom... ok\n"))
 
-      (should (equal (car (sqlite-select db "SELECT * FROM FEED
+              (should (equal (car (sqlite-select db "SELECT * FROM FEED
 WHERE url == 'https://example.com/atom'"))
-                     ;; description
-                     '("https://example.com/atom"
-                       ;; title
-                       "test feed"
-                       ;; link
-                       "https://example.com"
-                       ;; skip days
-                       0
-                       ;; skip hours
-                       0
-                       ;; last-update
-                       1071340202
-                       ;; ttl
-                       nil
-                       ;; frequency
-                       nil)))
+                             ;; description
+                             '("https://example.com/atom"
+                               ;; title
+                               "test feed"
+                               ;; link
+                               "https://example.com"
+                               ;; skip days
+                               0
+                               ;; skip hours
+                               0
+                               ;; last-update
+                               1071340202
+                               ;; ttl
+                               nil
+                               ;; frequency
+                               nil)))
 
-      (let ((entry (car (sqlite-select db "SELECT * FROM entry
+              (let ((entry (car (sqlite-select db "SELECT * FROM entry
 WHERE id == '1'"))))
-        (should (equal entry
-                       ;; id
-                       '("1"
-                         ;; title
-                         "first entry"
-                         ;; link
-                         "https://example.com/entry_1"
-                         ;; description
-                         "contents of entry number 1"
-                         ;; pub date
-                         1102962602
-                         ;; hidden
-                         0
-                         ;; feed-id
-                         "https://example.com/atom"))))
+                (should (equal entry
+                               ;; id
+                               '("1"
+                                 ;; title
+                                 "first entry"
+                                 ;; link
+                                 "https://example.com/entry_1"
+                                 ;; description
+                                 "contents of entry number 1"
+                                 ;; pub date
+                                 1102962602
+                                 ;; hidden
+                                 0
+                                 ;; feed-id
+                                 "https://example.com/atom"))))
 
-      (let ((enclosures (mapcar #'car
-                                (sqlite-select db "SELECT link FROM enclosure
+              (let ((enclosures (mapcar #'car
+                                        (sqlite-select db "SELECT link FROM enclosure
 WHERE entry_id == '1'"))))
-        (should (equal enclosures
-                       '("https://example.com/entry_1.mp3")))))))
+                (should (equal enclosures
+                               '("https://example.com/entry_1.mp3")))))
+          (kill-buffer progress-buffer))))))
+
+(ert-deftest rag-source-tests-update-cached ()
+  (rag-db-tests-with db
+    (sqlite-execute db "INSERT INTO feed(url, ttl, last_update) VALUES ('https://example.com/atom', 'P60M', 0)")
+    (cl-letf (((symbol-function #'url-queue-retrieve)
+               (lambda (_url _cb &optional _cbargs _silent _inhibit-cookies)
+                 (should nil)))
+              ((symbol-function #'float-time)
+               (lambda (&optional _specified-time)
+                 0)))
+      (let ((progress-buffer (rag-progress-buffer-get)))
+        (unwind-protect
+            (with-current-buffer progress-buffer
+              (rag-source-update "https://example.com/atom")
+              (should (string= (buffer-substring-no-properties (point-min) (point-max))
+                               "fetching https://example.com/atom... cached\n")))
+          (kill-buffer progress-buffer))))))
 
 (provide 'rag-source-tests)
 
