@@ -160,13 +160,13 @@ where
 
         let mut args = ArrayVec::<emacs::Value<'e>, { 6 * 2 }>::new();
         if let Some(val) = title {
-            let val = str::from_utf8(&val).unwrap();
+            let val = str::from_utf8(&val)?;
             args.push(sym::key::TITLE.bind(env));
             args.push(val.into_lisp(env)?);
         }
 
         if let Some(val) = link {
-            let val = str::from_utf8(&val).unwrap();
+            let val = str::from_utf8(&val)?;
             args.push(sym::key::LINK.bind(env));
             args.push(val.into_lisp(env)?);
         }
@@ -383,25 +383,25 @@ where
         let mut args = ArrayVec::<emacs::Value, { 6 * 2 }>::new();
 
         if let Some(val) = title {
-            let val = str::from_utf8(&val).unwrap();
+            let val = str::from_utf8(&val)?;
             args.push(sym::key::TITLE.bind(env));
             args.push(val.into_lisp(env)?);
         }
 
         if let Some(val) = link {
-            let val = str::from_utf8(&val).unwrap();
+            let val = str::from_utf8(&val)?;
             args.push(sym::key::LINK.bind(env));
             args.push(val.into_lisp(env)?);
         }
 
         if let Some(val) = description {
-            let val = str::from_utf8(&val).unwrap();
+            let val = str::from_utf8(&val)?;
             args.push(sym::key::DESCRIPTION.bind(env));
             args.push(val.into_lisp(env)?);
         }
 
         if let Some(val) = id {
-            let val = str::from_utf8(&val).unwrap();
+            let val = str::from_utf8(&val)?;
             args.push(sym::key::ID.bind(env));
             args.push(val.into_lisp(env)?);
         }
@@ -416,7 +416,7 @@ where
             let buf =
                 emacs::Vector::from_lisp(sym::fun::MAKE_VECTOR.call(env, (enclosures.len(), 0))?)?;
             for (i, enclosure) in enclosures.into_iter().enumerate() {
-                buf.set(i, str::from_utf8(&enclosure).unwrap().into_lisp(env)?)?;
+                buf.set(i, str::from_utf8(&enclosure)?.into_lisp(env)?)?;
             }
             args.push(buf.into_lisp(env)?);
         }
