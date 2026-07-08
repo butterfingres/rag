@@ -1,6 +1,6 @@
 use {
     crate::xml::{
-        self, Entry, ParserError, PartialEntry, PartialFeed, Replaceable, ns,
+        self, Entry, EntryCb, ParserError, PartialEntry, PartialFeed, Replaceable, ns,
         parser::{Content, ParseTagInto, TagParser},
     },
     allocator_api2::alloc::Allocator,
@@ -134,9 +134,8 @@ where
 }
 
 pub struct Parser;
-impl<'alloc, 'src, F, A> xml::Parser<'alloc, 'src, F, A> for Parser
+impl<'alloc, 'src, A> xml::Parser<'alloc, 'src, A> for Parser
 where
-    F: FnMut(xml::Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
     A: Allocator + 'alloc,
 {
     fn try_recognize_root(
@@ -159,7 +158,7 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        cb: &mut F,
+        cb: &mut EntryCb<'alloc, 'src, A>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -187,18 +186,14 @@ mod tests {
         crate::{
             alloc,
             borrow::Cow,
-            xml::{
-                Feed, SkipDays, SkipHours,
-                fmt::tests::test_parser_ns,
-                tests::{TestParserError, test_parser},
-            },
+            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser},
         },
         allocator_api2::vec::Vec,
         jiff::Span,
     };
 
     #[test]
-    fn test_rdf_parser_sample() -> Result<(), TestParserError<'static>> {
+    fn test_rdf_parser_sample() -> Result<(), ParserError> {
         test_parser(
             &Parser,
             include_str!("./sample.xml"),
@@ -234,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rdf_parser_ns() -> Result<(), TestParserError<'static>> {
+    fn test_rdf_parser_ns() -> Result<(), ParserError> {
         test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 }

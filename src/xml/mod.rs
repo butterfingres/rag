@@ -579,10 +579,11 @@ impl From<quick_xml::Error> for TryFromRootError<'_> {
     }
 }
 
-pub trait Parser<'alloc, 'src, F, A>: Sized
+pub type EntryCb<'alloc, 'src, A> =
+    dyn FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError> + 'static;
+
+pub trait Parser<'alloc, 'src, A>
 where
-    Self: Sized,
-    F: FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError> + ?Sized,
     A: Allocator + 'alloc,
 {
     fn try_recognize_root(
@@ -596,14 +597,14 @@ where
         _: &mut NsReader<&'src [u8]>,
         _: Event<'src>,
         _: &mut PartialFeed<'alloc, 'src, A>,
-        _: &mut F,
+        _: &mut EntryCb<'alloc, 'src, A>,
         _: XmlVersion,
         _: &'alloc A,
     ) -> Result<(), ParserError>;
     fn handle_events(
         &self,
         reader: &mut NsReader<&'src [u8]>,
-        cb: &mut F,
+        cb: &mut EntryCb<'alloc, 'src, A>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<Feed<'alloc, 'src, A>, ParserError> {
@@ -786,9 +787,9 @@ mod tests {
         output_state: Feed<'alloc, 'src, A>,
         output_entries: [Entry<'alloc, 'src, A>; N],
         alloc: &'alloc A,
-    ) -> Result<(), TestParserError<'src>>
+    ) -> Result<(), ParserError>
     where
-        T: Parser<'alloc, 'src, dyn FnMut(Entry<'alloc, 'src, A>) -> Result<(), ParserError>, A>,
+        T: Parser<'alloc, 'src, A>,
         A: Allocator,
     {
         let mut reader = NsReader::from_str(input);
