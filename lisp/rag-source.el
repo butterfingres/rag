@@ -29,6 +29,11 @@
   "Feed sources."
   :group 'rag)
 
+(defcustom rag-source-inhibit-cache nil
+  "If non-nil this will not respect caches."
+  :group 'rag
+  :type 'boolean)
+
 (defcustom rag-source-completion-hook '()
   "A hook that gets run when all feeds are parsed."
   :group 'rag-source
@@ -143,14 +148,15 @@ WHERE id == ?"
                            (insert (propertize url 'face 'link))
                            (insert "...")
                            (newline)))))))
-         (should-fetch (if-let* ((row (car (sqlite-select db
-                                                          "SELECT ttl, frequency, last_update, skip_days, skip_hours
+         (should-fetch (or rag-source-inhibit-cache
+                           (if-let* ((row (car (sqlite-select db
+                                                              "SELECT ttl, frequency, last_update, skip_days, skip_hours
 FROM feed
 WHERE url == ?"
-                                                          (list url)))))
-                         (cl-destructuring-bind (ttl frequency last-update skip-days skip-hours) row
-                           (rag-core-feed-fetch-p ttl frequency last-update skip-days skip-hours (round (float-time))))
-                         t)))
+                                                              (list url)))))
+                               (cl-destructuring-bind (ttl frequency last-update skip-days skip-hours) row
+                                 (rag-core-feed-fetch-p ttl frequency last-update skip-days skip-hours (round (float-time))))
+                             t))))
     (if should-fetch
         (url-queue-retrieve
          url
