@@ -49,9 +49,7 @@
 </feed>"
    (make-rag-feed :title "test feed"
                   :link "https://example.com"
-                  :last-update 1071340202
-                  :skip-days 0
-                  :skip-hours 0)
+                  :last-update 1071340202)
    (list (make-rag-entry :title "first entry"
                          :link "https://example.com/entry_1"
                          :id "1"
@@ -76,9 +74,7 @@
   </item>
 </rdf:RDF>"
    (make-rag-feed :title "test feed"
-                  :link "https://example.com"
-                  :skip-days 0
-                  :skip-hours 0)
+                  :link "https://example.com")
    (list (make-rag-entry :title "entry 1"
                          :link "https://example.com/entry_1"
                          :description "entry 1 description"))))

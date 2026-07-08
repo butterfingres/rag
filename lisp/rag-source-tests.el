@@ -101,9 +101,9 @@ WHERE url == 'https://example.com/atom'"))
                                ;; link
                                "https://example.com"
                                ;; skip days
-                               0
+                               nil
                                ;; skip hours
-                               0
+                               nil
                                ;; last-update
                                1071340202
                                ;; ttl

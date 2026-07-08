@@ -89,7 +89,7 @@ fn parse_string<'e>(
         [&atom::Parser, &rdf::Parser, &rss::Parser];
 
     for parser in parsers {
-        if parser.try_recognize_root(&root, &mut reader, version)? {
+        if parser.try_recognize_root(&root, &reader, version)? {
             let feed = parser.handle_events(
                 &mut reader,
                 &mut |entry| {
