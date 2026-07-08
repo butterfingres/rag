@@ -20,7 +20,7 @@ pub const RSS: ResolveResult<'static> =
 struct RdfItemHandler;
 impl<'alloc, 'src, F, T, A> ParseTagInto<'alloc, 'src, A, F> for RdfItemHandler
 where
-    F: Fn(Entry<'alloc, 'src, A>) -> T + ?Sized,
+    F: FnMut(Entry<'alloc, 'src, A>) -> T + ?Sized,
     T: Into<Result<(), ParserError>>,
     A: Allocator + 'alloc,
 {
@@ -158,7 +158,7 @@ where
         reader: &mut NsReader<&'src [u8]>,
         event: Event<'src>,
         state: &mut PartialFeed<'alloc, 'src, A>,
-        mut cb: &EntryCb<'alloc, 'src, A>,
+        cb: &mut EntryCb<'alloc, 'src, A>,
         version: XmlVersion,
         alloc: &'alloc A,
     ) -> Result<(), ParserError> {
@@ -167,7 +167,7 @@ where
                 RdfChannel::parse_tag_into(state, reader, tag.name(), version, alloc)?;
             }
             (RSS, Event::Start(tag)) if tag.local_name().as_ref() == b"item" => {
-                RdfItemHandler::parse_tag_into(&mut cb, reader, tag.name(), version, alloc)?;
+                RdfItemHandler::parse_tag_into(cb, reader, tag.name(), version, alloc)?;
             }
             (_, Event::Start(tag)) => {
                 reader.read_to_end(tag.name()).map_err(ParserError::Xml)?;
