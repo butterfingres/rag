@@ -4,18 +4,21 @@ pub fn debug_bytes<T>(bytes: &T, f: &mut Formatter<'_>) -> Result<(), fmt::Error
 where
     T: AsRef<[u8]> + ?Sized,
 {
-    f.write_str("b\"")?;
-    for chunk in bytes.as_ref().utf8_chunks() {
-        for ch in chunk.valid().chars() {
-            Display::fmt(&ch.escape_debug(), f)?;
+    fn debug_bytes_inner(bytes: &[u8], f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        f.write_str("b\"")?;
+        for chunk in bytes.as_ref().utf8_chunks() {
+            for ch in chunk.valid().chars() {
+                Display::fmt(&ch.escape_debug(), f)?;
+            }
+            for byte in chunk.invalid() {
+                Display::fmt(&byte.escape_ascii(), f)?;
+            }
         }
-        for byte in chunk.invalid() {
-            Display::fmt(&byte.escape_ascii(), f)?;
-        }
-    }
-    f.write_char('\"')?;
+        f.write_char('\"')?;
 
-    Ok(())
+        Ok(())
+    }
+    debug_bytes_inner(bytes.as_ref(), f)
 }
 pub fn debug_iter_bytes<T, U>(iter: &T, f: &mut Formatter<'_>) -> Result<(), fmt::Error>
 where
