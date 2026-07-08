@@ -189,18 +189,14 @@ mod tests {
         crate::{
             alloc,
             borrow::Cow,
-            xml::{
-                Feed, SkipDays, SkipHours,
-                fmt::tests::test_parser_ns,
-                tests::{TestParserError, test_parser},
-            },
+            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser},
         },
         allocator_api2::vec::Vec,
         jiff::Span,
     };
 
     #[test]
-    fn test_rdf_parser_sample() -> Result<(), TestParserError<'static>> {
+    fn test_rdf_parser_sample() -> Result<(), ParserError> {
         test_parser(
             &Parser,
             include_str!("./sample.xml"),
@@ -236,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rdf_parser_ns() -> Result<(), TestParserError<'static>> {
+    fn test_rdf_parser_ns() -> Result<(), ParserError> {
         test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 }

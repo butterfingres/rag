@@ -309,18 +309,14 @@ mod tests {
         crate::{
             alloc::with_bump,
             tz,
-            xml::{
-                Feed, SkipDays, SkipHours,
-                fmt::tests::test_parser_ns,
-                tests::{TestParserError, test_parser},
-            },
+            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser},
         },
         allocator_api2::{boxed::Box, vec},
         jiff::{Span, civil::datetime},
     };
 
     #[test]
-    fn test_atom_parser_all() -> Result<(), TestParserError<'static>> {
+    fn test_atom_parser_all() -> Result<(), ParserError> {
         with_bump(|alloc| {
             test_parser(
                 &Parser,
@@ -360,7 +356,7 @@ mod tests {
     }
 
     #[test]
-    fn test_atom_parser_ns() -> Result<(), TestParserError<'static>> {
+    fn test_atom_parser_ns() -> Result<(), ParserError> {
         test_parser_ns(&Parser, include_str!("./ns.xml"))
     }
 }

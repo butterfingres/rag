@@ -759,38 +759,16 @@ mod tests {
     use {
         super::*,
         crate::alloc::{self, with_bump},
-        std::{assert_matches, fmt::Debug},
+        std::assert_matches,
     };
 
-    #[expect(
-        dead_code,
-        reason = "the data is used by the [Debug] implementation which is printed on error cases"
-    )]
-    #[derive(Debug)]
-    pub enum TestParserError<'a> {
-        Parser(ParserError),
-        TryFromRoot(TryFromRootError<'a>),
-    }
-    impl<T> From<T> for TestParserError<'_>
-    where
-        T: Into<ParserError>,
-    {
-        fn from(e: T) -> Self {
-            Self::Parser(e.into())
-        }
-    }
-    impl<'a> From<TryFromRootError<'a>> for TestParserError<'a> {
-        fn from(e: TryFromRootError<'a>) -> Self {
-            Self::TryFromRoot(e)
-        }
-    }
     pub fn test_parser<'alloc, 'src, const N: usize, T, A>(
         parser: &T,
         input: &'src str,
         output_state: Feed<'alloc, 'src, A>,
         output_entries: [Entry<'alloc, 'src, A>; N],
         alloc: &'alloc A,
-    ) -> Result<(), TestParserError<'src>>
+    ) -> Result<(), ParserError>
     where
         T: Parser<'alloc, 'src, A>,
         A: Allocator,
