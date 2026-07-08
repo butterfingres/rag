@@ -22,17 +22,14 @@ impl Display for OverflowError {
 }
 impl Error for OverflowError {}
 
-fn fetch_p_inner<T>(
-    ttl: Option<T>,
+fn fetch_p_inner(
+    ttl: Option<&str>,
     frequency: Option<i32>,
     last_update: Option<i64>,
     skip_hours: Option<u32>,
     skip_days: Option<u8>,
     now: i64,
-) -> Result<bool, emacs::Error>
-where
-    T: AsRef<str>,
-{
+) -> Result<bool, emacs::Error> {
     let now = Timestamp::from_second(now)?;
 
     let zoned = now.to_zoned(tz::GMT);
@@ -54,7 +51,7 @@ where
     if let Some(ttl) = ttl
         && let Some(last_update) = last_update
     {
-        let ttl = Span::from_str(ttl.as_ref())?;
+        let ttl = Span::from_str(ttl)?;
         let last_update = Timestamp::from_second(last_update)?;
 
         let mut duration = ttl.to_duration(&last_update.to_zoned(TimeZone::UTC))?;
@@ -85,7 +82,14 @@ pub fn fetch_p(
     skip_hours: Option<u8>,
     now: i64,
 ) -> Result<bool, emacs::Error> {
-    fetch_p_inner(ttl, frequency, last_update, skip_days, skip_hours, now)
+    fetch_p_inner(
+        ttl.as_deref(),
+        frequency,
+        last_update,
+        skip_days,
+        skip_hours,
+        now,
+    )
 }
 
 #[cfg(test)]
