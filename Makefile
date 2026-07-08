@@ -27,7 +27,7 @@ RUSTFILES = Cargo.lock Cargo.toml src/alloc.rs src/borrow.rs		\
 
 include Makefile.in
 
-all: ${ELCS}
+all: ${ELCS} target/release/rag-core.${SO}
 check: all
 	[ "$$(find Cargo.* src -name 'Cargo.*' -o -name '*.rs' | sort | xargs echo)" = "$$(echo ${RUSTFILES})" ] || (echo 'Go update $${RUSTFILES}.' 1>&2; exit 1)
 	[ "$$(find lisp -name '*.el' | sed 's/\.el/\.elc/g' | sort | xargs echo)" = "$$(echo ${ELCS})" ] || (echo 'Go update $${ELCS}.' 1>&2; exit 1)
