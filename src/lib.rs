@@ -17,7 +17,11 @@ pub mod xml;
 emacs::plugin_is_GPL_compatible!();
 
 use {
-    crate::xml::get_header,
+    crate::xml::{
+        Parser,
+        fmt::{atom, rdf, rss},
+        get_header,
+    },
     allocator_api2::alloc::Global,
     bump_scope::Bump,
     quick_xml::reader::NsReader,
@@ -78,7 +82,14 @@ fn parse_string<'e>(
     _entry_handler: emacs::Value<'e>,
 ) -> Result<emacs::Value<'e>, emacs::Error> {
     let mut reader = NsReader::from_str(&string);
-    let (_version, _root) = get_header(&mut reader)?;
+    let (version, root) = get_header(&mut reader)?;
+
+    let parsers: [&dyn Parser<'_, '_, &Bump<Global>>; 3] =
+        [&atom::Parser, &rdf::Parser, &rss::Parser];
+
+    for parser in parsers {
+        if parser.try_recognize_root(&root, &mut reader, version)? {}
+    }
 
     todo!()
     // macro_rules! try_parsers {
