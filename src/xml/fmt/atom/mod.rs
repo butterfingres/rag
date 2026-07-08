@@ -383,7 +383,7 @@ mod tests {
         crate::{
             alloc::with_bump,
             tz,
-            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser},
+            xml::{Feed, SkipDays, SkipHours, fmt::tests::test_parser_ns, tests::test_parser_2},
         },
         allocator_api2::{boxed::Box, vec},
         jiff::{Span, civil::datetime},
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn test_atom_parser_all() -> Result<(), ParserError> {
         with_bump(|alloc| {
-            test_parser(
+            test_parser_2(
                 &Parser,
                 include_str!("./all.xml"),
                 Feed {
