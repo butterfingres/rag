@@ -1,6 +1,6 @@
 * Installation
 ** Prerequisites
-- Emacs version > 30.1 and built with sqlite support
+- Emacs version >= 30.1 and built with sqlite support
 ** Pre-compiled binaries
 Visit the [[https://github.com/butterfingres/rag/][releases page]] and download the =lisp.zip= file (which is
 platform independent) followed by a =rag-core-*.zip= file that
