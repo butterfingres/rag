@@ -16,8 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - run: |
-          sudo apk update
-          sudo apk add emacs rust rust-clippy rustfmt
+          apk update
+          apk add emacs rust rust-clippy rustfmt
       - name: Test
         run: |
           ./configure
