@@ -1,0 +1,24 @@
+on:
+  push:
+    paths:
+      - ".forgejo/workflows/test*.yml"
+      - "**/*.rs"
+      - "**/*.el"
+      - "Cargo.*"
+      - "Makefile*"
+      - "configure*"
+  pull_request:
+
+jobs:
+  check:
+    runs-on: docker
+    container: data.forgejo.org/oci/alpine:3.23
+    steps:
+      - uses: actions/checkout@v6
+      - run: |
+          sudo apk update
+          sudo apk add emacs rust rust-clippy rustfmt
+      - name: Test
+        run: |
+          ./configure
+          make check -kj
