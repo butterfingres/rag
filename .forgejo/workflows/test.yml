@@ -12,7 +12,7 @@ on:
 jobs:
   check:
     runs-on: docker
-    container: docker://node:alpine3.24
+    container: node:alpine3.24
     steps:
       - uses: actions/checkout@v6
       - run: |
