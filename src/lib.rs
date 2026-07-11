@@ -15,8 +15,6 @@ mod sym;
 mod tz;
 pub mod xml;
 
-emacs::plugin_is_GPL_compatible!();
-
 use {
     crate::xml::{
         Parser,
