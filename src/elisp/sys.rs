@@ -245,6 +245,7 @@ macro_rules! emacs_env_28 {
     }
 }
 emacs_env_28! {
+    #[derive(Default)]
     #[repr(C)]
     pub struct emacs_env_28 {}
 }
