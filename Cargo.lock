@@ -274,6 +274,7 @@ dependencies = [
  "crossbeam-channel",
  "emacs",
  "jiff",
+ "libc",
  "memchr",
  "quick-xml",
 ]
