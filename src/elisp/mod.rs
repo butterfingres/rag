@@ -1,3 +1,4 @@
+pub mod env;
 pub mod sys;
 
 use std::ffi::c_int;
