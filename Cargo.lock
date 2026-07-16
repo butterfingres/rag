@@ -223,7 +223,6 @@ dependencies = [
  "bump-scope",
  "crossbeam-channel",
  "jiff",
- "libc",
  "memchr",
  "quick-xml",
  "rem",
