@@ -13,18 +13,18 @@
 
 (require 'ert)
 (require 'rag-core)
+(require 'rag-pool)
 
-(defvar rag-core-test-allocator (rag-core-bump-new))
 (defun rag-core-test-parse-feed (input output-feed output-entries)
-  (rag-core-bump-reset rag-core-test-allocator)
-  (let* ((entries '())
-         (feed (rag-core-parse-string input
-                                      rag-core-test-allocator
-                                      (lambda (entry)
-                                        (push entry entries)))))
-    (setq entries (nreverse entries))
-    (should (equal feed output-feed))
-    (should (equal entries output-entries))))
+  (rag-pool-with alloc
+    (let* ((entries '())
+           (feed (rag-core-parse-string input
+                                        alloc
+                                        (lambda (entry)
+                                          (push entry entries)))))
+      (setq entries (nreverse entries))
+      (should (equal feed output-feed))
+      (should (equal entries output-entries)))))
 
 ;;; Format tests to ensure that all parsers work.
 

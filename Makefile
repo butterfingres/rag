@@ -56,6 +56,7 @@ target/release/rag-core.${SO}: target/release/${LIB} lisp/rag-lib.elc
 	cp $< $@
 
 lisp/rag.elc: lisp/rag-db.elc lisp/rag-entry.elc lisp/rag-faces.elc lisp/rag-pool.elc lisp/rag-source.elc target/debug/rag-core.${SO}
+lisp/rag-core-tests.elc: lisp/rag-pool.elc
 lisp/rag-entry.elc: lisp/rag-faces.elc lisp/rag-lib.elc
 lisp/rag-entry-tests.elc: lisp/rag-entry.elc
 lisp/rag-tests.elc: lisp/rag.elc lisp/rag-db.elc lisp/rag-db-tests-lib.elc
