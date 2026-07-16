@@ -29,7 +29,7 @@ fn fetch_p_inner(
     skip_hours: Option<u32>,
     skip_days: Option<u8>,
     now: i64,
-) -> Result<bool, emacs::Error> {
+) -> Result<bool, rem::Error> {
     let now = Timestamp::from_second(now)?;
 
     let zoned = now.to_zoned(tz::GMT);
@@ -73,7 +73,7 @@ fn fetch_p_inner(
 /// `rag-entry-ttl' field, PERIOD is the `rag-entry-period' field,
 /// LAST-UPDATE is the last update unix timestamp and NOW is the
 /// current unix timestamp.
-#[emacs::defun]
+#[rem::defun]
 pub fn fetch_p(
     ttl: Option<String>,
     frequency: Option<i32>,
@@ -81,7 +81,7 @@ pub fn fetch_p(
     skip_days: Option<u32>,
     skip_hours: Option<u8>,
     now: i64,
-) -> Result<bool, emacs::Error> {
+) -> Result<bool, rem::Error> {
     fetch_p_inner(
         ttl.as_deref(),
         frequency,
@@ -97,7 +97,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_fetch_p_empty() -> Result<(), emacs::Error> {
+    fn test_fetch_p_empty() -> Result<(), rem::Error> {
         assert!(
             fetch_p_inner(None::<&str>, None, None, None, None, 0)?,
             "empty feeds should always be fetched"
@@ -106,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_p_below_cache() -> Result<(), emacs::Error> {
+    fn test_fetch_p_below_cache() -> Result<(), rem::Error> {
         assert!(
             !fetch_p_inner(Some("PT10M"), None, Some(0), None, None, 0)?,
             "0 < 0 + 10"
@@ -115,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_p_default() -> Result<(), emacs::Error> {
+    fn test_fetch_p_default() -> Result<(), rem::Error> {
         assert!(
             fetch_p_inner(Some("PT1S"), None, None, None, None, 1)?,
             "1 > 0"
@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_p_last_update() -> Result<(), emacs::Error> {
+    fn test_fetch_p_last_update() -> Result<(), rem::Error> {
         assert!(
             fetch_p_inner(Some("PT1S"), None, Some(1), None, None, 2)?,
             "2 >= 1 + 1"
@@ -133,7 +133,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_p_frequency() -> Result<(), emacs::Error> {
+    fn test_fetch_p_frequency() -> Result<(), rem::Error> {
         assert!(
             fetch_p_inner(Some("PT1M"), Some(2), Some(0), None, None, 30)?,
             "60 / 2 >= 30"
@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_p_skip_hours() -> Result<(), emacs::Error> {
+    fn test_fetch_p_skip_hours() -> Result<(), rem::Error> {
         assert!(
             !fetch_p_inner(
                 None::<&str>,
@@ -177,7 +177,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fetch_p_skip_days() -> Result<(), emacs::Error> {
+    fn test_fetch_p_skip_days() -> Result<(), rem::Error> {
         assert!(
             !fetch_p_inner(None::<&str>, None, Some(0), None, Some(0b0000_1000), 0)?,
             "January 1 1970 is in Thursday"

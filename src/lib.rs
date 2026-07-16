@@ -7,7 +7,6 @@
 mod alloc;
 mod borrow;
 mod bump;
-mod elisp;
 mod feed;
 mod fmt;
 mod num;
@@ -23,8 +22,8 @@ use {
     },
     allocator_api2::alloc::Global,
     bump_scope::Bump,
-    emacs::IntoLisp,
     quick_xml::reader::NsReader,
+    rem::IntoLisp,
     std::{
         error::Error,
         fmt::{Display, Formatter},
@@ -42,16 +41,29 @@ impl Display for IncompatibleAbiVersionError {
 }
 impl Error for IncompatibleAbiVersionError {}
 
-#[emacs::module(name = "rag-core")]
-fn init(env: &emacs::Env) -> Result<(), emacs::Error> {
-    sym::fun::REQUIRE.call(env, (sym::val::RAG_LIB.bind(env),))?;
+rem::plugin_is_GPL_compatible!();
+
+#[rem::module(name = "rag-core")]
+fn init(env: &rem::Env) -> Result<(), rem::Error> {
+    sym::fun::REQUIRE
+        .try_bind(env)?
+        .call(env, (&sym::val::RAG_LIB,))?;
 
     let version = sym::fun::SYMBOL_VALUE
-        .call(env, (sym::val::RAG_ABI_VERSION.bind(env),))?
-        .into_rust::<u32>()?;
+        .try_bind(env)?
+        .call(env, (&sym::val::RAG_ABI_VERSION,))?
+        .into_rust::<u32>(env)?;
     if version != ABI_VERSION {
-        return Err(emacs::Error::new(IncompatibleAbiVersionError(version)));
+        return Err(rem::Error::from(IncompatibleAbiVersionError(version)));
     }
+
+    env.lambda(&bump::New, None)?.fset("rag-core-bump-new")?;
+    env.lambda(&bump::Reset, None)?
+        .fset("rag-core-bump-reset")?;
+    env.lambda(&feed::FetchP, None)?
+        .fset("rag-core-feed-fetch-p")?;
+    env.lambda(&ParseString, None)?
+        .fset("rag-core-parse-string")?;
 
     Ok(())
 }
@@ -74,13 +86,13 @@ impl Error for UnknownRootError {}
 /// The `rag-entry' objects when passed to ENTRY-HANDLER will not
 /// contain a `rag-entry-feed-id' field, you will need to store the
 /// feed url by capturing it in a closure.
-#[emacs::defun]
+#[rem::defun]
 fn parse_string<'e>(
-    env: &'e emacs::Env,
+    env: &'e rem::Env,
     string: String,
     alloc: &Bump<Global>,
-    entry_handler: emacs::Value<'e>,
-) -> Result<emacs::Value<'e>, emacs::Error> {
+    entry_handler: rem::Value<'e>,
+) -> Result<rem::Value<'e>, rem::Error> {
     let mut reader = NsReader::from_str(&string);
     let (version, root) = get_header(&mut reader)?;
 
@@ -93,7 +105,7 @@ fn parse_string<'e>(
                 &mut reader,
                 &mut |entry| {
                     let entry = entry.into_lisp(env)?;
-                    entry_handler.call((entry,))?;
+                    entry_handler.call(env, (entry,))?;
                     Ok(())
                 },
                 version,
@@ -103,5 +115,5 @@ fn parse_string<'e>(
         }
     }
 
-    Err(emacs::Error::new(UnknownRootError))
+    Err(rem::Error::from(UnknownRootError))
 }
