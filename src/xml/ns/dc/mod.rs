@@ -13,6 +13,7 @@ use {
     },
     allocator_api2::alloc::Allocator,
     jiff::{Timestamp, civil::datetime, fmt::temporal::DateTimeParser, tz::TimeZone},
+    memchr::memchr,
     quick_xml::{XmlVersion, events::Event, reader::NsReader},
 };
 
@@ -126,11 +127,8 @@ where
 
     // If the timestamp contains a slash then it is ambiguous because
     // the publishing date might be anywhere between the range.
-    let (replaceable, date) = date
-        .iter()
-        .enumerate()
-        .find(|(_, ch)| **ch == b'/')
-        .map(|(idx, _)| {
+    let (replaceable, date) = memchr(b'/', date)
+        .map(|idx| {
             let l = &date[..idx];
             let r = &date[idx + 1..];
             // We prefer the right (end time) because we can use
