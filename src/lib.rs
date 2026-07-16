@@ -10,6 +10,7 @@ mod bump;
 mod feed;
 mod fmt;
 mod num;
+mod string;
 mod sym;
 mod tz;
 pub mod xml;
@@ -93,10 +94,11 @@ impl Error for UnknownRootError {}
 #[rem::defun]
 fn parse_string<'e>(
     env: &'e rem::Env,
-    string: String,
+    string: rem::Value<'e>,
     alloc: &Bump<Global>,
     entry_handler: rem::Value<'e>,
 ) -> Result<rem::Value<'e>, rem::Error> {
+    let string = string::from_lisp_in(env, string, alloc)?;
     let mut reader = NsReader::from_str(&string);
     let (version, root) = get_header(&mut reader)?;
 

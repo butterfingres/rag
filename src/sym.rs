@@ -3,6 +3,7 @@ pub mod fun {
         MAKE_VECTOR => "make-vector",
         REQUIRE => "require",
         SYMBOL_VALUE => "symbol-value",
+        STRING_BYTES => "string-bytes",
     }
 }
 pub mod key {
