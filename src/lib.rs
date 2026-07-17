@@ -16,7 +16,7 @@ mod xml;
 
 use {
     crate::xml::{
-        Parser,
+        Parser, ParserError,
         fmt::{atom, rdf, rss},
         get_header,
     },
@@ -99,13 +99,48 @@ impl Error for UnknownRootError {}
 #[rem::defun]
 fn parse_string_with<'e>(
     env: &'e rem::Env,
-    _string: String,
-    _pool: &ThreadPool,
+    string: String,
+    pool: &ThreadPool,
     output_process: rem::Value<'e>,
-) -> Result<rem::Value<'e>, rem::Error> {
+) -> Result<(), rem::Error> {
     let _channel = env.open_channel(output_process)?;
+    pool.spawn(move || {
+        alloc::with_bump(|alloc| {
+            if let Ok(_error) = (move || {
+                let mut reader = NsReader::from_str(&string);
+                let (version, root) = get_header(&mut reader)?;
 
-    todo!()
+                let parsers: [&dyn Parser<'_, '_, Bump>; 3] =
+                    [&atom::Parser, &rdf::Parser, &rss::Parser];
+
+                let mut feed = None;
+                for parser in parsers {
+                    if parser.try_recognize_root(&root, &reader, version)? {
+                        feed = Some(parser.handle_events(
+                            &mut reader,
+                            &mut |_entry| {
+                                // let entry = entry.into_lisp(env)?;
+                                // entry_handler.call(env, (entry,))?;
+                                Ok(())
+                            },
+                            version,
+                            alloc,
+                        )?);
+                        break;
+                    }
+                }
+
+                if let Some(_feed) = feed {
+                    todo!()
+                }
+
+                Ok::<(), ParserError>(())
+            })() {
+                todo!()
+            }
+        });
+    });
+    Ok(())
 }
 
 #[rem::defun]
