@@ -12,6 +12,7 @@ mod fmt;
 mod num;
 mod string;
 mod sym;
+mod thread_pool;
 mod tz;
 mod xml;
 
@@ -61,8 +62,13 @@ fn init(env: &rem::Env) -> Result<(), rem::Error> {
     env.lambda(&bump::New, None)?.fset("rag-core-bump-new")?;
     env.lambda(&bump::Reset, None)?
         .fset("rag-core-bump-reset")?;
+
     env.lambda(&feed::FetchP, None)?
         .fset("rag-core-feed-fetch-p")?;
+
+    env.lambda(&thread_pool::New, None)?
+        .fset("rag-core-thread-pool-new")?;
+
     env.lambda(
         &ParseString,
         Some(
