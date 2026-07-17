@@ -9,7 +9,6 @@ mod bump;
 mod feed;
 mod fmt;
 mod num;
-mod string;
 mod sym;
 mod thread_pool;
 mod tz;
@@ -100,7 +99,7 @@ impl Error for UnknownRootError {}
 #[rem::defun]
 fn parse_string_with<'e>(
     env: &'e rem::Env,
-    _string: rem::Value<'e>,
+    _string: String,
     _pool: &ThreadPool,
     output_process: rem::Value<'e>,
 ) -> Result<rem::Value<'e>, rem::Error> {
@@ -112,11 +111,10 @@ fn parse_string_with<'e>(
 #[rem::defun]
 fn parse_string<'e>(
     env: &'e rem::Env,
-    string: rem::Value<'e>,
+    string: String,
     alloc: &Bump<Global>,
     entry_handler: rem::Value<'e>,
 ) -> Result<rem::Value<'e>, rem::Error> {
-    let string = string::from_lisp_in(env, string, alloc)?;
     let mut reader = NsReader::from_str(&string);
     let (version, root) = get_header(&mut reader)?;
 
