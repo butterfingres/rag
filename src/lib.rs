@@ -3,7 +3,6 @@
     reason = "dates and times look more clear with a prefixed zero"
 )]
 
-#[cfg(test)]
 mod alloc;
 mod borrow;
 mod bump;

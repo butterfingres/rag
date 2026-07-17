@@ -1,11 +1,7 @@
 use {
     allocator_api2::alloc::{AllocError, Allocator},
     bump_scope::Bump,
-    std::{
-        alloc::{Layout, LayoutError},
-        ptr::NonNull,
-        sync::LazyLock,
-    },
+    std::{alloc::Layout, ptr::NonNull, sync::LazyLock},
 };
 
 /// Allocator that never allocates.
@@ -37,16 +33,21 @@ where
     val
 }
 
-#[test]
-fn failing_allocator() -> Result<(), LayoutError> {
-    [
-        Layout::new::<u8>(),
-        Layout::new::<u128>(),
-        Layout::array::<u8>(512)?,
-    ]
-    .into_iter()
-    .for_each(|layout| {
-        assert_eq!(Dummy.allocate(layout), Err(AllocError));
-    });
-    Ok(())
+#[cfg(test)]
+mod tests {
+    use {super::*, allocator_api2::alloc::LayoutError};
+
+    #[test]
+    fn failing_allocator() -> Result<(), LayoutError> {
+        [
+            Layout::new::<u8>(),
+            Layout::new::<u128>(),
+            Layout::array::<u8>(512)?,
+        ]
+        .into_iter()
+        .for_each(|layout| {
+            assert_eq!(Dummy.allocate(layout), Err(AllocError));
+        });
+        Ok(())
+    }
 }
