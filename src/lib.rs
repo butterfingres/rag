@@ -24,6 +24,7 @@ use {
     allocator_api2::alloc::Global,
     bump_scope::Bump,
     quick_xml::reader::NsReader,
+    rayon_core::ThreadPool,
     rem::IntoLisp,
     std::{
         error::Error,
@@ -95,6 +96,18 @@ impl Display for UnknownRootError {
     }
 }
 impl Error for UnknownRootError {}
+
+#[rem::defun]
+fn parse_string_with<'e>(
+    env: &'e rem::Env,
+    _string: rem::Value<'e>,
+    _pool: &ThreadPool,
+    output_process: rem::Value<'e>,
+) -> Result<rem::Value<'e>, rem::Error> {
+    let _channel = env.open_channel(output_process)?;
+
+    todo!()
+}
 
 #[rem::defun]
 fn parse_string<'e>(
