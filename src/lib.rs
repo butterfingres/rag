@@ -13,7 +13,7 @@ mod num;
 mod string;
 mod sym;
 mod tz;
-pub mod xml;
+mod xml;
 
 use {
     crate::xml::{

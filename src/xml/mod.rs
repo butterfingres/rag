@@ -571,22 +571,6 @@ impl From<quick_xml::Error> for ParserError {
     }
 }
 
-#[derive(Debug)]
-pub enum TryFromRootError<'src> {
-    Xml(quick_xml::Error),
-    UnknownRoot(BytesStart<'src>),
-}
-impl From<AttrError> for TryFromRootError<'_> {
-    fn from(e: AttrError) -> Self {
-        Self::Xml(quick_xml::Error::InvalidAttr(e))
-    }
-}
-impl From<quick_xml::Error> for TryFromRootError<'_> {
-    fn from(e: quick_xml::Error) -> Self {
-        Self::Xml(e)
-    }
-}
-
 pub trait Parser<'alloc, 'src, A>
 where
     A: Allocator,
