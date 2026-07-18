@@ -108,7 +108,7 @@ fn parse_string_with<'e>(
     let mut channel = BufWriter::new(env.open_channel(output_process)?);
     pool.spawn(move || {
         alloc::with_bump(|alloc| {
-            if let Ok(_error) = (move || {
+            if let Err(error) = (|| {
                 let mut reader = NsReader::from_str(&string);
                 let (version, root) = get_header(&mut reader)?;
 
@@ -138,7 +138,10 @@ fn parse_string_with<'e>(
 
                 Ok::<(), ParserError>(())
             })() {
-                todo!()
+                let _ = (|| {
+                    write!(channel, "(error {error})")?;
+                    channel.flush()
+                })();
             }
         });
     });
