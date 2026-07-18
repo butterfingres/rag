@@ -79,18 +79,37 @@ where
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::alloc::Dummy};
+    use {
+        super::*,
+        crate::alloc::{Dummy, with_bump},
+    };
 
     macro_rules! test_value {
+        ($input:expr, $output:literal $(,)?) => {{
+            let mut buf = ::arrayvec::ArrayString::<{ $output.len() }>::new();
+            ::std::write!(buf, "{}", $input)?;
+            ::std::assert_eq!(buf.as_ref(), $output);
+            ::std::result::Result::Ok(())
+        }};
         ($input:expr, $output:literal, $ident:ident $(,)?) => {
             #[test]
             fn $ident() -> ::std::result::Result<(), ::std::fmt::Error> {
-                let mut buf = ::arrayvec::ArrayString::<{ $output.len() }>::new();
-                ::std::write!(buf, "{}", $input)?;
-                ::std::assert_eq!(buf.as_ref(), $output);
-                ::std::result::Result::Ok(())
+                test_value!($input, $output)
             }
         };
+    }
+
+    #[test]
+    fn value_display_cons() -> Result<(), fmt::Error> {
+        with_bump(|bump| {
+            test_value!(
+                Value::Cons(
+                    Box::new_in(Value::String("hello world"), &*bump),
+                    Box::new_in(Value::Nil, &*bump)
+                ),
+                "(\"hello world\" . nil)"
+            )
+        })
     }
 
     test_value!(Value::<Dummy>::Nil, "nil", value_display_nil);
