@@ -3,6 +3,19 @@ use {
     std::fmt::{self, Display, Formatter, Write as _},
 };
 
+pub enum Number {
+    Signed(i64),
+    Unsigned(u64),
+}
+impl Display for Number {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Self::Signed(num) => num.fmt(f),
+            Self::Unsigned(num) => num.fmt(f),
+        }
+    }
+}
+
 pub enum Value<'a, A>
 where
     A: Allocator,
@@ -10,6 +23,7 @@ where
     Nil,
     Cons(Box<Value<'a, A>, A>, Box<Value<'a, A>, A>),
     Char(char),
+    Number(Number),
     String(&'a str),
     Symbol(&'a str),
 }
@@ -39,6 +53,8 @@ where
                 write!(f, "?\\{ch}")
             }
             Self::Char(ch) => write!(f, "?{ch}"),
+
+            Self::Number(num) => num.fmt(f),
 
             Self::String(string) => {
                 f.write_char('\"')?;
@@ -359,5 +375,16 @@ mod tests {
         Value::<Dummy>::Symbol(","),
         "\\,",
         value_display_symbol_comma
+    );
+
+    test_value!(
+        Value::<Dummy>::Number(Number::Signed(-10)),
+        "-10",
+        value_display_number_signed
+    );
+    test_value!(
+        Value::<Dummy>::Number(Number::Unsigned(10)),
+        "10",
+        value_display_number_unsigned
     );
 }
