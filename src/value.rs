@@ -84,14 +84,39 @@ impl Display for Value<'_> {
     }
 }
 
+pub fn fmt_vector<'a, I, T>(iter: I, f: &mut Formatter<'_>) -> Result<(), fmt::Error>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<Result<Value<'a>, fmt::Error>>,
+{
+    fn inner<'a>(
+        iter: &mut dyn Iterator<Item = Result<Value<'a>, fmt::Error>>,
+        f: &mut Formatter<'_>,
+    ) -> Result<(), fmt::Error> {
+        f.write_char('[')?;
+        if let Some(item) = iter.next() {
+            let item = item?;
+            item.fmt(f)?;
+
+            for item in iter {
+                let item = item?;
+                write!(f, " {item}")?;
+            }
+        }
+        f.write_char(']')
+    }
+
+    inner(
+        &mut iter
+            .into_iter()
+            .map(<T as Into<Result<Value<'a>, fmt::Error>>>::into),
+        f,
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use {
-        super::*,
-        crate::alloc::{Dummy, with_bump},
-        allocator_api2::vec,
-        arrayvec::ArrayString,
-    };
+    use {super::*, arrayvec::ArrayString};
 
     macro_rules! test_value {
         ($input:expr, $output:literal $(,)?) => {{
@@ -109,290 +134,155 @@ mod tests {
     }
 
     #[test]
-    fn value_display_cons() -> Result<(), fmt::Error> {
-        with_bump(|bump| {
-            test_value!(
-                Value::Cons(
-                    Box::new_in(Value::String("hello world"), &*bump),
-                    Box::new_in(Value::Char('a'), &*bump)
-                ),
-                "(\"hello world\" . ?a)"
-            )
-        })
-    }
-
-    #[test]
-    fn value_display_cons_list() -> Result<(), fmt::Error> {
-        with_bump(|bump| {
-            test_value!(
-                Value::Cons(
-                    Box::new_in(Value::Char('a'), &*bump),
-                    Box::new_in(
-                        Value::Cons(
-                            Box::new_in(Value::Char('b'), &*bump),
-                            Box::new_in(Value::Nil, &*bump)
-                        ),
-                        &*bump
-                    )
-                ),
-                "(?a . (?b . nil))"
-            )
-        })
-    }
-
-    #[test]
     fn value_display_list() -> Result<(), fmt::Error> {
-        const OUTPUT: &str = "(?a ?b)";
+        const OUTPUT: &str = "[?a ?b]";
         let mut buf = ArrayString::<{ OUTPUT.len() }>::new();
         write!(
             buf,
             "{}",
-            fmt::from_fn(|f| Value::fmt_list(
-                [Value::<Dummy>::Char('a'), Value::<Dummy>::Char('b')],
-                f
-            ))
+            fmt::from_fn(|f| fmt_vector([Value::Char('a'), Value::Char('b')], f))
         )?;
         assert_eq!(buf.as_ref(), OUTPUT);
         Ok(())
     }
 
-    test_value!(Value::<Dummy>::Nil, "nil", value_display_nil);
+    test_value!(Value::Nil, "nil", value_display_nil);
 
+    test_value!(Value::Char('\u{7}'), "?\\a", value_display_char_control_g,);
+    test_value!(Value::Char('\u{8}'), "?\\b", value_display_char_backspace,);
+    test_value!(Value::Char('\t'), "?\\t", value_display_char_tab);
+    test_value!(Value::Char('\n'), "?\\n", value_display_char_newline,);
     test_value!(
-        Value::<Dummy>::Char('\u{7}'),
-        "?\\a",
-        value_display_char_control_g,
-    );
-    test_value!(
-        Value::<Dummy>::Char('\u{8}'),
-        "?\\b",
-        value_display_char_backspace,
-    );
-    test_value!(Value::<Dummy>::Char('\t'), "?\\t", value_display_char_tab);
-    test_value!(
-        Value::<Dummy>::Char('\n'),
-        "?\\n",
-        value_display_char_newline,
-    );
-    test_value!(
-        Value::<Dummy>::Char('\u{b}'),
+        Value::Char('\u{b}'),
         "?\\v",
         value_display_char_vertical_tab,
     );
+    test_value!(Value::Char('\u{c}'), "?\\f", value_display_char_form_feed,);
     test_value!(
-        Value::<Dummy>::Char('\u{c}'),
-        "?\\f",
-        value_display_char_form_feed,
-    );
-    test_value!(
-        Value::<Dummy>::Char('\r'),
+        Value::Char('\r'),
         "?\\r",
         value_display_char_carriage_return,
     );
+    test_value!(Value::Char('\u{1b}'), "?\\e", value_display_char_escape,);
+    test_value!(Value::Char(' '), "?\\s", value_display_char_space);
+    test_value!(Value::Char('\u{7f}'), "?\\d", value_display_char_delete,);
+    test_value!(Value::Char('\\'), "?\\\\", value_display_char_backslash,);
+    test_value!(Value::Char('\"'), "?\\\"", value_display_char_double_quote,);
+    test_value!(Value::Char('('), "?\\(", value_display_char_left_paren,);
+    test_value!(Value::Char(')'), "?\\)", value_display_char_right_paren,);
     test_value!(
-        Value::<Dummy>::Char('\u{1b}'),
-        "?\\e",
-        value_display_char_escape,
-    );
-    test_value!(Value::<Dummy>::Char(' '), "?\\s", value_display_char_space);
-    test_value!(
-        Value::<Dummy>::Char('\u{7f}'),
-        "?\\d",
-        value_display_char_delete,
-    );
-    test_value!(
-        Value::<Dummy>::Char('\\'),
-        "?\\\\",
-        value_display_char_backslash,
-    );
-    test_value!(
-        Value::<Dummy>::Char('\"'),
-        "?\\\"",
-        value_display_char_double_quote,
-    );
-    test_value!(
-        Value::<Dummy>::Char('('),
-        "?\\(",
-        value_display_char_left_paren,
-    );
-    test_value!(
-        Value::<Dummy>::Char(')'),
-        "?\\)",
-        value_display_char_right_paren,
-    );
-    test_value!(
-        Value::<Dummy>::Char('['),
+        Value::Char('['),
         "?\\[",
         value_display_char_left_square_bracket,
     );
     test_value!(
-        Value::<Dummy>::Char(']'),
+        Value::Char(']'),
         "?\\]",
         value_display_char_right_square_bracket,
     );
-    test_value!(
-        Value::<Dummy>::Char(';'),
-        "?\\;",
-        value_display_char_semicolon,
-    );
-    test_value!(Value::<Dummy>::Char('|'), "?\\|", value_display_char_pipe);
-    test_value!(
-        Value::<Dummy>::Char('\''),
-        "?\\\'",
-        value_display_char_single_quote,
-    );
-    test_value!(
-        Value::<Dummy>::Char('`'),
-        "?\\`",
-        value_display_char_back_quote,
-    );
-    test_value!(Value::<Dummy>::Char('#'), "?\\#", value_display_char_hash);
-    test_value!(Value::<Dummy>::Char('.'), "?\\.", value_display_char_period);
-    test_value!(Value::<Dummy>::Char(','), "?\\,", value_display_char_comma);
+    test_value!(Value::Char(';'), "?\\;", value_display_char_semicolon,);
+    test_value!(Value::Char('|'), "?\\|", value_display_char_pipe);
+    test_value!(Value::Char('\''), "?\\\'", value_display_char_single_quote,);
+    test_value!(Value::Char('`'), "?\\`", value_display_char_back_quote,);
+    test_value!(Value::Char('#'), "?\\#", value_display_char_hash);
+    test_value!(Value::Char('.'), "?\\.", value_display_char_period);
+    test_value!(Value::Char(','), "?\\,", value_display_char_comma);
 
-    test_value!(Value::<Dummy>::Char('a'), "?a", value_display_char_regular);
+    test_value!(Value::Char('a'), "?a", value_display_char_regular);
 
     test_value!(
-        Value::<Dummy>::String("hello world"),
+        Value::String("hello world"),
         "\"hello world\"",
         value_display_string_hello_world,
     );
     test_value!(
-        Value::<Dummy>::String("\u{7}"),
+        Value::String("\u{7}"),
         "\"\\a\"",
         value_display_string_control_g,
     );
     test_value!(
-        Value::<Dummy>::String("\u{8}"),
+        Value::String("\u{8}"),
         "\"\\b\"",
         value_display_string_backspace,
     );
+    test_value!(Value::String("\t"), "\"\\t\"", value_display_string_tab,);
     test_value!(
-        Value::<Dummy>::String("\t"),
-        "\"\\t\"",
-        value_display_string_tab,
-    );
-    test_value!(
-        Value::<Dummy>::String("\u{b}"),
+        Value::String("\u{b}"),
         "\"\\v\"",
         value_display_string_vertical_tab,
     );
     test_value!(
-        Value::<Dummy>::String("\u{c}"),
+        Value::String("\u{c}"),
         "\"\\f\"",
         value_display_string_form_feed,
     );
     test_value!(
-        Value::<Dummy>::String("\r"),
+        Value::String("\r"),
         "\"\\r\"",
         value_display_string_carriage_return,
     );
     test_value!(
-        Value::<Dummy>::String("\u{1b}"),
+        Value::String("\u{1b}"),
         "\"\\e\"",
         value_display_string_escape,
     );
     test_value!(
-        Value::<Dummy>::String("\\"),
+        Value::String("\\"),
         "\"\\\\\"",
         value_display_string_backslash,
     );
     test_value!(
-        Value::<Dummy>::String("\""),
+        Value::String("\""),
         "\"\\\"\"",
         value_display_string_double_quote,
     );
     test_value!(
-        Value::<Dummy>::String("\u{7f}"),
+        Value::String("\u{7f}"),
         "\"\\d\"",
         value_display_string_delete,
     );
 
-    test_value!(Value::<Dummy>::Symbol(""), "##", value_display_symbol_empty);
+    test_value!(Value::Symbol(""), "##", value_display_symbol_empty);
     test_value!(
-        Value::<Dummy>::Symbol("hello-world"),
+        Value::Symbol("hello-world"),
         "hello-world",
         value_display_symbol_hello_world
     );
 
+    test_value!(Value::Symbol(" "), "\\ ", value_display_symbol_space);
+    test_value!(Value::Symbol("("), "\\(", value_display_symbol_left_paren);
+    test_value!(Value::Symbol(")"), "\\)", value_display_symbol_right_paren);
     test_value!(
-        Value::<Dummy>::Symbol(" "),
-        "\\ ",
-        value_display_symbol_space
-    );
-    test_value!(
-        Value::<Dummy>::Symbol("("),
-        "\\(",
-        value_display_symbol_left_paren
-    );
-    test_value!(
-        Value::<Dummy>::Symbol(")"),
-        "\\)",
-        value_display_symbol_right_paren
-    );
-    test_value!(
-        Value::<Dummy>::Symbol("["),
+        Value::Symbol("["),
         "\\[",
         value_display_symbol_left_square_bracket
     );
     test_value!(
-        Value::<Dummy>::Symbol("]"),
+        Value::Symbol("]"),
         "\\]",
         value_display_symbol_right_square_bracket
     );
+    test_value!(Value::Symbol("\\"), "\\\\", value_display_symbol_backslash);
+    test_value!(Value::Symbol(";"), "\\;", value_display_symbol_semicolon);
     test_value!(
-        Value::<Dummy>::Symbol("\\"),
-        "\\\\",
-        value_display_symbol_backslash
-    );
-    test_value!(
-        Value::<Dummy>::Symbol(";"),
-        "\\;",
-        value_display_symbol_semicolon
-    );
-    test_value!(
-        Value::<Dummy>::Symbol("\""),
+        Value::Symbol("\""),
         "\\\"",
         value_display_symbol_double_quote
     );
-    test_value!(
-        Value::<Dummy>::Symbol("|"),
-        "\\|",
-        value_display_symbol_pipe,
-    );
-    test_value!(
-        Value::<Dummy>::Symbol("\'"),
-        "\\\'",
-        value_display_symbol_quote
-    );
-    test_value!(
-        Value::<Dummy>::Symbol("`"),
-        "\\`",
-        value_display_symbol_backquote
-    );
-    test_value!(
-        Value::<Dummy>::Symbol("#"),
-        "\\#",
-        value_display_symbol_hash
-    );
-    test_value!(
-        Value::<Dummy>::Symbol("."),
-        "\\.",
-        value_display_symbol_period
-    );
-    test_value!(
-        Value::<Dummy>::Symbol(","),
-        "\\,",
-        value_display_symbol_comma
-    );
+    test_value!(Value::Symbol("|"), "\\|", value_display_symbol_pipe,);
+    test_value!(Value::Symbol("\'"), "\\\'", value_display_symbol_quote);
+    test_value!(Value::Symbol("`"), "\\`", value_display_symbol_backquote);
+    test_value!(Value::Symbol("#"), "\\#", value_display_symbol_hash);
+    test_value!(Value::Symbol("."), "\\.", value_display_symbol_period);
+    test_value!(Value::Symbol(","), "\\,", value_display_symbol_comma);
 
     test_value!(
-        Value::<Dummy>::Number(Number::Signed(-10)),
+        Value::Number(Number::Signed(-10)),
         "-10",
         value_display_number_signed
     );
     test_value!(
-        Value::<Dummy>::Number(Number::Unsigned(10)),
+        Value::Number(Number::Unsigned(10)),
         "10",
         value_display_number_unsigned
     );

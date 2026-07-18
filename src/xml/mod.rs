@@ -8,7 +8,7 @@ use {
         fmt::debug_iter_bytes,
         num::ParseIntError,
         sym,
-        value::{Number, Value},
+        value::{self, Number, Value},
         xml::parser::TagParser,
     },
     allocator_api2::{
@@ -488,7 +488,12 @@ where
                 .map(Number::Signed)
                 .map(Value::Number)
                 .unwrap_or_default(),
-            std::fmt::from_fn(|_f| todo!()),
+            std::fmt::from_fn(|f| value::fmt_vector(
+                enclosures
+                    .iter()
+                    .map(|enclosure| str::from_utf8(enclosure).map(Value::String).map_err(to_fmt)),
+                f
+            )),
             Value::Nil,
         )
     }
