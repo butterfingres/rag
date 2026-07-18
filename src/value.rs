@@ -62,10 +62,12 @@ where
             Self::Symbol("") => f.write_str("##"),
             Self::Symbol(symbol) => {
                 for ch in symbol.chars() {
-                    match ch {
-                        ch @ (' ' | '(' | ')' | '[' | ']' | '\\' | ';' | '\"' | '|' | '\''
-                        | '`' | '#' | '.' | ',') => write!(f, "\\{ch}")?,
-                        _ => f.write_char(ch)?,
+                    if let ' ' | '(' | ')' | '[' | ']' | '\\' | ';' | '\"' | '|' | '\'' | '`'
+                    | '#' | '.' | ',' = ch
+                    {
+                        write!(f, "\\{ch}")?;
+                    } else {
+                        f.write_char(ch)?;
                     }
                 }
 
