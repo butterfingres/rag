@@ -3,7 +3,14 @@ pub mod ns;
 pub mod parser;
 
 use {
-    crate::{borrow::Cow, fmt::debug_iter_bytes, num::ParseIntError, sym, xml::parser::TagParser},
+    crate::{
+        borrow::Cow,
+        fmt::debug_iter_bytes,
+        num::ParseIntError,
+        sym,
+        value::{Number, Value},
+        xml::parser::TagParser,
+    },
     allocator_api2::{
         alloc::{AllocError, Allocator},
         boxed::Box,
@@ -141,6 +148,69 @@ where
             .field("ttl", &ttl)
             .field("frequency", &frequency)
             .finish()
+    }
+}
+impl<A> Display for Feed<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let to_fmt = |_| std::fmt::Error;
+
+        let Self {
+            title,
+            link,
+            skip_days: SkipDays {
+                data: [skip_days], ..
+            },
+            skip_hours: SkipHours {
+                data: [skip_hours], ..
+            },
+            ttl,
+            frequency,
+            last_update,
+        } = self;
+
+        write!(
+            f,
+            "(rag-feed {} {} {} {} {} {} {})",
+            title
+                .as_ref()
+                .map(|val| str::from_utf8(&val))
+                .transpose()
+                .map_err(to_fmt)?
+                .unwrap_or_default(),
+            link.as_ref()
+                .map(|val| str::from_utf8(&val))
+                .transpose()
+                .map_err(to_fmt)?
+                .unwrap_or_default(),
+            if *skip_days == 0 {
+                Value::Nil
+            } else {
+                Value::Number(Number::Unsigned((*skip_days).into()))
+            },
+            if *skip_hours == 0 {
+                Value::Nil
+            } else {
+                Value::Number(Number::Unsigned((*skip_days).into()))
+            },
+            std::fmt::from_fn(|f| if ttl.is_zero() {
+                Value::Nil.fmt(f)
+            } else {
+                write!(f, "\"{}\"", ttl)
+            }),
+            frequency
+                .map(u64::from)
+                .map(Number::Unsigned)
+                .map(Value::Number)
+                .unwrap_or_default(),
+            last_update
+                .map(|ts| ts.as_second())
+                .map(Number::Signed)
+                .map(Value::Number)
+                .unwrap_or_default()
+        )
     }
 }
 impl<'e, A> IntoLisp<'e> for Feed<'_, '_, A>

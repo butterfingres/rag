@@ -1,7 +1,4 @@
-use {
-    allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
-    std::fmt::{self, Display, Formatter, Write as _},
-};
+use std::fmt::{self, Display, Formatter, Write as _};
 
 pub enum Number {
     Signed(i64),
@@ -16,35 +13,19 @@ impl Display for Number {
     }
 }
 
-pub enum Value<'a, A>
-where
-    A: Allocator,
-{
+#[derive(Default)]
+pub enum Value<'a> {
+    #[default]
     Nil,
-    Cons(Box<Value<'a, A>, A>, Box<Value<'a, A>, A>),
     Char(char),
-    List(Vec<Value<'a, A>, A>),
     Number(Number),
     String(&'a str),
     Symbol(&'a str),
 }
-impl<A> Display for Value<'_, A>
-where
-    A: Allocator,
-{
+impl Display for Value<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Self::Nil => f.write_str("nil"),
-            Self::Cons(car, cdr) => write!(f, "({car} . {cdr})"),
-            Self::List(items) => {
-                f.write_char('(')?;
-                if let Some((car, cdr)) = items.split_first() {
-                    car.fmt(f)?;
-                    cdr.iter().try_for_each(|item| write!(f, " {item}"))?;
-                }
-                f.write_char(')')?;
-                Ok(())
-            }
 
             Self::Char('\u{7}') => f.write_str("?\\a"),
             Self::Char('\u{8}') => f.write_str("?\\b"),
@@ -109,6 +90,7 @@ mod tests {
         super::*,
         crate::alloc::{Dummy, with_bump},
         allocator_api2::vec,
+        arrayvec::ArrayString,
     };
 
     macro_rules! test_value {
@@ -159,13 +141,19 @@ mod tests {
     }
 
     #[test]
-    fn value_display_vector_list() -> Result<(), fmt::Error> {
-        with_bump(|bump| {
-            test_value!(
-                Value::List(vec![in bump; Value::Char('a'), Value::Char('b')]),
-                "(?a ?b)"
-            )
-        })
+    fn value_display_list() -> Result<(), fmt::Error> {
+        const OUTPUT: &str = "(?a ?b)";
+        let mut buf = ArrayString::<{ OUTPUT.len() }>::new();
+        write!(
+            buf,
+            "{}",
+            fmt::from_fn(|f| Value::fmt_list(
+                [Value::<Dummy>::Char('a'), Value::<Dummy>::Char('b')],
+                f
+            ))
+        )?;
+        assert_eq!(buf.as_ref(), OUTPUT);
+        Ok(())
     }
 
     test_value!(Value::<Dummy>::Nil, "nil", value_display_nil);
