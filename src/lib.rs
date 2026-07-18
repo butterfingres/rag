@@ -12,6 +12,7 @@ mod num;
 mod sym;
 mod thread_pool;
 mod tz;
+mod value;
 mod xml;
 
 use {
