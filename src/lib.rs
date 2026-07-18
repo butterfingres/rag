@@ -29,6 +29,7 @@ use {
     std::{
         error::Error,
         fmt::{Display, Formatter},
+        io::{BufWriter, Write as _},
     },
 };
 
@@ -104,7 +105,7 @@ fn parse_string_with<'e>(
     pool: &ThreadPool,
     output_process: rem::Value<'e>,
 ) -> Result<(), rem::Error> {
-    let _channel = env.open_channel(output_process)?;
+    let mut channel = BufWriter::new(env.open_channel(output_process)?);
     pool.spawn(move || {
         alloc::with_bump(|alloc| {
             if let Ok(_error) = (move || {
@@ -119,9 +120,8 @@ fn parse_string_with<'e>(
                     if parser.try_recognize_root(&root, &reader, version)? {
                         feed = Some(parser.handle_events(
                             &mut reader,
-                            &mut |_entry| {
-                                // let entry = entry.into_lisp(env)?;
-                                // entry_handler.call(env, (entry,))?;
+                            &mut |entry| {
+                                write!(channel, "{entry}")?;
                                 Ok(())
                             },
                             version,
@@ -131,8 +131,9 @@ fn parse_string_with<'e>(
                     }
                 }
 
-                if let Some(_feed) = feed {
-                    todo!()
+                if let Some(feed) = feed {
+                    write!(channel, "{feed}")?;
+                    channel.flush()?;
                 }
 
                 Ok::<(), ParserError>(())

@@ -36,7 +36,7 @@ use {
         convert::Infallible,
         error::Error,
         fmt::{Debug, Display, Formatter},
-        ptr,
+        io, ptr,
         str::{self, Utf8Error},
     },
 };
@@ -442,6 +442,57 @@ where
             .finish()
     }
 }
+impl<A> Display for Entry<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let to_fmt = |_| std::fmt::Error;
+
+        let Self {
+            title,
+            link,
+            description,
+            id,
+            pub_date,
+            enclosures,
+        } = self;
+
+        write!(
+            f,
+            "(rag-entry {} {} {} {} {} {} {})",
+            title
+                .as_ref()
+                .map(|val| str::from_utf8(&val))
+                .transpose()
+                .map_err(to_fmt)?
+                .unwrap_or_default(),
+            link.as_ref()
+                .map(|val| str::from_utf8(&val))
+                .transpose()
+                .map_err(to_fmt)?
+                .unwrap_or_default(),
+            description
+                .as_ref()
+                .map(|val| str::from_utf8(&val))
+                .transpose()
+                .map_err(to_fmt)?
+                .unwrap_or_default(),
+            id.as_ref()
+                .map(|val| str::from_utf8(&val))
+                .transpose()
+                .map_err(to_fmt)?
+                .unwrap_or_default(),
+            pub_date
+                .map(|ts| ts.as_second())
+                .map(Number::Signed)
+                .map(Value::Number)
+                .unwrap_or_default(),
+            std::fmt::from_fn(|_f| todo!()),
+            Value::Nil,
+        )
+    }
+}
 impl<'e, A> IntoLisp<'e> for Entry<'_, '_, A>
 where
     A: Allocator,
@@ -562,6 +613,7 @@ pub enum ParserError {
     Alloc(AllocError),
     DateOutOfRange,
     Emacs(rem::Error),
+    Io(io::Error),
     Jiff(jiff::Error),
     MissingRoot,
     ParseInt(ParseIntError),
@@ -579,6 +631,7 @@ impl Display for ParserError {
             Self::Alloc(e) => Display::fmt(e, f),
             Self::DateOutOfRange => f.write_str("date is out of range"),
             Self::Emacs(e) => Display::fmt(e, f),
+            Self::Io(e) => Display::fmt(e, f),
             Self::Jiff(e) => Display::fmt(e, f),
             Self::MissingRoot => f.write_str("failed to get root element"),
             Self::ParseInt(e) => Display::fmt(e, f),
@@ -603,6 +656,11 @@ impl From<bump_scope::alloc::AllocError> for ParserError {
 impl From<rem::Error> for ParserError {
     fn from(e: rem::Error) -> Self {
         Self::Emacs(e)
+    }
+}
+impl From<io::Error> for ParserError {
+    fn from(e: io::Error) -> Self {
+        Self::Io(e)
     }
 }
 impl From<jiff::Error> for ParserError {
