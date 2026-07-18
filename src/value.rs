@@ -105,9 +105,28 @@ mod tests {
             test_value!(
                 Value::Cons(
                     Box::new_in(Value::String("hello world"), &*bump),
-                    Box::new_in(Value::Nil, &*bump)
+                    Box::new_in(Value::Char('a'), &*bump)
                 ),
-                "(\"hello world\" . nil)"
+                "(\"hello world\" . ?a)"
+            )
+        })
+    }
+
+    #[test]
+    fn value_display_cons_list() -> Result<(), fmt::Error> {
+        with_bump(|bump| {
+            test_value!(
+                Value::Cons(
+                    Box::new_in(Value::Char('a'), &*bump),
+                    Box::new_in(
+                        Value::Cons(
+                            Box::new_in(Value::Char('b'), &*bump),
+                            Box::new_in(Value::Nil, &*bump)
+                        ),
+                        &*bump
+                    )
+                ),
+                "(?a . (?b . nil))"
             )
         })
     }
