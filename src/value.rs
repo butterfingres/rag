@@ -1,5 +1,5 @@
 use {
-    allocator_api2::{alloc::Allocator, boxed::Box},
+    allocator_api2::{alloc::Allocator, boxed::Box, vec::Vec},
     std::fmt::{self, Display, Formatter, Write as _},
 };
 
@@ -23,6 +23,7 @@ where
     Nil,
     Cons(Box<Value<'a, A>, A>, Box<Value<'a, A>, A>),
     Char(char),
+    List(Vec<Value<'a, A>, A>),
     Number(Number),
     String(&'a str),
     Symbol(&'a str),
@@ -35,6 +36,15 @@ where
         match self {
             Self::Nil => f.write_str("nil"),
             Self::Cons(car, cdr) => write!(f, "({car} . {cdr})"),
+            Self::List(items) => {
+                f.write_char('(')?;
+                if let Some((car, cdr)) = items.split_first() {
+                    car.fmt(f)?;
+                    cdr.iter().try_for_each(|item| write!(f, " {item}"))?;
+                }
+                f.write_char(')')?;
+                Ok(())
+            }
 
             Self::Char('\u{7}') => f.write_str("?\\a"),
             Self::Char('\u{8}') => f.write_str("?\\b"),
@@ -98,6 +108,7 @@ mod tests {
     use {
         super::*,
         crate::alloc::{Dummy, with_bump},
+        allocator_api2::vec,
     };
 
     macro_rules! test_value {
@@ -143,6 +154,16 @@ mod tests {
                     )
                 ),
                 "(?a . (?b . nil))"
+            )
+        })
+    }
+
+    #[test]
+    fn value_display_vector_list() -> Result<(), fmt::Error> {
+        with_bump(|bump| {
+            test_value!(
+                Value::List(vec![in bump; Value::Char('a'), Value::Char('b')]),
+                "(?a ?b)"
             )
         })
     }
