@@ -112,7 +112,7 @@ fn parse_string_with<'e>(
                 let mut reader = NsReader::from_str(&string);
                 let (version, root) = get_header(&mut reader)?;
 
-                let parsers: [&dyn Parser<'_, '_, Bump>; 3] =
+                let parsers: [&dyn Parser<'_, '_, alloc::Bump>; 3] =
                     [&atom::Parser, &rdf::Parser, &rss::Parser];
 
                 let mut feed = None;

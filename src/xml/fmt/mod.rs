@@ -6,12 +6,11 @@ pub mod rss;
 mod tests {
     use {
         crate::{
-            alloc::with_bump,
+            alloc::{Bump, with_bump},
             borrow::Cow,
             xml::{Entry, Feed, Parser, ParserError, SkipDays, SkipHours, tests::test_parser},
         },
         allocator_api2::{boxed::Box, vec},
-        bump_scope::Bump,
         jiff::{Span, civil::datetime, tz::TimeZone},
     };
 

@@ -1,6 +1,6 @@
 use {
     allocator_api2::alloc::{AllocError, Allocator},
-    bump_scope::Bump,
+    crossbeam_deque::{Injector, Steal},
     std::{alloc::Layout, ptr::NonNull, sync::LazyLock},
 };
 
@@ -20,21 +20,44 @@ unsafe impl Allocator for Dummy {
     unsafe fn deallocate(&self, _: NonNull<u8>, _: Layout) {}
 }
 
-static CHANNEL: LazyLock<(
-    crossbeam_channel::Sender<Bump>,
-    crossbeam_channel::Receiver<Bump>,
-)> = LazyLock::new(|| crossbeam_channel::bounded(16));
+type BumpSettings = bump_scope::settings::BumpSettings<
+    // MIN_ALIGN
+    1,
+    // UP
+    true,
+    // GUARANTEED_ALLOCATED
+    false,
+    // CLAIMABLE
+    false,
+    // DEALLOCATES
+    true,
+    // SHRINKS
+    true,
+    // MINIMUM_CHUNK_SIZE
+    512,
+>;
+pub type Bump = bump_scope::Bump<bump_scope::alloc::Global, BumpSettings>;
+
+static ALLOCATOR_QUEUE: LazyLock<Injector<Bump>> = LazyLock::new(|| Injector::new());
 
 pub fn with_bump<F, T>(f: F) -> T
 where
     F: FnOnce(&mut Bump) -> T,
 {
-    let (tx, rx) = &*CHANNEL;
-    let mut bump = rx.try_recv().unwrap_or_else(|_| Bump::try_new().unwrap());
-    let val = f(&mut bump);
-    bump.reset_to_start();
-    let _ = tx.try_send(bump);
-    val
+    let mut alloc = loop {
+        match ALLOCATOR_QUEUE.steal() {
+            Steal::Success(alloc) => break alloc,
+            Steal::Empty => break Bump::unallocated(),
+            Steal::Retry => {}
+        }
+    };
+
+    let output = f(&mut alloc);
+
+    alloc.reset();
+    ALLOCATOR_QUEUE.push(alloc);
+
+    output
 }
 
 #[cfg(test)]
