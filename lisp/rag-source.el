@@ -35,7 +35,7 @@
   :group 'rag
   :type 'boolean)
 
-(defcustom rag-source-completion-hook '()
+(defcustom rag-source-completion-hook '(rag-core-alloc-clear)
   "A hook that gets run when all feeds are parsed."
   :group 'rag-source
   :type 'hook)

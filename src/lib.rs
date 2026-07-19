@@ -96,6 +96,9 @@ capturing it in a closure.",
     )?
     .fset("rag-core-parse-string-with")?;
 
+    env.lambda(&alloc::Clear, Some(c"Clear all allocators."))?
+        .fset("rag-core-alloc-clear")?;
+
     Ok(())
 }
 

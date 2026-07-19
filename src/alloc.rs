@@ -40,6 +40,17 @@ pub type Bump = bump_scope::Bump<bump_scope::alloc::Global, BumpSettings>;
 
 static ALLOCATOR_QUEUE: LazyLock<Injector<Bump>> = LazyLock::new(Injector::new);
 
+#[rem::defun]
+fn clear() -> Result<(), rem::Error> {
+    loop {
+        match ALLOCATOR_QUEUE.steal() {
+            Steal::Empty => break,
+            Steal::Success(_) | Steal::Retry => {}
+        }
+    }
+    Ok(())
+}
+
 pub fn with_bump<F, T>(f: F) -> T
 where
     F: FnOnce(&mut Bump) -> T,
