@@ -7,6 +7,7 @@ use {
         borrow::Cow,
         fmt::debug_iter_bytes,
         num::ParseIntError,
+        sym,
         value::{self, Number, Value},
         xml::parser::TagParser,
     },
@@ -16,6 +17,7 @@ use {
         collections::TryReserveError,
         vec::Vec,
     },
+    arrayvec::ArrayVec,
     bitvec::BitArr,
     jiff::{Span, SpanFieldwise, Timestamp},
     quick_xml::{
@@ -29,6 +31,7 @@ use {
         name::QName,
         reader::NsReader,
     },
+    rem::{FromLisp, IntoLisp},
     std::{
         convert::Infallible,
         error::Error,
@@ -210,6 +213,64 @@ where
                 .map(Value::Number)
                 .unwrap_or_default()
         )
+    }
+}
+impl<'e, A> IntoLisp<'e> for Feed<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn into_lisp(self, env: &'e rem::Env) -> Result<rem::Value<'e>, rem::Error> {
+        let Self {
+            title,
+            link,
+            skip_days,
+            skip_hours,
+            ttl,
+            frequency,
+            last_update,
+        } = self;
+
+        let mut args = ArrayVec::<rem::Value<'e>, { 7 * 2 }>::new();
+        if let Some(val) = title {
+            let val = str::from_utf8(&val)?;
+            args.push(sym::key::TITLE.try_bind(env)?);
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = link {
+            let val = str::from_utf8(&val)?;
+            args.push(sym::key::LINK.try_bind(env)?);
+            args.push(val.into_lisp(env)?);
+        }
+
+        if skip_days.data[0] != 0 {
+            args.push(sym::key::SKIP_DAYS.try_bind(env)?);
+            args.push(skip_days.data[0].into_lisp(env)?);
+        }
+
+        if skip_hours.data[0] != 0 {
+            args.push(sym::key::SKIP_HOURS.try_bind(env)?);
+            args.push(skip_hours.data[0].into_lisp(env)?);
+        }
+
+        if !ttl.is_zero() {
+            args.push(sym::key::TTL.try_bind(env)?);
+            args.push(ttl.to_string().into_lisp(env)?);
+        }
+
+        if let Some(val) = frequency {
+            args.push(sym::key::FREQUENCY.try_bind(env)?);
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = last_update {
+            args.push(sym::key::LAST_UPDATE.try_bind(env)?);
+            args.push(val.as_second().into_lisp(env)?);
+        }
+
+        sym::val::MAKE_RAG_FEED
+            .try_bind(env)?
+            .call(env, args.as_ref())
     }
 }
 impl<A1, A2> PartialEq<Feed<'_, '_, A2>> for Feed<'_, '_, A1>
@@ -441,6 +502,70 @@ where
             )),
             Value::Nil,
         )
+    }
+}
+impl<'e, A> IntoLisp<'e> for Entry<'_, '_, A>
+where
+    A: Allocator,
+{
+    fn into_lisp(self, env: &'e rem::Env) -> Result<rem::Value<'e>, rem::Error> {
+        let Self {
+            title,
+            link,
+            description,
+            id,
+            pub_date,
+            enclosures,
+        } = self;
+
+        let mut args = ArrayVec::<rem::Value, { 6 * 2 }>::new();
+
+        if let Some(val) = title {
+            let val = str::from_utf8(&val)?;
+            args.push(sym::key::TITLE.try_bind(env)?);
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = link {
+            let val = str::from_utf8(&val)?;
+            args.push(sym::key::LINK.try_bind(env)?);
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = description {
+            let val = str::from_utf8(&val)?;
+            args.push(sym::key::DESCRIPTION.try_bind(env)?);
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = id {
+            let val = str::from_utf8(&val)?;
+            args.push(sym::key::ID.try_bind(env)?);
+            args.push(val.into_lisp(env)?);
+        }
+
+        if let Some(val) = pub_date {
+            args.push(sym::key::PUB_DATE.try_bind(env)?);
+            args.push(val.as_second().into_lisp(env)?);
+        }
+
+        if !enclosures.is_empty() {
+            args.push(sym::key::ENCLOSURES.try_bind(env)?);
+            let buf = rem::Vector::from_lisp(
+                sym::fun::MAKE_VECTOR
+                    .try_bind(env)?
+                    .call(env, (enclosures.len(), 0))?,
+                env,
+            )?;
+            for (i, enclosure) in enclosures.into_iter().enumerate() {
+                buf.set(env, i, str::from_utf8(&enclosure)?.into_lisp(env)?)?;
+            }
+            args.push(buf.into_lisp(env)?);
+        }
+
+        sym::val::MAKE_RAG_ENTRY
+            .try_bind(env)?
+            .call(env, args.as_ref())
     }
 }
 impl<'alloc, 'src, A> From<PartialEntry<'alloc, 'src, A>> for Entry<'alloc, 'src, A>
