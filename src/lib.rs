@@ -10,6 +10,8 @@ mod feed;
 mod fmt;
 mod num;
 mod sym;
+#[cfg(test)]
+mod tests;
 mod thread_pool;
 mod tz;
 mod value;
