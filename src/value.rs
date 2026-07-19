@@ -140,7 +140,7 @@ mod tests {
         write!(
             buf,
             "{}",
-            fmt::from_fn(|f| fmt_vector([Value::Char('a'), Value::Char('b')], f))
+            fmt::from_fn(|f| fmt_vector("ab".chars().map(Value::Char).map(Ok), f))
         )?;
         assert_eq!(buf.as_ref(), OUTPUT);
         Ok(())

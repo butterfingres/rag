@@ -176,12 +176,12 @@ where
             "(rag-feed {} {} {} {} {} {} {})",
             title
                 .as_ref()
-                .map(|val| str::from_utf8(&val))
+                .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
                 .unwrap_or_default(),
             link.as_ref()
-                .map(|val| str::from_utf8(&val))
+                .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
                 .unwrap_or_default(),
@@ -463,23 +463,23 @@ where
             "(rag-entry {} {} {} {} {} {} {})",
             title
                 .as_ref()
-                .map(|val| str::from_utf8(&val))
+                .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
                 .unwrap_or_default(),
             link.as_ref()
-                .map(|val| str::from_utf8(&val))
+                .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
                 .unwrap_or_default(),
             description
                 .as_ref()
-                .map(|val| str::from_utf8(&val))
+                .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
                 .unwrap_or_default(),
             id.as_ref()
-                .map(|val| str::from_utf8(&val))
+                .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
                 .unwrap_or_default(),
