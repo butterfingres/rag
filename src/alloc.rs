@@ -5,6 +5,10 @@ use {
 };
 
 /// Allocator that never allocates.
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "this allocator is only used in tests")
+)]
 #[derive(Debug)]
 pub struct Dummy;
 
