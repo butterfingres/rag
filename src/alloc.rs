@@ -38,7 +38,7 @@ type BumpSettings = bump_scope::settings::BumpSettings<
 >;
 pub type Bump = bump_scope::Bump<bump_scope::alloc::Global, BumpSettings>;
 
-static ALLOCATOR_QUEUE: LazyLock<Injector<Bump>> = LazyLock::new(|| Injector::new());
+static ALLOCATOR_QUEUE: LazyLock<Injector<Bump>> = LazyLock::new(Injector::new);
 
 pub fn with_bump<F, T>(f: F) -> T
 where

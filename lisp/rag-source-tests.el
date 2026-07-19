@@ -84,10 +84,18 @@ VALUES ('1', 1782739075, 'https://example.com/feed')")
   </entry>
 </feed>")
                    (apply cb '() cbargs)))))
-      (let ((progress-buffer (rag-progress-buffer-get)))
+      (let* ((completed nil)
+
+             (progress-buffer (rag-progress-buffer-get))
+             (rag-source-update-functions (list (lambda (_to-delete _to-insert)
+                                                  (setq completed t)))))
         (unwind-protect
             (with-current-buffer progress-buffer
               (rag-source-update "https://example.com/atom")
+
+              (while (not completed)
+                (sleep-for 0.1))
+
               (goto-char (point-min))
               (should (string= (buffer-substring-no-properties (point-min) (point-max))
                                "fetching https://example.com/atom... ok\n"))

@@ -86,6 +86,16 @@ capturing it in a closure.",
     )?
     .fset("rag-core-parse-string")?;
 
+    env.lambda(
+        &ParseStringWith,
+        Some(
+            c"Parse STRING in a thread pool.
+
+(fn ENV STRING POOL OUTPUT-PROCESS)",
+        ),
+    )?
+    .fset("rag-core-parse-string-with")?;
+
     Ok(())
 }
 
@@ -139,7 +149,7 @@ fn parse_string_with<'e>(
                 Ok::<(), ParserError>(())
             })() {
                 let _ = (|| {
-                    write!(channel, "(error {error})")?;
+                    write!(channel, "(error \"{error}\")")?;
                     channel.flush()
                 })();
             }

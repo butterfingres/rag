@@ -20,6 +20,7 @@
 (require 'rag-core)
 (require 'rag-db)
 (require 'rag-progress)
+(require 'rag-thread-pool)
 
 (cl-defstruct rag-source
   "Feed source."
@@ -69,7 +70,6 @@ entries will have those and at least `rag-entry-title' and
          (old-pub-date (car-safe (car (sqlite-select db "SELECT pub_date FROM entry
 WHERE id == ?"
                                                      (list id))))))
-    (setf (rag-entry-id entry) id)
     (sqlite-execute db
                     "INSERT OR REPLACE INTO entry(id, title, link, description, pub_date, feed_id)
 VALUES (?, ?, ?, ?, ?, ?)"
@@ -105,34 +105,57 @@ WHERE id == ?"
                                             :feed-id feed-id)))))
 
 (defun rag-source-update-region (url start end)
-  (rag-pool-with alloc
-    (let ((db (rag-db-get))
-          (to-delete '())
-          (to-insert '()))
-      (with-sqlite-transaction db
-        (let* ((string (buffer-substring start end))
-               (feed (rag-core-parse-string
-                      string
-                      alloc
-                      (apply-partially #'rag-source-handle-new-entry
-                                       url
-                                       db
-                                       (lambda (entry) (push entry to-delete))
-                                       (lambda (entry) (push entry to-insert))))))
-          (sqlite-execute db
-                          "INSERT OR REPLACE INTO feed(url, title, link, skip_days, skip_hours, ttl, last_update) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)"
-                          (list url
-                                (rag-feed-title feed)
-                                (rag-feed-link feed)
-                                (rag-feed-skip-days feed)
-                                (rag-feed-skip-hours feed)
-                                (rag-feed-ttl feed)
-                                (or (rag-feed-last-update feed)
-                                    (round (float-time)))))))
-      ;; this is outside the transaction because the feed parsed
-      ;; successfully so failing to update the ui shouldn't revert the
-      ;; transaction
-      (run-hook-with-args 'rag-source-update-functions to-delete to-insert))))
+  (let* ((db (rag-db-get))
+         (thread-pool (rag-thread-pool-get))
+         (to-delete '())
+         (to-insert '())
+         (buffer (generate-new-buffer " *rag-source-parser*"))
+         (process (make-pipe-process :name "rag-source-parser"
+                                     :buffer buffer
+                                     :filter (lambda (process text)
+                                               (with-current-buffer (process-buffer process)
+                                                 (let ((marker (process-mark process)))
+                                                   (goto-char marker)
+                                                   (insert text)
+                                                   (set-marker marker (point)))
+
+                                                 (goto-char (point-min))
+                                                 (ignore-error end-of-file
+                                                   (while t
+                                                     (let ((sexp (read buffer)))
+                                                       (delete-region (point-min) (point))
+                                                       (cl-case (car sexp)
+                                                         (rag-entry
+                                                          (rag-source-handle-new-entry
+                                                           url
+                                                           db
+                                                           (lambda (entry) (push entry to-delete))
+                                                           (lambda (entry) (push entry to-insert))
+                                                           (apply #'record sexp)))
+                                                         (rag-feed
+                                                          (let* ((feed (apply #'record sexp)))
+                                                            (sqlite-execute db
+                                                                            "INSERT OR REPLACE INTO feed (url, title, link, skip_days, skip_hours, ttl, last_update)
+VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+                                                                            (list url
+                                                                                  (rag-feed-title feed)
+                                                                                  (rag-feed-link feed)
+                                                                                  (rag-feed-skip-days feed)
+                                                                                  (rag-feed-skip-hours feed)
+                                                                                  (rag-feed-ttl feed)
+                                                                                  (or (rag-feed-last-update feed)
+                                                                                      (round (float-time))))))
+
+                                                          (delete-process process)
+                                                          (kill-buffer buffer)
+
+                                                          (run-hook-with-args 'rag-source-update-functions to-delete to-insert))
+                                                         (error
+                                                          (error "%s" (cadr sexp))))))))))))
+    (rag-core-parse-string-with (buffer-substring-no-properties start
+                                                                end)
+                                thread-pool
+                                process)))
 
 (defun rag-source-update (url)
   "Update source URL."

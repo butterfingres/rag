@@ -179,11 +179,13 @@ where
                 .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
+                .map(Value::String)
                 .unwrap_or_default(),
             link.as_ref()
                 .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
+                .map(Value::String)
                 .unwrap_or_default(),
             if *skip_days == 0 {
                 Value::Nil
@@ -466,22 +468,26 @@ where
                 .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
+                .map(Value::String)
                 .unwrap_or_default(),
             link.as_ref()
                 .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
+                .map(Value::String)
                 .unwrap_or_default(),
             description
                 .as_ref()
                 .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
+                .map(Value::String)
                 .unwrap_or_default(),
             id.as_ref()
                 .map(|val| str::from_utf8(val))
                 .transpose()
                 .map_err(to_fmt)?
+                .map(Value::String)
                 .unwrap_or_default(),
             pub_date
                 .map(|ts| ts.as_second())

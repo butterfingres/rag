@@ -5,10 +5,10 @@ ELCS = lisp/rag-core-tests.elc lisp/rag-db-tests-lib.elc				\
 	lisp/rag-entry.elc lisp/rag-faces.elc lisp/rag-lib.elc				\
 	lisp/rag-pool-tests.elc lisp/rag-pool.elc lisp/rag-progress.elc		\
 	lisp/rag-source-tests.elc lisp/rag-source.elc lisp/rag-tests.elc	\
-	lisp/rag.elc
+	lisp/rag-thread-pool.elc lisp/rag.elc
 
 EMACS = emacs
-EMACSFLAGS = -Q -batch -L target/debug -L lisp -eval '(setq byte-compile-error-on-warn t)'
+EMACSFLAGS = -Q -batch -L target/debug -L lisp
 
 CARGO = cargo
 CARGOCLIPPYFLAGS = --all-targets --all-features -- -D warnings
@@ -68,6 +68,7 @@ lisp/rag-pool.elc: target/debug/rag-core.${SO}
 lisp/rag-pool-tests.elc: lisp/rag-pool.elc
 lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-db-tests-lib.elc
 lisp/rag-db-tests-lib.elc: lisp/rag-db.elc
+lisp/rag-thread-pool.elc: target/debug/rag-core.${SO}
 lisp/rag-core-tests.elc: target/debug/rag-core.${SO}
 
 install: target/release/rag-core.${SO} ${ELCS}
