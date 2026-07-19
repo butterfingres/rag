@@ -20,11 +20,12 @@ LIBDIR = ${PREFIX}/share/emacs/site-lisp
 # find Cargo.* src -name 'Cargo.*' -o -name '*.rs' | sort | xargs echo
 RUSTFILES = Cargo.lock Cargo.toml src/alloc.rs src/borrow.rs			\
 	src/bump.rs src/feed.rs src/fmt.rs src/lib.rs src/num.rs			\
-	src/string.rs src/sym.rs src/tz.rs src/xml/fmt/atom/mod.rs			\
-	src/xml/fmt/mod.rs src/xml/fmt/rdf/mod.rs src/xml/fmt/rss/mod.rs	\
-	src/xml/mod.rs src/xml/ns/content/mod.rs src/xml/ns/dc/mod.rs		\
-	src/xml/ns/media/mod.rs src/xml/ns/mod.rs src/xml/ns/sy/mod.rs		\
-	src/xml/parser.rs
+	src/sym.rs src/thread_pool.rs src/tz.rs src/value.rs				\
+	src/xml/fmt/atom/mod.rs src/xml/fmt/mod.rs src/xml/fmt/rdf/mod.rs	\
+	src/xml/fmt/rss/mod.rs src/xml/mod.rs src/xml/ns/content/mod.rs		\
+	src/xml/ns/dc/mod.rs src/xml/ns/media/mod.rs src/xml/ns/mod.rs		\
+	src/xml/ns/sy/mod.rs src/xml/parser.rs
+
 
 include Makefile.in
 
