@@ -2,9 +2,10 @@ use std::{
     borrow::Cow,
     env,
     ffi::OsStr,
-    fs, io,
+    fs,
+    io::{self, Write as _},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::{self, Command, Stdio},
 };
 
 #[test]
@@ -26,15 +27,16 @@ fn lisp_tests() -> Result<(), io::Error> {
         fs::hard_link(librag_core_so, &rag_core_so)?;
     }
 
+    let mut children = Vec::new();
     for dirent in fs::read_dir("lisp")? {
         let dirent = dirent?;
         let name = dirent.file_name();
         if name.to_string_lossy().ends_with("-tests.el") {
-            assert!(
+            children.push(
                 Command::new(&*emacs)
                     .stdin(Stdio::null())
-                    .stdout(Stdio::inherit())
-                    .stderr(Stdio::inherit())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
                     .arg("-Q")
                     .arg("-batch")
                     .arg("-l")
@@ -51,10 +53,32 @@ fn lisp_tests() -> Result<(), io::Error> {
                     .arg(name)
                     .arg("-f")
                     .arg("ert-run-tests-batch-and-exit")
-                    .status()?
-                    .success()
+                    .spawn()?,
             );
         }
+    }
+
+    let mut failed = 0;
+    for child in children {
+        let process::Output {
+            status,
+            stdout: child_stdout,
+            stderr: child_stderr,
+        } = child.wait_with_output()?;
+        if !status.success() {
+            let mut stdout = io::stdout();
+            stdout.write_all(&child_stdout)?;
+            stdout.flush()?;
+
+            let mut stderr = io::stderr();
+            stderr.write_all(&child_stderr)?;
+            stderr.flush()?;
+
+            failed += 1;
+        }
+    }
+    if failed != 0 {
+        panic!("{failed} child processes failed with non-zero exit status");
     }
 
     Ok(())
