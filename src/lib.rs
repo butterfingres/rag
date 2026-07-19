@@ -21,11 +21,8 @@ use {
         fmt::{atom, rdf, rss},
         get_header,
     },
-    allocator_api2::alloc::Global,
-    bump_scope::Bump,
     quick_xml::reader::NsReader,
     rayon_core::ThreadPool,
-    rem::IntoLisp,
     std::{
         error::Error,
         fmt::{Display, Formatter},
@@ -73,28 +70,12 @@ fn init(env: &rem::Env) -> Result<(), rem::Error> {
     env.lambda(
         &ParseString,
         Some(
-            c"Parse STRING into a `rag-feed'.
-
-ALLOC should be a bump allocator created by `rag-core-bump-new'.
-ENTRY-HANDLER is a function that will be called with `rag-entry'
-objects.
-
-The `rag-entry' objects when passed to ENTRY-HANDLER will not contain
-a `rag-entry-feed-id' field, you will need to store the feed url by
-capturing it in a closure.",
-        ),
-    )?
-    .fset("rag-core-parse-string")?;
-
-    env.lambda(
-        &ParseStringWith,
-        Some(
             c"Parse STRING in a thread pool.
 
 (fn ENV STRING POOL OUTPUT-PROCESS)",
         ),
     )?
-    .fset("rag-core-parse-string-with")?;
+    .fset("rag-core-parse-string")?;
 
     Ok(())
 }
@@ -109,7 +90,7 @@ impl Display for UnknownRootError {
 impl Error for UnknownRootError {}
 
 #[rem::defun]
-fn parse_string_with<'e>(
+fn parse_string<'e>(
     env: &'e rem::Env,
     string: String,
     pool: &ThreadPool,
@@ -156,36 +137,4 @@ fn parse_string_with<'e>(
         });
     });
     Ok(())
-}
-
-#[rem::defun]
-fn parse_string<'e>(
-    env: &'e rem::Env,
-    string: String,
-    alloc: &Bump<Global>,
-    entry_handler: rem::Value<'e>,
-) -> Result<rem::Value<'e>, rem::Error> {
-    let mut reader = NsReader::from_str(&string);
-    let (version, root) = get_header(&mut reader)?;
-
-    let parsers: [&dyn Parser<'_, '_, Bump<Global>>; 3] =
-        [&atom::Parser, &rdf::Parser, &rss::Parser];
-
-    for parser in parsers {
-        if parser.try_recognize_root(&root, &reader, version)? {
-            let feed = parser.handle_events(
-                &mut reader,
-                &mut |entry| {
-                    let entry = entry.into_lisp(env)?;
-                    entry_handler.call(env, (entry,))?;
-                    Ok(())
-                },
-                version,
-                alloc,
-            )?;
-            return feed.into_lisp(env);
-        }
-    }
-
-    Err(rem::Error::from(UnknownRootError))
 }
