@@ -94,7 +94,7 @@ VALUES ('1', 1782739075, 'https://example.com/feed')")
               (rag-source-update "https://example.com/atom")
 
               (while (not completed)
-                (sleep-for 0.1))
+                (sit-for 0.1))
 
               (goto-char (point-min))
               (should (string= (buffer-substring-no-properties (point-min) (point-max))
