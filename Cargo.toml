@@ -11,7 +11,7 @@ allocator-api2 = { version = "0.4.0", default-features = false }
 arrayvec = { version = "0.7.7", default-features = false }
 bitvec = { version = "1.1.1", default-features = false }
 bump-scope = { version = "2.3.0", default-features = false, features = ["alloc", "allocator-api2-04"] }
-rem = { version = "1.0.0", path = "../rem", default-features = false, features = ["emacs-28"] }
+rem = { version = "1.0.0", git = "https://github.com/butterfingres/rem.git", tag = "v1.0.0", default-features = false, features = ["emacs-28"] }
 jiff = { version = "0.2.28", default-features = false, features = ["std"] }
 memchr = { version = "2.8.2", default-features = false }
 quick-xml = { version = "0.40.1", default-features = false }

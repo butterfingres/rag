@@ -252,6 +252,7 @@ dependencies = [
 [[package]]
 name = "rem"
 version = "1.0.0"
+source = "git+https://github.com/butterfingres/rem.git?tag=v1.0.0#f2aa2836569e74751595a99e30d143c64af093b7"
 dependencies = [
  "emacs_module",
  "libc",
@@ -261,6 +262,7 @@ dependencies = [
 [[package]]
 name = "rem-macros"
 version = "0.17.0"
+source = "git+https://github.com/butterfingres/rem.git?tag=v1.0.0#f2aa2836569e74751595a99e30d143c64af093b7"
 dependencies = [
  "darling",
  "proc-macro2",
