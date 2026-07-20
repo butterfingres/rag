@@ -5,8 +5,7 @@ on:
       - "**/*.rs"
       - "**/*.el"
       - "Cargo.*"
-      - "Makefile*"
-      - "configure*"
+      - "Makefile"
   pull_request:
 
 jobs:
@@ -22,5 +21,6 @@ jobs:
           components: "clippy, rustfmt"
       - name: Test
         run: |
-          ./configure
-          make check -kj
+          cargo fmt --check
+          cargo clippy
+          cargo test
