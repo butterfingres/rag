@@ -13,10 +13,6 @@ EMACSFLAGS = -Q -batch -L target/debug -L lisp
 CARGO = cargo
 CARGOCLIPPYFLAGS = --all-targets --all-features -- -D warnings
 
-PREFIX = /usr/local
-SITELISP = ${PREFIX}/share/emacs/site-lisp
-LIBDIR = ${PREFIX}/share/emacs/site-lisp
-
 # find Cargo.* src -name 'Cargo.*' -o -name '*.rs' | sort | xargs echo
 RUSTFILES = Cargo.lock Cargo.toml src/alloc.rs src/borrow.rs			\
 	src/bump.rs src/feed.rs src/fmt.rs src/lib.rs src/num.rs			\
@@ -25,7 +21,6 @@ RUSTFILES = Cargo.lock Cargo.toml src/alloc.rs src/borrow.rs			\
 	src/xml/fmt/rss/mod.rs src/xml/mod.rs src/xml/ns/content/mod.rs		\
 	src/xml/ns/dc/mod.rs src/xml/ns/media/mod.rs src/xml/ns/mod.rs		\
 	src/xml/ns/sy/mod.rs src/xml/parser.rs
-
 
 include Makefile.in
 
@@ -70,12 +65,6 @@ lisp/rag-db-tests.elc: lisp/rag-db.elc lisp/rag-db-tests-lib.elc
 lisp/rag-db-tests-lib.elc: lisp/rag-db.elc
 lisp/rag-thread-pool.elc: target/debug/rag-core.${SO}
 lisp/rag-core-tests.elc: target/debug/rag-core.${SO}
-
-install: target/release/rag-core.${SO} ${ELCS}
-	install -m 755 -d "${SITELISP}"
-	install -m 644 lisp/*.el lisp/*.elc "${SITELISP}"
-	install -m 755 -d "${LIBDIR}"
-	install -m 644 target/release/rag-core.${SO} "${LIBDIR}"
 
 .el.elc:
 	${EMACS} ${EMACSFLAGS} -l bytecomp -f batch-byte-compile $<
