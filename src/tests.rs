@@ -1,19 +1,31 @@
 use std::{
     borrow::Cow,
     env,
-    ffi::OsStr,
+    ffi::{OsStr, OsString},
     fs,
     io::{self, Write as _},
     path::{Path, PathBuf},
     process::{self, Command, Stdio},
 };
 
-#[test]
-fn lisp_tests() -> Result<(), io::Error> {
-    let emacs = env::var_os("EMACS")
+fn get_binary<'a>(var: &str, default: &'a str) -> Cow<'a, Path> {
+    env::var_os(var)
         .map(PathBuf::from)
         .map(Cow::Owned)
-        .unwrap_or(Cow::Borrowed(Path::new("emacs")));
+        .unwrap_or(Cow::Borrowed(Path::new(default)))
+}
+
+fn def_macro(var: &str, val: &Path) -> OsString {
+    let mut buf = OsString::from(var);
+    buf.push("=");
+    buf.push(val);
+    buf
+}
+
+#[test]
+fn lisp_tests() -> Result<(), io::Error> {
+    let emacs = get_binary("EMACS", "emacs");
+    let make = get_binary("MAKE", "make");
 
     let librag_core_so = test_cdylib::build_current_project();
 
@@ -23,8 +35,35 @@ fn lisp_tests() -> Result<(), io::Error> {
     if let Some(extension) = extension {
         rag_core_so.set_extension(extension);
     }
-    if !rag_core_so.exists() {
-        fs::hard_link(librag_core_so, &rag_core_so)?;
+
+    let target_dir = rag_core_so
+        .parent()
+        .expect("target directory should have a parent");
+
+    let process::Output {
+        status: child_status,
+        stdout: child_stdout,
+        stderr: child_stderr,
+    } = Command::new(&*make)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .arg(def_macro("TARGET_DIR", &target_dir))
+        .arg(def_macro("LIBRAG_CORE_SO", &librag_core_so))
+        .arg(def_macro("RAG_CORE_SO", &rag_core_so))
+        .arg(def_macro("EMACS", &emacs))
+        .output()?;
+
+    if !child_status.success() {
+        let mut stdout = io::stdout();
+        stdout.write_all(&child_stdout)?;
+        stdout.flush()?;
+
+        let mut stderr = io::stderr();
+        stderr.write_all(&child_stderr)?;
+        stderr.flush()?;
+
+        panic!("make exited with non-zero exit code");
     }
 
     let mut children = Vec::new();
@@ -42,11 +81,7 @@ fn lisp_tests() -> Result<(), io::Error> {
                     .arg("-l")
                     .arg("ert")
                     .arg("-L")
-                    .arg(
-                        rag_core_so
-                            .parent()
-                            .expect("rag-core should have a parent directory"),
-                    )
+                    .arg(&target_dir)
                     .arg("-L")
                     .arg("lisp")
                     .arg("-l")
