@@ -112,6 +112,7 @@ WHERE id == ?"
          (buffer (generate-new-buffer " *rag-source-parser*"))
          (process (make-pipe-process :name "rag-source-parser"
                                      :buffer buffer
+                                     :noquery t
                                      :filter (lambda (process text)
                                                (with-current-buffer (process-buffer process)
                                                  (let ((marker (process-mark process)))

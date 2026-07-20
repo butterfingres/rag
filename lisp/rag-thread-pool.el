@@ -30,7 +30,8 @@
   (declare (ftype (function () user-ptr)))
   (with-memoization rag-thread-pool
     (let ((process (make-pipe-process :name "rag-thread-pool-log"
-                                      :buffer (get-buffer-create rag-thread-pool-log-buffer-name))))
+                                      :buffer (get-buffer-create rag-thread-pool-log-buffer-name)
+                                      :noquery t)))
       (rag-core-thread-pool-new process))))
 
 (provide 'rag-thread-pool)
