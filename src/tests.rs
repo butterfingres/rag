@@ -40,31 +40,18 @@ fn lisp_tests() -> Result<(), io::Error> {
         .parent()
         .expect("target directory should have a parent");
 
-    let process::Output {
-        status: child_status,
-        stdout: child_stdout,
-        stderr: child_stderr,
-    } = Command::new(&*make)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .arg(def_macro("TARGET_DIR", &target_dir))
-        .arg(def_macro("LIBRAG_CORE_SO", &librag_core_so))
-        .arg(def_macro("RAG_CORE_SO", &rag_core_so))
-        .arg(def_macro("EMACS", &emacs))
-        .output()?;
-
-    if !child_status.success() {
-        let mut stdout = io::stdout();
-        stdout.write_all(&child_stdout)?;
-        stdout.flush()?;
-
-        let mut stderr = io::stderr();
-        stderr.write_all(&child_stderr)?;
-        stderr.flush()?;
-
-        panic!("make exited with non-zero exit code");
-    }
+    assert!(
+        Command::new(&*make)
+            .stdin(Stdio::null())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .arg(def_macro("TARGET_DIR", &target_dir))
+            .arg(def_macro("LIBRAG_CORE_SO", &librag_core_so))
+            .arg(def_macro("RAG_CORE_SO", &rag_core_so))
+            .arg(def_macro("EMACS", &emacs))
+            .status()?
+            .success()
+    );
 
     let mut children = Vec::new();
     for dirent in fs::read_dir("lisp")? {
@@ -100,15 +87,15 @@ fn lisp_tests() -> Result<(), io::Error> {
             stdout: child_stdout,
             stderr: child_stderr,
         } = child.wait_with_output()?;
+        let mut stdout = io::stdout();
+        stdout.write_all(&child_stdout)?;
+        stdout.flush()?;
+
+        let mut stderr = io::stderr();
+        stderr.write_all(&child_stderr)?;
+        stderr.flush()?;
+
         if !status.success() {
-            let mut stdout = io::stdout();
-            stdout.write_all(&child_stdout)?;
-            stdout.flush()?;
-
-            let mut stderr = io::stderr();
-            stderr.write_all(&child_stderr)?;
-            stderr.flush()?;
-
             failed += 1;
         }
     }
